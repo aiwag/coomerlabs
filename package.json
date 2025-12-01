@@ -106,7 +106,7 @@
     "framer-motion": "^12.23.24",
     "i18next": "^25.6.2",
     "idb-keyval": "^6.2.2",
-    "lucide-react": "^0.552.0",
+    "lucide-react": "^0.555.0",
     "ofetch": "^1.5.1",
     "perfect-debounce": "^2.0.0",
     "plyr-react": "^5.3.0",
