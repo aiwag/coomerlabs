@@ -1,4 +1,4 @@
-# CoomerLabs: Ultimate Coomer Content Viewer
+# CoomerLabs: Chaturbate Multi Cam Viewer and more
 
 <div align="center">
   <img src="https://github.com/user-attachments/assets/c5e3c0fe-122c-424f-8d8d-90d516c80a4f" alt="CoomerLabs Hero" width="800">
@@ -41,29 +41,6 @@ Use https://github.com/aiwag/coomerlabs-server for unlocking additional content.
 - **TanStack Router**: File-based routing with type safety
 - **Framer Motion**: Smooth animations and micro-interactions
 
-## 🖼️ Screenshots
-
-
-<div align="center">
-  <table>
-    <tr>
-      <td><img src="https://github.com/user-attachments/assets/b1097ed2-0854-4fb3-8172-4301041c1825" alt="Dashboard" width="400"></td>
-      <td><img src="https://github.com/user-attachments/assets/9193cabf-9bbc-47ff-b498-a6d83416a034" alt="Content Grid" width="400"></td>
-    </tr>
-    <tr>
-      <td><img src="https://github.com/user-attachments/assets/d754e116-ee92-449c-ac6d-26b8f518c5ad" alt="Gallery View" width="400"></td>
-      <td><img src="https://github.com/user-attachments/assets/a6007cd1-efa5-4d58-9355-bd51c7b4db7a" alt="Content Details" width="400"></td>
-    </tr>
-    <tr>
-      <td><img src="https://github.com/user-attachments/assets/d5d91939-3e40-41b1-b664-15bb6bfcfa6e" alt="Media Player" width="400"></td>
-      <td><img src="https://github.com/user-attachments/assets/3c269f19-4413-4ebc-a3a9-8fdd5c6fa96f" alt="Settings" width="400"></td>
-    </tr>
-    <tr>
-      <td><img src="https://github.com/user-attachments/assets/86b68aa5-399e-4339-99c0-2b6c931f6042" alt="Search & Filter" width="400"></td>
-      <td><img src="https://github.com/user-attachments/assets/adc49309-fb89-4a3e-b5ee-1dc616ae0f08" alt="Mobile View" width="400"></td>
-    </tr>
-  </table>
-</div>
 
 ## 🚀 Getting Started
 
