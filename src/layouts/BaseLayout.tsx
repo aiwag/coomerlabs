@@ -11,7 +11,7 @@ export default function BaseLayout({
     <>
       <DragWindowRegion title="CoomerLabs: Funtimes" />
       <NavigationMenu />
-      <main className="h-screen w-screen">{children}</main>
+      <main className="flex-1 overflow-hidden">{children}</main>
     </>
   );
 }

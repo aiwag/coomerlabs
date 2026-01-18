@@ -29,4 +29,22 @@ export default [
   pluginReact.configs.flat.recommended,
   eslintPluginPrettierRecommended,
   ...tseslint.configs.recommended,
+  {
+    settings: {
+      react: {
+        version: "detect",
+      },
+    },
+    rules: {
+      "react/react-in-jsx-scope": "off",
+      "react/jsx-uses-react": "off",
+      "@typescript-eslint/no-unused-vars": "warn",
+      "@typescript-eslint/no-explicit-any": "warn",
+      "react/no-unknown-property": "warn",
+      "no-useless-escape": "warn",
+      "@typescript-eslint/no-unused-expressions": "warn",
+      "react/display-name": "warn",
+      "react/no-unescaped-entities": "warn",
+    },
+  },
 ];

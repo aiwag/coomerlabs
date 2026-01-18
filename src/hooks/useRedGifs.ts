@@ -1,84 +1,79 @@
 // src/hooks/useRedGifs.ts
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
-import { redGifsApiWithFallback, RedGifsMedia, RedGifsUser, RedGifsNiche } from '@/services/redgifs'
+import { redGifsApiWithFallback } from '@/services/redgifs'
 import { useRedGifsAuth } from './useRedGifsAuth'
 
 export const useTrending = (enabled = true) => {
-  const { isAuthenticated } = useRedGifsAuth()
-  
   return useInfiniteQuery({
     queryKey: ['redgifs', 'trending'],
-    queryFn: ({ pageParam = 1 }) => redGifsApiWithFallback.getTrending(pageParam),
+    queryFn: ({ pageParam }: { pageParam?: number }) => redGifsApiWithFallback.getTrending(pageParam || 1),
     getNextPageParam: (lastPage) => {
       if (lastPage.page < lastPage.pages) return lastPage.page + 1
       return undefined
     },
-    enabled: enabled, // Remove the isAuthenticated check for now
-    retry: 1, // Reduce retry count
+    initialPageParam: 1,
+    enabled: enabled,
+    retry: 1,
     retryDelay: 1000,
   })
 }
 
 export const useCreators = (enabled = true) => {
-  const { isAuthenticated } = useRedGifsAuth()
-  
   return useInfiniteQuery({
     queryKey: ['redgifs', 'creators'],
-    queryFn: ({ pageParam = 1 }) => redGifsApiWithFallback.getCreators(pageParam),
+    queryFn: ({ pageParam }: { pageParam?: number }) => redGifsApiWithFallback.getCreators(pageParam || 1),
     getNextPageParam: (lastPage) => {
       if (lastPage.page < lastPage.pages) return lastPage.page + 1
       return undefined
     },
-    enabled: enabled, // Remove the isAuthenticated check for now
-    retry: 1, // Reduce retry count
+    initialPageParam: 1,
+    enabled: enabled,
+    retry: 1,
     retryDelay: 1000,
   })
 }
 
 export const useUserContent = (username: string, enabled = true) => {
-  const { isAuthenticated } = useRedGifsAuth()
-  
   return useInfiniteQuery({
     queryKey: ['redgifs', 'user', username],
-    queryFn: ({ pageParam = 1 }) => redGifsApiWithFallback.getUserContent(username, pageParam),
+    queryFn: ({ pageParam }: { pageParam?: number }) => redGifsApiWithFallback.getUserContent(username, pageParam || 1),
     getNextPageParam: (lastPage) => {
       if (lastPage.page < lastPage.pages) return lastPage.page + 1
       return undefined
     },
-    enabled: enabled && !!username, // Remove the isAuthenticated check for now
-    retry: 1, // Reduce retry count
+    initialPageParam: 1,
+    enabled: enabled && !!username,
+    retry: 1,
     retryDelay: 1000,
   })
 }
 
 export const useNiches = (enabled = true) => {
-  const { isAuthenticated } = useRedGifsAuth()
-  
   return useInfiniteQuery({
     queryKey: ['redgifs', 'niches'],
-    queryFn: ({ pageParam = 1 }) => redGifsApiWithFallback.getNiches(pageParam),
+    queryFn: ({ pageParam }: { pageParam?: number }) => redGifsApiWithFallback.getNiches(pageParam || 1),
     getNextPageParam: (lastPage) => {
       if (lastPage.page < lastPage.pages) return lastPage.page + 1
       return undefined
     },
-    enabled: enabled, // Remove the isAuthenticated check for now
-    retry: 1, // Reduce retry count
+    initialPageParam: 1,
+    enabled: enabled,
+    retry: 1,
     retryDelay: 1000,
   })
 }
 
 export const useNicheContent = (nicheId: string, enabled = true) => {
-  const { isAuthenticated } = useRedGifsAuth()
-  
   return useInfiniteQuery({
     queryKey: ['redgifs', 'niche', nicheId],
-    queryFn: ({ pageParam = 1 }) => redGifsApiWithFallback.getNicheContent(nicheId, pageParam),
+    queryFn: ({ pageParam }: { pageParam?: number }) => redGifsApiWithFallback.getNicheContent(nicheId, pageParam || 1),
     getNextPageParam: (lastPage) => {
       if (lastPage.page < lastPage.pages) return lastPage.page + 1
       return undefined
     },
-    enabled: enabled && !!nicheId, // Remove the isAuthenticated check for now
-    retry: 1, // Reduce retry count
+    initialPageParam: 1,
+    enabled: enabled && !!nicheId,
+    retry: 1,
     retryDelay: 1000,
   })
 }

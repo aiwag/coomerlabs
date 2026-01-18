@@ -6,11 +6,8 @@ import Plyr from 'plyr';
 import 'plyr-react/plyr.css';
 import {
   ArrowLeft,
-  ArrowRight,
-  Check,
   ChevronLeft,
   ChevronRight,
-  Close,
   Download,
   ExternalLink,
   Filter,
@@ -677,7 +674,7 @@ const UserProfileComponent: React.FC<{
     aiFilter
   );
   
-  const [sortOption, setSortOption] = useState<SortOption>('new');
+  const [sortOption, setSortOption] = useState<SortOption>('trending');
   const [contentType, setContentType] = useState<ContentType>('all');
   const [isFollowing, setIsFollowing] = useState(false);
   

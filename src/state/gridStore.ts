@@ -9,6 +9,7 @@ interface GridState {
   playingStreams: Set<number>;
   fullViewMode: number | null;
   fullscreenStream: { url: string; username: string } | null;
+  isGlobalMute: boolean;
 
   initializeStreams: () => Promise<void>;
   addStream: (url: string) => Promise<void>;
@@ -16,6 +17,7 @@ interface GridState {
   handleDragEnd: (event: any) => Promise<void>;
   toggleFavorite: (index: number) => void;
   toggleMute: (index: number) => void;
+  setGlobalMute: (mute: boolean) => void;
   setPlaying: (index: number, isPlaying: boolean) => void;
   setFullViewMode: (index: number | null) => void;
   setFullscreenStream: (stream: { url: string; username: string } | null) => void;
@@ -30,10 +32,11 @@ export const useGridStore = create<GridState>((set, get) => ({
   playingStreams: new Set(),
   fullViewMode: null,
   fullscreenStream: null,
-  
+  isGlobalMute: false,
+
   initializeStreams: async () => {
     await dbService.init();
-    
+
     // This is now doubly safe. `getViewArrangement` returns [], and `|| []` provides a final fallback.
     let finalUrls: string[] = (await dbService.getViewArrangement(STREAM_ORDER_KEY)) || [];
 
@@ -41,7 +44,7 @@ export const useGridStore = create<GridState>((set, get) => ({
       finalUrls = await fetch("/streams.json").then((res) => res.json()).catch(() => []);
       await dbService.setViewArrangement(STREAM_ORDER_KEY, finalUrls);
     }
-    
+
     set({ streamUrls: finalUrls });
   },
 
@@ -52,7 +55,7 @@ export const useGridStore = create<GridState>((set, get) => ({
     set({ streamUrls: newUrls });
     await dbService.setViewArrangement(STREAM_ORDER_KEY, newUrls);
   },
-  
+
   removeStream: async (index) => {
     const currentUrls = get().streamUrls;
     const newUrls = currentUrls.filter((_, i) => i !== index);
@@ -75,6 +78,7 @@ export const useGridStore = create<GridState>((set, get) => ({
   toggleFavorite: (index) => { const newFavorites = new Set(get().favorites); if (newFavorites.has(index)) newFavorites.delete(index); else newFavorites.add(index); set({ favorites: newFavorites }); },
   toggleMute: (index) => { const newMuted = new Set(get().mutedStreams); if (newMuted.has(index)) newMuted.delete(index); else newMuted.add(index); set({ mutedStreams: newMuted }); },
   setPlaying: (index, isPlaying) => { const newPlaying = new Set(get().playingStreams); if (isPlaying) newPlaying.add(index); else newPlaying.delete(index); set({ playingStreams: newPlaying }); },
+  setGlobalMute: (mute) => set({ isGlobalMute: mute }),
   setFullViewMode: (index) => set({ fullViewMode: index }),
   setFullscreenStream: (stream) => set({ fullscreenStream: stream }),
 }));

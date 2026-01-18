@@ -1,7 +1,7 @@
 // src/components/AgeVerification.tsx
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, AlertCircle, Shield, Calendar, CreditCard, User, Lock, ExternalLink, FileText, Info } from 'lucide-react';
+import { ChevronRight, AlertCircle, Shield, Calendar, Lock, ExternalLink, FileText, Info, AlertTriangle } from 'lucide-react';
 
 interface VerificationData {
     isVerified: boolean;
@@ -474,7 +474,9 @@ const AgeVerification = ({ onVerified }: { onVerified: () => void }) => {
                                 />
                                 {/* Legal Disclaimer Section */}
                                 <motion.div
-                                    variants={itemVariants}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.3 }}
                                     className="mb-10"
                                 >
                                     <div className="bg-gray-800/30 backdrop-blur-sm border border-gray-700/30 rounded-xl p-6">

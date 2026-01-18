@@ -5,6 +5,38 @@ exposeContexts();
 
 contextBridge.exposeInMainWorld("electronAPI", {
   openExternal: (url: string) => shell.openExternal(url),
+
+  // Database API
+  db: {
+    searchCreators: (query: string, service?: string) =>
+      ipcRenderer.invoke('db:searchCreators', query, service),
+    getCreatorsByService: (service: string, page: number, pageSize: number) =>
+      ipcRenderer.invoke('db:getCreatorsByService', service, page, pageSize),
+    upsertCreators: (creators: any[]) =>
+      ipcRenderer.invoke('db:upsertCreators', creators),
+
+    toggleFavorite: (creatorId: string) =>
+      ipcRenderer.invoke('db:toggleFavorite', creatorId),
+    getFavorites: () =>
+      ipcRenderer.invoke('db:getFavorites'),
+
+    getPostsByCreator: (creatorId: string, limit?: number) =>
+      ipcRenderer.invoke('db:getPostsByCreator', creatorId, limit),
+    upsertPosts: (posts: any[]) =>
+      ipcRenderer.invoke('db:upsertPosts', posts),
+
+    setCache: (key: string, value: any, ttl?: number) =>
+      ipcRenderer.invoke('db:setCache', key, value, ttl),
+    getCache: (key: string) =>
+      ipcRenderer.invoke('db:getCache', key),
+    clearExpiredCache: () =>
+      ipcRenderer.invoke('db:clearExpiredCache'),
+
+    getStats: () =>
+      ipcRenderer.invoke('db:getStats'),
+    vacuum: () =>
+      ipcRenderer.invoke('db:vacuum'),
+  }
 });
 
 // Expose a secure API to the renderer process and webviews.

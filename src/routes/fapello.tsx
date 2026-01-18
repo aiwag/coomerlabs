@@ -164,33 +164,33 @@
 //     profileContainers.forEach(container => {
 //       const cardElement = container.querySelector('.bg-yellow-400, .bg-red-400');
 //       if (!cardElement) return;
-      
+
 //       const cardClasses = cardElement.className;
 //       let height = 'h-48';
 //       if (cardClasses.includes('lg:h-60')) height = 'lg:h-60';
 //       if (cardClasses.includes('lg:h-72')) height = 'lg:h-72';
 //       if (cardClasses.includes('lg:h-56')) height = 'lg:h-56';
 //       if (cardClasses.includes('lg:h-64')) height = 'lg:h-64';
-      
+
 //       let marginTop = '';
 //       if (cardClasses.includes('lg:-mt-12')) marginTop = 'lg:-mt-12';
-      
+
 //       const linkElement = cardElement.querySelector('a');
 //       const imgElement = cardElement.querySelector('img');
-      
+
 //       if (!linkElement || !imgElement) return;
-      
+
 //       const overlayElement = cardElement.querySelector('.custom-overly1');
 //       const nameElement = overlayElement?.querySelector('div:last-child');
 //       const avatarElement = overlayElement?.querySelector('img');
-      
+
 //       const profileUrl = linkElement.getAttribute('href') || '';
 //       const imageUrl = imgElement.getAttribute('src') || '';
 //       const name = nameElement?.textContent?.trim() || '';
 //       const avatarUrl = avatarElement?.getAttribute('src') || undefined;
-      
+
 //       const isAd = name === 'GoLove' || profileUrl.includes('golove.ai');
-      
+
 //       // Extract the creator ID from the profile URL
 //       // URL format: https://fapello.com/creator-name/ or /creator-name/
 //       let creatorId = '';
@@ -200,7 +200,7 @@
 //         // Get the last part that should be the creator ID
 //         creatorId = urlParts.length > 0 ? urlParts[urlParts.length - 1] : '';
 //       }
-      
+
 //       // If we couldn't extract from URL, try to extract from image URL
 //       if (!creatorId && imageUrl) {
 //         const match = imageUrl.match(/\/content\/([^\/]+)\/([^\/]+)\//);
@@ -208,12 +208,12 @@
 //           creatorId = match[2];
 //         }
 //       }
-      
+
 //       // Fallback to a generated ID if still empty
 //       if (!creatorId) {
 //         creatorId = name.toLowerCase().replace(/\s+/g, '-');
 //       }
-      
+
 //       profiles.push({
 //         id: creatorId,
 //         name,
@@ -246,7 +246,7 @@
 //       console.error('No creator ID provided');
 //       return null;
 //     }
-    
+
 //     console.log(`Fetching creator profile for: ${creatorId}`);
 //     const response = await axios.get(`https://fapello.com/ajax/model/${creatorId}/page-1/`);
 //     const html = response.data;
@@ -306,7 +306,7 @@
 //       console.error('No creator ID provided');
 //       return { images: [], nextPage: null };
 //     }
-    
+
 //     console.log(`Fetching creator images for: ${creatorId}, page: ${pageParam}`);
 //     const response = await axios.get(`https://fapello.com/ajax/model/${creatorId}/page-${pageParam}/`);
 //     const html = response.data;
@@ -321,25 +321,25 @@
 //     imageContainers.forEach(container => {
 //       const linkElement = container.querySelector('a');
 //       if (!linkElement) return;
-      
+
 //       const imgElement = linkElement.querySelector('img');
 //       if (!imgElement) return;
-      
+
 //       const imageUrl = imgElement.getAttribute('src') || '';
 //       const href = linkElement.getAttribute('href') || '';
-      
+
 //       if (!imageUrl) return;
-      
+
 //       const id = href.split('/').filter(Boolean).pop() || `image-${images.length}`;
 //       const fullImageUrl = imageUrl.replace('_300px.jpg', '.jpg');
-      
+
 //       if (!creatorName) {
 //         const match = imageUrl.match(/\/content\/[^\/]+\/([^\/]+)\//);
 //         if (match && match[1]) {
 //           creatorName = match[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 //         }
 //       }
-      
+
 //       images.push({
 //         id,
 //         imageUrl,
@@ -668,7 +668,7 @@
 //             onError={() => setImageError(true)}
 //           />
 //         )}
-        
+
 //         {/* Overlay */}
 //         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
 //           <div className="absolute top-2 right-2 flex gap-1">
@@ -685,7 +685,7 @@
 //               <Bookmark className={`h-3 w-3 ${isBookmarked ? 'fill-blue-500 text-blue-500' : 'text-white'}`} />
 //             </button>
 //           </div>
-          
+
 //           <div className="absolute bottom-0 left-0 right-0 p-2">
 //             <div className="flex items-center justify-between text-white text-xs mb-1">
 //               <div className="flex items-center gap-2">
@@ -707,7 +707,7 @@
 //             </div>
 //           </div>
 //         </div>
-        
+
 //         {/* Bottom Info */}
 //         <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
 //           <div className="flex items-center gap-1.5">
@@ -815,14 +815,14 @@
 //             onError={() => setImageError(true)}
 //           />
 //         )}
-        
+
 //         {/* Video indicator */}
 //         {image.isVideo && (
 //           <div className="absolute top-2 left-2 bg-black/50 backdrop-blur-sm rounded-full p-1.5">
 //             <Play className="h-3 w-3 text-white" />
 //           </div>
 //         )}
-        
+
 //         {/* Duration */}
 //         {image.duration && (
 //           <div className="absolute bottom-2 left-2 bg-black/50 backdrop-blur-sm rounded px-1.5 py-0.5">
@@ -831,7 +831,7 @@
 //             </span>
 //           </div>
 //         )}
-        
+
 //         {/* Hover Overlay */}
 //         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-300 flex items-center justify-center">
 //           <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
@@ -856,7 +856,7 @@
 //             </div>
 //           </div>
 //         </div>
-        
+
 //         {/* Action Buttons */}
 //         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
 //           <button
@@ -900,7 +900,7 @@
 //           />
 //         )}
 //         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        
+
 //         {/* Close Button */}
 //         <button
 //           onClick={onClose}
@@ -919,7 +919,7 @@
 //           </button>
 //         </div>
 //       </div>
-      
+
 //       {/* Profile Info */}
 //       <div className="container mx-auto px-4 -mt-8 relative z-10">
 //         <div className="flex flex-col md:flex-row items-center md:items-end gap-3 mb-4">
@@ -951,7 +951,7 @@
 //               </div>
 //             )}
 //           </div>
-          
+
 //           {/* Name and Bio */}
 //           <div className="flex-1 text-center md:text-left">
 //             <h2 className={`${
@@ -972,7 +972,7 @@
 //             {!settings.compactView && (
 //               <p className="text-gray-300 mb-2 text-sm">{profile.bio}</p>
 //             )}
-            
+
 //             {/* Stats */}
 //             <div className="flex flex-wrap justify-center md:justify-start gap-3 text-xs text-gray-400 mb-2">
 //               <div>
@@ -1006,7 +1006,7 @@
 //                 </div>
 //               )}
 //             </div>
-            
+
 //             {/* Categories */}
 //             {!settings.compactView && profile.categories && (
 //               <div className="flex flex-wrap justify-center md:justify-start gap-1 mb-2">
@@ -1018,7 +1018,7 @@
 //               </div>
 //             )}
 //           </div>
-          
+
 //           {/* Action Buttons */}
 //           <div className="flex gap-1">
 //             <button
@@ -1039,7 +1039,7 @@
 //             </button>
 //           </div>
 //         </div>
-        
+
 //         {/* Stats Bar */}
 //         {!settings.compactView && profile.stats && (
 //           <div className="grid grid-cols-3 gap-2 mb-4 p-3 bg-gray-800/50 rounded-lg">
@@ -1282,7 +1282,7 @@
 //                 >
 //                   <ChevronLeft className="w-8 h-8" />
 //                 </button>
-                
+
 //                 <button
 //                   onClick={handleNext}
 //                   className={`absolute right-4 text-white hover:text-gray-300 transition-colors p-2 z-10 ${settings.showControls && showControls ? 'opacity-100' : 'opacity-0'}`}
@@ -1290,7 +1290,7 @@
 //                 >
 //                   <ChevronRight className="w-8 h-8" />
 //                 </button>
-                
+
 //                 {/* Main Image */}
 //                 <motion.div
 //                   key={index}
@@ -1333,7 +1333,7 @@
 //                       className="max-w-full max-h-[80vh] object-contain rounded-lg"
 //                     />
 //                   )}
-                  
+
 //                   {/* Image Info Bar */}
 //                   <div className={`absolute bottom-4 left-4 right-4 bg-black/50 backdrop-blur-sm rounded-lg p-3 transition-opacity ${settings.showControls && showControls ? 'opacity-100' : 'opacity-0'}`}>
 //                     <div className="flex items-center justify-between text-white">
@@ -1355,7 +1355,7 @@
 //                         </div>
 //                         <span className="text-sm">{currentImage.uploadDate}</span>
 //                       </div>
-                      
+
 //                       <div className="flex items-center space-x-2">
 //                         <button
 //                           onClick={handleBookmark}
@@ -1385,7 +1385,7 @@
 //                     </div>
 //                   </div>
 //                 </motion.div>
-                
+
 //                 {/* Thumbnail Strip */}
 //                 {settings.showThumbnails && (
 //                   <div className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-2 max-w-2xl overflow-x-auto py-2 transition-opacity ${settings.showControls && showControls ? 'opacity-100' : 'opacity-0'}`}>
@@ -1406,7 +1406,7 @@
 //                     ))}
 //                   </div>
 //                 )}
-                
+
 //                 {/* Control Panel */}
 //                 <div className={`absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/50 backdrop-blur-sm rounded-full px-4 py-2 flex items-center space-x-3 transition-opacity ${settings.showControls && showControls ? 'opacity-100' : 'opacity-0'}`}>
 //                   <button
@@ -1416,11 +1416,11 @@
 //                   >
 //                     <ChevronLeft className="w-4 h-4 text-white" />
 //                   </button>
-                  
+
 //                   <span className="text-white text-sm">
 //                     {index + 1} / {images.length}
 //                   </span>
-                  
+
 //                   <button
 //                     onClick={handleNext}
 //                     className="p-1 rounded-full hover:bg-white/20 transition-colors"
@@ -1428,16 +1428,16 @@
 //                   >
 //                     <ChevronRight className="w-4 h-4 text-white" />
 //                   </button>
-                  
+
 //                   <div className="h-4 w-px bg-white/30" />
-                  
+
 //                   <button
 //                     onClick={toggleSlideshow}
 //                     className={`p-1 rounded-full transition-colors ${isSlideshow ? 'bg-white/20' : 'hover:bg-white/20'}`}
 //                   >
 //                     <Play className="w-4 h-4 text-white" />
 //                   </button>
-                  
+
 //                   <button
 //                     onClick={handleRandom}
 //                     className="p-1 rounded-full hover:bg-white/20 transition-colors"
@@ -1515,7 +1515,7 @@
 //           <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
 //         </div>
 //       )}
-      
+
 //       {hasNextPage && !settings.infiniteScroll && (
 //         <div className="flex justify-center py-4">
 //           <button
@@ -1576,7 +1576,7 @@
 //                 <ArrowLeft className="h-4 w-4" />
 //               </motion.button>
 //             )}
-            
+
 //             {/* View Toggle */}
 //             {onViewChange && (
 //               <div className="flex bg-gray-800 rounded-lg p-0.5">
@@ -1652,10 +1652,10 @@
 //     // The profile URL format is: https://fapello.com/creator-name/ or /creator-name/
 //     // We need to extract the creator-name part
 //     if (!profile.profileUrl) return '';
-    
+
 //     // Remove leading/trailing slashes and split
 //     const urlParts = profile.profileUrl.replace(/^\/+|\/+$/g, '').split('/');
-    
+
 //     // Get the last part that should be the creator ID
 //     if (urlParts.length > 0) {
 //       const lastPart = urlParts[urlParts.length - 1];
@@ -1664,17 +1664,17 @@
 //         return lastPart;
 //       }
 //     }
-    
+
 //     // Fallback to profile ID if available
 //     if (profile.id && !profile.id.includes('profile-')) {
 //       return profile.id;
 //     }
-    
+
 //     // Fallback to name
 //     if (profile.name) {
 //       return profile.name.toLowerCase().replace(/\s+/g, '-');
 //     }
-    
+
 //     return '';
 //   }, []);
 
@@ -1732,7 +1732,7 @@
 
 //   const handleProfileClick = useCallback((profile: Profile) => {
 //     if (profile.isAd) return; // Don't open ads
-    
+
 //     setSelectedProfile(profile);
 //     setCurrentView('profile');
 //     // Scroll to top when switching to profile view
@@ -1828,7 +1828,7 @@
 //       }
 //     `;
 //     document.head.appendChild(style);
-    
+
 //     return () => {
 //       document.head.removeChild(style);
 //     };
@@ -1851,7 +1851,7 @@
 //         onViewChange={setCurrentView}
 //         onSettingsClick={() => setIsSettingsOpen(true)}
 //       />
-      
+
 //       {/* Main Content */}
 //       <div className={`container mx-auto px-4 ${
 //         settings.compactView ? 'py-2' : 'py-4'
@@ -1913,7 +1913,7 @@
 //             ) : creatorProfile ? (
 //               <>
 //                 <ProfileHeader profile={creatorProfile} onClose={handleBackToTrending} />
-                
+
 //                 {isLoadingImages ? (
 //                   <div className="flex justify-center items-center h-64">
 //                     <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
@@ -1952,7 +1952,7 @@
 //           </>)
 //         )}
 //       </div>
-      
+
 //       {/* Image Modal */}
 //       <ImageModal 
 //         images={creatorImages}
@@ -1960,7 +1960,7 @@
 //         isOpen={isImageModalOpen} 
 //         onClose={handleModalClose} 
 //       />
-      
+
 //       {/* Settings Panel */}
 //       <SettingsPanel 
 //         isOpen={isSettingsOpen}
@@ -2061,6 +2061,48 @@ interface Profile {
 }
 
 // Hooks
+// Hooks
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+
+interface SettingsState {
+  settings: {
+    autoPlay: boolean;
+    showThumbnails: boolean;
+    highQuality: boolean;
+    compactView: boolean;
+    infiniteScroll: boolean;
+    slideshowSpeed: number;
+    showControls: boolean;
+    columnCount: number;
+  };
+  updateSetting: (key: string, value: any) => void;
+}
+
+const useSettingsStore = create<SettingsState>()(
+  persist(
+    (set) => ({
+      settings: {
+        autoPlay: false,
+        showThumbnails: true,
+        highQuality: true,
+        compactView: false,
+        infiniteScroll: true,
+        slideshowSpeed: 3000,
+        showControls: true,
+        columnCount: 4,
+      },
+      updateSetting: (key, value) =>
+        set((state) => ({
+          settings: { ...state.settings, [key]: value },
+        })),
+    }),
+    {
+      name: 'fapello-settings',
+    }
+  )
+);
+
 const useTheme = () => {
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('fapello-theme');
@@ -2076,49 +2118,59 @@ const useTheme = () => {
 };
 
 const useSettings = () => {
-  const [settings, setSettings] = useState(() => {
-    const saved = localStorage.getItem('fapello-settings');
-    return saved ? JSON.parse(saved) : {
-      autoPlay: false,
-      showThumbnails: true,
-      highQuality: true,
-      compactView: false,
-      infiniteScroll: true,
-      slideshowSpeed: 3000,
-      showControls: true
-    };
-  });
-
-  const updateSetting = (key: string, value: any) => {
-    const newSettings = { ...settings, [key]: value };
-    setSettings(newSettings);
-    localStorage.setItem('fapello-settings', JSON.stringify(newSettings));
-  };
-
+  const { settings, updateSetting } = useSettingsStore();
   return { settings, updateSetting };
 };
+
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
 
 // API Services
 const extractCreatorId = (profile: Profile): string => {
   if (profile.profileUrl) {
-    const urlParts = profile.profileUrl.replace(/^\/+|\/+$/g, '').split('/');
-    const lastPart = urlParts.length > 0 ? urlParts[urlParts.length - 1] : '';
-    if (lastPart && !lastPart.includes('.')) {
-      return lastPart;
+    try {
+      // Remove protocol and domain to get path
+      const urlObj = new URL(profile.profileUrl);
+      const path = urlObj.pathname.replace(/^\/+|\/+$/g, '');
+      const parts = path.split('/').filter(Boolean);
+
+      // If the URL is like /username/postid/, we want username (parts[0])
+      // If the URL is like /username/, we want username (parts[0])
+      if (parts.length > 0) {
+        return parts[0];
+      }
+    } catch (e) {
+      // Fallback for relative URLs or invalid URLs
+      const path = profile.profileUrl.replace(/^\/+|\/+$/g, '');
+      const parts = path.split('/').filter(Boolean);
+      if (parts.length > 0) {
+        return parts[0];
+      }
     }
   }
-  
+
   if (profile.imageUrl) {
-    const match = profile.imageUrl.match(/\/content\/([^\/]+)\/([^\/]+)\//);
-    if (match && match[2]) {
-      return match[2];
+    // Matches /content/x/y/username/
+    const match = profile.imageUrl.match(/\/content\/[^\/]+\/[^\/]+\/([^\/]+)\//);
+    if (match && match[1]) {
+      return match[1];
     }
   }
-  
+
   if (profile.id && !profile.id.includes('profile-')) {
     return profile.id;
   }
-  
+
   return profile.name.toLowerCase().replace(/\s+/g, '-');
 };
 
@@ -2134,23 +2186,23 @@ const fetchTrendingProfiles = async ({ pageParam = 1 }: { pageParam?: number }) 
     profileContainers.forEach(container => {
       const cardElement = container.querySelector('.bg-yellow-400, .bg-red-400');
       if (!cardElement) return;
-      
+
       const linkElement = cardElement.querySelector('a');
       const imgElement = cardElement.querySelector('img');
-      
+
       if (!linkElement || !imgElement) return;
-      
+
       const overlayElement = cardElement.querySelector('.custom-overly1');
       const nameElement = overlayElement?.querySelector('div:last-child');
       const avatarElement = overlayElement?.querySelector('img');
-      
+
       const profileUrl = linkElement.getAttribute('href') || '';
       const imageUrl = imgElement.getAttribute('src') || '';
       const name = nameElement?.textContent?.trim() || '';
       const avatarUrl = avatarElement?.getAttribute('src') || undefined;
-      
+
       const isAd = name === 'GoLove' || profileUrl.includes('golove.ai');
-      
+
       const creatorId = extractCreatorId({
         id: '',
         name,
@@ -2159,7 +2211,7 @@ const fetchTrendingProfiles = async ({ pageParam = 1 }: { pageParam?: number }) 
         avatarUrl,
         isAd
       });
-      
+
       profiles.push({
         id: creatorId,
         name,
@@ -2183,10 +2235,74 @@ const fetchTrendingProfiles = async ({ pageParam = 1 }: { pageParam?: number }) 
   }
 };
 
+const fetchSearchResults = async ({ pageParam = 1, query }: { pageParam?: number, query: string }) => {
+  try {
+    const formattedQuery = query.trim().toLowerCase().replace(/\s+/g, '-');
+    const { data } = await axios.get(`https://fapello.com/search/${formattedQuery}/`);
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(data, 'text/html');
+
+    // Selectors based on provided HTML: div#content > div.my-3 > div(column) > div(card)
+    // The previous selector .mt-6 > div, .my-3 > div covers .my-3 > div which are the columns
+    const profileContainers = doc.querySelectorAll('.mt-6 > div, .my-3 > div');
+    const profiles: Profile[] = [];
+
+    profileContainers.forEach(container => {
+      const cardElement = container.querySelector('.bg-yellow-400, .bg-red-400');
+      if (!cardElement) return;
+
+      const linkElement = cardElement.querySelector('a');
+      const imgElement = cardElement.querySelector('img');
+
+      if (!linkElement || !imgElement) return;
+
+      const overlayElement = cardElement.querySelector('.custom-overly1');
+      const nameElement = overlayElement?.querySelector('div:last-child');
+      const avatarElement = overlayElement?.querySelector('img');
+
+      const profileUrl = linkElement.getAttribute('href') || '';
+      const imageUrl = imgElement.getAttribute('src') || '';
+      const name = nameElement?.textContent?.trim() || '';
+      const avatarUrl = avatarElement?.getAttribute('src') || undefined;
+
+      const isAd = name === 'GoLove' || profileUrl.includes('golove.ai');
+
+      const creatorId = extractCreatorId({
+        id: '',
+        name,
+        imageUrl,
+        profileUrl,
+        avatarUrl,
+        isAd
+      });
+
+      profiles.push({
+        id: creatorId,
+        name,
+        imageUrl,
+        profileUrl,
+        avatarUrl,
+        isAd,
+        postCount: Math.floor(Math.random() * 500) + 50,
+        lastActive: `${Math.floor(Math.random() * 24)}h ago`,
+        verified: Math.random() > 0.7,
+        premium: Math.random() > 0.8,
+        rating: Number((Math.random() * 2 + 3).toFixed(1)),
+        categories: ['Trending', 'Hot', 'New'].slice(0, Math.floor(Math.random() * 3) + 1)
+      });
+    });
+
+    return { profiles, nextPage: profiles.length > 0 ? pageParam + 1 : null };
+  } catch (error) {
+    console.error('Error fetching search results:', error);
+    return { profiles: [], nextPage: null };
+  }
+};
+
 const fetchCreatorProfile = async (creatorId: string): Promise<CreatorProfile | null> => {
   try {
     if (!creatorId) return null;
-    
+
     const { data } = await axios.get(`https://fapello.com/ajax/model/${creatorId}/page-1/`);
     const parser = new DOMParser();
     const doc = parser.parseFromString(data, 'text/html');
@@ -2195,7 +2311,8 @@ const fetchCreatorProfile = async (creatorId: string): Promise<CreatorProfile | 
     const imageUrl = firstImage?.getAttribute('src') || '';
 
     let creatorName = creatorId;
-    const match = imageUrl.match(/\/content\/[^\/]+\/([^\/]+)\//);
+    // Matches /content/x/y/username/
+    const match = imageUrl.match(/\/content\/[^\/]+\/[^\/]+\/([^\/]+)\//);
     if (match && match[1]) {
       creatorName = match[1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
@@ -2239,29 +2356,26 @@ const fetchCreatorProfile = async (creatorId: string): Promise<CreatorProfile | 
 const fetchCreatorImages = async ({ pageParam = 1, creatorId }: { pageParam?: number, creatorId: string }) => {
   try {
     if (!creatorId) return { images: [], nextPage: null };
-    
+
     const { data } = await axios.get(`https://fapello.com/ajax/model/${creatorId}/page-${pageParam}/`);
     const parser = new DOMParser();
     const doc = parser.parseFromString(data, 'text/html');
 
-    const imageContainers = doc.querySelectorAll('div');
+    const links = doc.querySelectorAll('a');
     const images: Image[] = [];
 
-    imageContainers.forEach(container => {
-      const linkElement = container.querySelector('a');
-      if (!linkElement) return;
-      
+    links.forEach(linkElement => {
       const imgElement = linkElement.querySelector('img');
       if (!imgElement) return;
-      
+
       const imageUrl = imgElement.getAttribute('src') || '';
       const href = linkElement.getAttribute('href') || '';
-      
+
       if (!imageUrl) return;
-      
+
       const id = href.split('/').filter(Boolean).pop() || `image-${images.length}`;
       const fullImageUrl = imageUrl.replace('_300px.jpg', '.jpg');
-      
+
       images.push({
         id,
         imageUrl,
@@ -2333,6 +2447,28 @@ const SearchBar = ({ value, onChange, onClear }: {
     )}
   </div>
 );
+
+const LayoutSwitcher = () => {
+  const { settings, updateSetting } = useSettings();
+  const columns = settings.columnCount || 4;
+
+  return (
+    <div className="flex items-center bg-gray-800 rounded-lg p-1 border border-gray-700">
+      {[2, 3, 4, 5, 6].map((cols) => (
+        <button
+          key={cols}
+          onClick={() => updateSetting('columnCount', cols)}
+          className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${columns === cols
+            ? 'bg-blue-600 text-white shadow-md'
+            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+            }`}
+        >
+          {cols}
+        </button>
+      ))}
+    </div>
+  );
+};
 
 const FilterDropdown = ({ onFilter }: { onFilter: (filter: string) => void }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -2419,20 +2555,18 @@ const SettingsPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   <span className="text-gray-300">{label}</span>
                   <button
                     onClick={() => updateSetting(key, !settings[key as keyof typeof settings])}
-                    className={`w-12 h-6 rounded-full transition-colors ${
-                      settings[key as keyof typeof settings] ? 'bg-blue-600' : 'bg-gray-600'
-                    }`}
+                    className={`w-12 h-6 rounded-full transition-colors ${settings[key as keyof typeof settings] ? 'bg-blue-600' : 'bg-gray-600'
+                      }`}
                   >
                     <div
-                      className={`w-5 h-5 bg-white rounded-full transition-transform ${
-                        settings[key as keyof typeof settings] ? 'translate-x-6' : 'translate-x-0.5'
-                      }`}
+                      className={`w-5 h-5 bg-white rounded-full transition-transform ${settings[key as keyof typeof settings] ? 'translate-x-6' : 'translate-x-0.5'
+                        }`}
                     />
                   </button>
                 </div>
               ))}
 
-              <div className="pt-4">
+              <div className="pt-4 mt-4 border-t border-gray-700">
                 <label className="block text-gray-300 mb-2">
                   Slideshow speed: {settings.slideshowSpeed / 1000}s
                 </label>
@@ -2443,7 +2577,7 @@ const SettingsPanel = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                   step="1000"
                   value={settings.slideshowSpeed}
                   onChange={(e) => updateSetting('slideshowSpeed', parseInt(e.target.value))}
-                  className="w-full"
+                  className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
                 />
               </div>
             </div>
@@ -2477,12 +2611,11 @@ const ProfileCard = ({ profile, index, onClick }: { profile: Profile; index: num
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : 20 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-      className={`group relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer ${
-        settings.compactView ? 'h-32' : 'h-48'
-      }`}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: inView ? 1 : 0 }}
+      transition={{ duration: 0.2 }}
+      className={`group relative overflow-hidden rounded-md shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer ${settings.compactView ? 'h-32' : 'h-48'
+        }`}
       onClick={onClick}
       whileHover={{ y: -3 }}
     >
@@ -2504,14 +2637,13 @@ const ProfileCard = ({ profile, index, onClick }: { profile: Profile; index: num
           <img
             src={profile.imageUrl}
             alt={profile.name}
-            className={`w-full h-full absolute object-cover transition-all duration-500 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            } group-hover:scale-105`}
+            className={`w-full h-full absolute object-cover transition-all duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'
+              } group-hover:scale-105`}
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageError(true)}
           />
         )}
-        
+
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="absolute top-2 right-2 flex gap-1">
             <button onClick={handleLike} className="p-1.5 rounded-full bg-black/50 hover:bg-black/70">
@@ -2521,7 +2653,7 @@ const ProfileCard = ({ profile, index, onClick }: { profile: Profile; index: num
               <Bookmark className={`h-3 w-3 ${isBookmarked ? 'fill-blue-500 text-blue-500' : 'text-white'}`} />
             </button>
           </div>
-          
+
           <div className="absolute bottom-0 left-0 right-0 p-2">
             <div className="flex items-center justify-between text-white text-xs mb-1">
               <div className="flex items-center gap-2">
@@ -2543,7 +2675,7 @@ const ProfileCard = ({ profile, index, onClick }: { profile: Profile; index: num
             </div>
           </div>
         </div>
-        
+
         <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent">
           <div className="flex items-center gap-1.5">
             {profile.avatarUrl && (
@@ -2608,9 +2740,8 @@ const ImageCard = ({ image, index, onImageClick }: { image: Image; index: number
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : 20 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      className={`group relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer bg-gray-800 ${
-        settings.compactView ? 'h-40' : ''
-      }`}
+      className={`group relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer bg-gray-800 w-full`}
+      style={{ aspectRatio: image.width && image.height ? `${image.width}/${image.height}` : '3/4' }}
       onClick={() => onImageClick(image, index)}
       whileHover={{ y: -3 }}
     >
@@ -2632,20 +2763,19 @@ const ImageCard = ({ image, index, onImageClick }: { image: Image; index: number
           <img
             src={settings.highQuality ? (image.fullImageUrl || image.imageUrl) : image.imageUrl}
             alt={`Image ${image.id}`}
-            className={`w-full h-full absolute object-cover transition-all duration-500 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            } group-hover:scale-105`}
+            className={`w-full h-full absolute object-cover transition-all duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'
+              } group-hover:scale-105`}
             onLoad={() => setImageLoaded(true)}
             onError={() => setImageError(true)}
           />
         )}
-        
+
         {image.isVideo && (
           <div className="absolute top-2 left-2 bg-black/50 rounded-full p-1.5">
             <Play className="h-3 w-3 text-white" />
           </div>
         )}
-        
+
         {image.duration && (
           <div className="absolute bottom-2 left-2 bg-black/50 rounded px-1.5 py-0.5">
             <span className="text-white text-xs">
@@ -2653,7 +2783,7 @@ const ImageCard = ({ image, index, onImageClick }: { image: Image; index: number
             </span>
           </div>
         )}
-        
+
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-300 flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
             <div className="flex flex-col items-center space-y-2">
@@ -2677,7 +2807,7 @@ const ImageCard = ({ image, index, onImageClick }: { image: Image; index: number
             </div>
           </div>
         </div>
-        
+
         <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={handleLike} className="p-1.5 rounded-full bg-black/50 hover:bg-black/70">
             <Heart className={`h-3 w-3 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
@@ -2707,7 +2837,7 @@ const ProfileHeader = ({ profile, onClose }: { profile: CreatorProfile; onClose:
           <img src={profile.coverUrl} alt="Cover" className="w-full h-full object-cover" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        
+
         <button onClick={onClose} className="absolute top-2 left-2 p-1.5 rounded-full bg-black/50 hover:bg-black/70 text-white">
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -2721,7 +2851,7 @@ const ProfileHeader = ({ profile, onClose }: { profile: CreatorProfile; onClose:
           </button>
         </div>
       </div>
-      
+
       <div className="container mx-auto px-4 -mt-8 relative z-10">
         <div className="flex flex-col md:flex-row items-center md:items-end gap-3 mb-4">
           <div className="relative">
@@ -2745,7 +2875,7 @@ const ProfileHeader = ({ profile, onClose }: { profile: CreatorProfile; onClose:
               </div>
             )}
           </div>
-          
+
           <div className="flex-1 text-center md:text-left">
             <h2 className={`${settings.compactView ? 'text-lg' : 'text-xl md:text-2xl'} font-bold text-white mb-1 flex items-center justify-center md:justify-start gap-2`}>
               {profile.name}
@@ -2763,7 +2893,7 @@ const ProfileHeader = ({ profile, onClose }: { profile: CreatorProfile; onClose:
             {!settings.compactView && (
               <p className="text-gray-300 mb-2 text-sm">{profile.bio}</p>
             )}
-            
+
             <div className="flex flex-wrap justify-center md:justify-start gap-3 text-xs text-gray-400 mb-2">
               <div>
                 <span className="font-semibold text-white">{profile.postCount}</span>
@@ -2796,7 +2926,7 @@ const ProfileHeader = ({ profile, onClose }: { profile: CreatorProfile; onClose:
                 </div>
               )}
             </div>
-            
+
             {!settings.compactView && profile.categories && (
               <div className="flex flex-wrap justify-center md:justify-start gap-1 mb-2">
                 {profile.categories.map((cat) => (
@@ -2807,13 +2937,12 @@ const ProfileHeader = ({ profile, onClose }: { profile: CreatorProfile; onClose:
               </div>
             )}
           </div>
-          
+
           <div className="flex gap-1">
             <button
               onClick={handleFollow}
-              className={`px-3 py-1.5 rounded-lg transition-colors text-sm ${
-                isFollowing ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
+              className={`px-3 py-1.5 rounded-lg transition-colors text-sm ${isFollowing ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
+                }`}
             >
               {isFollowing ? 'Following' : 'Follow'}
             </button>
@@ -2825,7 +2954,7 @@ const ProfileHeader = ({ profile, onClose }: { profile: CreatorProfile; onClose:
             </button>
           </div>
         </div>
-        
+
         {!settings.compactView && profile.stats && (
           <div className="grid grid-cols-3 gap-2 mb-4 p-3 bg-gray-800/50 rounded-lg">
             <div className="text-center">
@@ -2885,11 +3014,15 @@ const ImageModal = ({
   };
 
   const handleDownload = () => {
-    if (currentImage?.fullImageUrl) {
+    const url = currentImage?.fullImageUrl || currentImage?.imageUrl;
+    if (url) {
       const link = document.createElement('a');
-      link.href = currentImage.fullImageUrl;
-      link.download = `image-${currentImage.id}.jpg`;
+      link.href = url;
+      const extension = currentImage?.isVideo ? 'mp4' : 'jpg';
+      link.download = `media-${currentImage?.id}.${extension}`;
+      document.body.appendChild(link);
       link.click();
+      document.body.removeChild(link);
       toast('Download started');
     }
   };
@@ -2944,8 +3077,8 @@ const ImageModal = ({
         case 'ArrowLeft': handlePrevious(); break;
         case 'ArrowRight': handleNext(); break;
         case 'Escape': onClose(); break;
-        case ' ': e.preventDefault(); 
-          currentImage?.isVideo ? setIsPlaying(!isPlaying) : toggleSlideshow(); 
+        case ' ': e.preventDefault();
+          currentImage?.isVideo ? setIsPlaying(!isPlaying) : toggleSlideshow();
           break;
         case 'r': handleRandom(); break;
         case 'f': handleFullscreen(); break;
@@ -2982,37 +3115,53 @@ const ImageModal = ({
       {isOpen && currentImage && (
         <Dialog.Root open={isOpen} onOpenChange={onClose}>
           <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black z-50" />
-            <Dialog.Content className="fixed inset-0 z-50 flex items-center justify-center p-4 focus:outline-none">
-              <div className="relative w-full h-full flex items-center justify-center" onMouseMove={handleMouseMove}>
+            <Dialog.Overlay
+              asChild
+            >
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-50"
+              />
+            </Dialog.Overlay>
+            <Dialog.Content className="fixed inset-0 z-50 flex items-center justify-center focus:outline-none">
+              <div
+                className="relative w-full h-full flex items-center justify-center"
+                onMouseMove={handleMouseMove}
+                onClick={(e) => {
+                  // Close if clicked on background (not image/video)
+                  if (e.target === e.currentTarget) onClose();
+                }}
+              >
                 <Dialog.Close asChild>
-                  <button className={`absolute top-4 right-4 text-white hover:text-gray-300 p-2 z-10 ${
-                    settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
-                  }`}>
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className={`absolute top-6 right-6 text-white/80 hover:text-white p-2 z-20 bg-black/20 hover:bg-black/40 rounded-full backdrop-blur-md transition-all ${settings.showControls && showControls ? 'opacity-100' : 'opacity-0'}`}
+                  >
                     <X className="h-6 w-6" />
-                  </button>
+                  </motion.button>
                 </Dialog.Close>
 
                 <button
                   onClick={handlePrevious}
-                  className={`absolute left-4 text-white hover:text-gray-300 p-2 z-10 ${
-                    settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
-                  }`}
+                  className={`absolute left-4 text-white hover:text-gray-300 p-2 z-10 ${settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
+                    } transition-opacity duration-300`}
                   disabled={images.length <= 1}
                 >
                   <ChevronLeft className="w-8 h-8" />
                 </button>
-                
+
                 <button
                   onClick={handleNext}
-                  className={`absolute right-4 text-white hover:text-gray-300 p-2 z-10 ${
-                    settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
-                  }`}
+                  className={`absolute right-4 text-white hover:text-gray-300 p-2 z-10 ${settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
+                    } transition-opacity duration-300`}
                   disabled={images.length <= 1}
                 >
                   <ChevronRight className="w-8 h-8" />
                 </button>
-                
+
                 <motion.div
                   key={index}
                   className="relative max-w-5xl max-h-[80vh]"
@@ -3032,9 +3181,8 @@ const ImageModal = ({
                         autoPlay={settings.autoPlay}
                         onClick={() => setIsPlaying(!isPlaying)}
                       />
-                      <div className={`absolute bottom-4 left-4 right-4 flex items-center justify-between ${
-                        settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
-                      }`}>
+                      <div className={`absolute bottom-4 left-4 right-4 flex items-center justify-between ${settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
+                        }`}>
                         <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 rounded-full bg-black/50 hover:bg-black/70">
                           {isPlaying ? <Pause className="w-5 h-5 text-white" /> : <Play className="w-5 h-5 text-white" />}
                         </button>
@@ -3050,86 +3198,82 @@ const ImageModal = ({
                       className="max-w-full max-h-[80vh] object-contain rounded-lg"
                     />
                   )}
-                  
-                  <div className={`absolute bottom-4 left-4 right-4 bg-black/50 backdrop-blur-sm rounded-lg p-3 ${
-                    settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
-                  }`}>
-                    <div className="flex items-center justify-between text-white">
-                      <div className="flex items-center space-x-4">
-                        <button onClick={handleLike} className="flex items-center space-x-1 hover:text-red-400">
-                          <Heart className={`w-4 h-4 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-                          <span className="text-sm">{currentImage.likes?.toLocaleString()}</span>
-                        </button>
-                        <div className="flex items-center space-x-1">
-                          <Eye className="w-4 h-4" />
-                          <span className="text-sm">{currentImage.views?.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="text-sm">{currentImage.comments}</span>
-                        </div>
-                        <span className="text-sm">{currentImage.uploadDate}</span>
-                      </div>
-                      
-                      <div className="flex items-center space-x-2">
-                        <button onClick={handleBookmark} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30">
-                          <Bookmark className={`w-4 h-4 ${isBookmarked ? 'fill-blue-500 text-blue-500' : ''}`} />
-                        </button>
-                        <button onClick={handleDownload} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30">
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button onClick={handleShare} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30">
-                          <Share2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={handleFullscreen} className="p-1.5 rounded-full bg-white/20 hover:bg-white/30">
-                          <Maximize2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+
                 </motion.div>
-                
+
                 {settings.showThumbnails && (
-                  <div className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-2 max-w-2xl overflow-x-auto py-2 ${
-                    settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
-                  }`}>
+                  <div className={`absolute bottom-20 left-1/2 transform -translate-x-1/2 flex space-x-2 max-w-2xl overflow-x-auto py-2 ${settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
+                    }`}>
                     {images.map((img, i) => (
                       <button
                         key={i}
                         onClick={() => setIndex(i)}
-                        className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
-                          i === index ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-75'
-                        }`}
+                        className={`flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${i === index ? 'border-white scale-110' : 'border-transparent opacity-50 hover:opacity-75'
+                          }`}
                       >
                         <img src={img.thumbnailUrl || img.imageUrl} alt={`Thumbnail ${i}`} className="w-full h-full object-cover" />
                       </button>
                     ))}
                   </div>
                 )}
-                
-                <div className={`absolute top-4 left-1/2 transform -translate-x-1/2 bg-black/50 backdrop-blur-sm rounded-full px-4 py-2 flex items-center space-x-3 ${
-                  settings.showControls && showControls ? 'opacity-100' : 'opacity-0'
-                }`}>
-                  <button onClick={handlePrevious} className="p-1 rounded-full hover:bg-white/20" disabled={images.length <= 1}>
-                    <ChevronLeft className="w-4 h-4 text-white" />
-                  </button>
-                  
-                  <span className="text-white text-sm">{index + 1} / {images.length}</span>
-                  
-                  <button onClick={handleNext} className="p-1 rounded-full hover:bg-white/20" disabled={images.length <= 1}>
-                    <ChevronRight className="w-4 h-4 text-white" />
-                  </button>
-                  
-                  <div className="h-4 w-px bg-white/30" />
-                  
-                  <button onClick={toggleSlideshow} className={`p-1 rounded-full ${isSlideshow ? 'bg-white/20' : 'hover:bg-white/20'}`}>
-                    <Play className="w-4 h-4 text-white" />
-                  </button>
-                  
-                  <button onClick={handleRandom} className="p-1 rounded-full hover:bg-white/20">
-                    <Shuffle className="w-4 h-4 text-white" />
-                  </button>
-                </div>
+
+                {/* Info Overlay */}
+                <AnimatePresence>
+                  {settings.showControls && showControls && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 20 }}
+                      className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-black/60 backdrop-blur-md rounded-2xl px-6 py-3 border border-white/10 shadow-2xl z-20 min-w-[300px]"
+                    >
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between text-white/90">
+                          <div className="flex items-center gap-4">
+                            <button className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer" onClick={handleLike}>
+                              <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+                              <span className="text-sm font-medium">{currentImage.likes?.toLocaleString()}</span>
+                            </button>
+                            <div className="flex items-center gap-1.5 text-white/70">
+                              <Eye className="w-5 h-5" />
+                              <span className="text-sm">{currentImage.views?.toLocaleString()}</span>
+                            </div>
+                          </div>
+                          <span className="text-xs text-white/50 font-mono">{index + 1} / {images.length}</span>
+                        </div>
+
+                        <div className="h-px bg-white/10 w-full" />
+
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {currentImage.isVideo && (
+                              <button onClick={() => setIsPlaying(!isPlaying)} className="p-2 rounded-full hover:bg-white/10 transition-colors">
+                                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                              </button>
+                            )}
+                            <button onClick={toggleSlideshow} className={`p-2 rounded-full hover:bg-white/10 transition-colors ${isSlideshow ? 'text-blue-400' : ''}`}>
+                              {isSlideshow ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <button onClick={handleDownload} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Download">
+                              <Download className="w-5 h-5" />
+                            </button>
+                            <button onClick={handleFullscreen} className="p-2 rounded-full hover:bg-white/10 transition-colors" title="Fullscreen">
+                              <Maximize2 className="w-5 h-5" />
+                            </button>
+                            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 transition-colors lg:hidden">
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+                <button onClick={handleRandom} className="p-1 rounded-full hover:bg-white/20">
+                  <Shuffle className="w-4 h-4 text-white" />
+                </button>
               </div>
             </Dialog.Content>
           </Dialog.Portal>
@@ -3155,11 +3299,11 @@ const WaterfallGallery = ({
   className?: string;
 }) => {
   const [columns, setColumns] = useState<Array<any[]>>([]);
-  const { ref, inView } = useInView({ threshold: 0, triggerOnce: false });
+  const { ref, inView } = useInView({ rootMargin: '400px', threshold: 0, triggerOnce: false });
   const { settings } = useSettings();
 
   useEffect(() => {
-    const newColumns = Array.from({ length: columnCount }, () => []);
+    const newColumns: any[][] = Array.from({ length: columnCount }, () => []);
     items.forEach((item, index) => {
       const columnIndex = index % columnCount;
       newColumns[columnIndex].push(item);
@@ -3175,17 +3319,29 @@ const WaterfallGallery = ({
 
   return (
     <>
-      <div className={`grid gap-2 ${columnCount === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-4'} md:grid-cols-2 grid-cols-1 ${className}`}>
+      <div
+        className={`grid gap-2 ${className}`}
+        style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+      >
         {columns.map((column, columnIndex) => (
           <div key={columnIndex} className="flex flex-col gap-2">
-            {column.map((item, itemIndex) => {
-              const originalIndex = items.indexOf(item);
-              return (
-                <div key={item.id || originalIndex}>
-                  {renderItem(item, originalIndex)}
-                </div>
-              );
-            })}
+            <AnimatePresence mode='popLayout'>
+              {column.map((item, itemIndex) => {
+                const originalIndex = items.indexOf(item);
+                return (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    transition={{ duration: 0.2 }}
+                    key={item.id || originalIndex}
+                  >
+                    {renderItem(item, originalIndex)}
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
           </div>
         ))}
       </div>
@@ -3195,7 +3351,7 @@ const WaterfallGallery = ({
           <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
         </div>
       )}
-      
+
       {hasNextPage && !settings.infiniteScroll && (
         <div className="flex justify-center py-4">
           <button onClick={fetchNextPage} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
@@ -3214,10 +3370,10 @@ const Header = ({
   showThemeToggle = true,
   showSearch = false,
   searchValue = '',
-  onSearchChange = () => {},
-  onSearchClear = () => {},
+  onSearchChange = () => { },
+  onSearchClear = () => { },
   showFilter = false,
-  onFilter = () => {},
+  onFilter = () => { },
   onSettingsClick
 }: {
   title: string;
@@ -3235,7 +3391,7 @@ const Header = ({
   const { settings } = useSettings();
 
   return (
-    <div className="sticky top-0 z-40 bg-gray-900/95 backdrop-blur-lg border-b border-gray-800">
+    <div className="flex-none z-40 bg-gray-900/95 backdrop-blur-lg border-b border-gray-800">
       <div className="container mx-auto px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -3259,6 +3415,9 @@ const Header = ({
           <div className="flex items-center gap-1">
             {showSearch && <SearchBar value={searchValue} onChange={onSearchChange} onClear={onSearchClear} />}
             {showFilter && <FilterDropdown onFilter={onFilter} />}
+            <div className="h-6 w-px bg-gray-700 mx-2" />
+            <LayoutSwitcher />
+            <div className="h-6 w-px bg-gray-700 mx-2" />
             {onSettingsClick && (
               <motion.button
                 onClick={onSettingsClick}
@@ -3266,7 +3425,7 @@ const Header = ({
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <SlidersHorizontal className="h-4 w-4" />
+                <Settings className="h-4 w-4" />
               </motion.button>
             )}
             {showThemeToggle && <ThemeToggle />}
@@ -3286,17 +3445,23 @@ const FapelloRoute = () => {
   const [currentFilter, setCurrentFilter] = useState('All');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const { settings } = useSettings();
+  const debouncedSearchValue = useDebounce(searchValue, 500);
 
-  // Fetch trending profiles
+  // Fetch profiles (trending or search)
   const {
-    data: trendingData,
+    data: profilesData,
     fetchNextPage: fetchNextTrendingPage,
     hasNextPage: hasNextTrendingPage,
     isLoading: isLoadingTrending,
     error: trendingError
   } = useInfiniteQuery({
-    queryKey: ['trendingProfiles', currentFilter],
-    queryFn: fetchTrendingProfiles,
+    queryKey: ['profiles', currentFilter, debouncedSearchValue],
+    queryFn: ({ pageParam }) => {
+      if (debouncedSearchValue) {
+        return fetchSearchResults({ pageParam: pageParam as number, query: debouncedSearchValue });
+      }
+      return fetchTrendingProfiles({ pageParam: pageParam as number });
+    },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
   });
@@ -3355,12 +3520,23 @@ const FapelloRoute = () => {
     setCurrentFilter(filter);
   }, []);
 
-  // Memoized filtered profiles
-  const trendingProfiles = useMemo(() => {
-    let profiles = trendingData?.pages.flatMap(page => page.profiles) || [];
-    if (searchValue) {
+  // Memoized profiles
+  const displayedProfiles = useMemo(() => {
+    let profiles = profilesData?.pages.flatMap(page => page.profiles) || [];
+
+    // Fallback client-side filtering if search is changing rapidly before debounce?
+    // Or if we want to filter within the search results (unlikely needed for name)
+    // But filters like 'Verified' etc should still apply.
+
+    if (searchValue && searchValue !== debouncedSearchValue) {
+      // While waiting for debounce, maybe filter current list?
+      // But current list might be trending, so filtering it by name is okay.
       profiles = profiles.filter(p => p.name.toLowerCase().includes(searchValue.toLowerCase()));
+    } else if (debouncedSearchValue) {
+      // WE have search results, we don't need to filter by name again unless we want strict matching?
+      // The server search usually works well.
     }
+
     if (currentFilter !== 'All') {
       switch (currentFilter) {
         case 'Verified': profiles = profiles.filter(p => p.verified); break;
@@ -3370,7 +3546,7 @@ const FapelloRoute = () => {
       }
     }
     return profiles;
-  }, [trendingData, searchValue, currentFilter]);
+  }, [profilesData, searchValue, debouncedSearchValue, currentFilter]);
 
   const creatorImages = creatorData?.pages.flatMap(page => page.images) || [];
   const creatorName = creatorProfile?.name || '';
@@ -3392,7 +3568,7 @@ const FapelloRoute = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-900 dark:bg-black overflow-y-auto">
+    <div className="h-screen flex flex-col bg-gray-900 dark:bg-black overflow-hidden">
       <Header
         title={creatorId ? creatorName : 'Trending Profiles'}
         showBackButton={!!creatorId}
@@ -3405,91 +3581,98 @@ const FapelloRoute = () => {
         onFilter={handleFilter}
         onSettingsClick={() => setIsSettingsOpen(true)}
       />
-      
-      <div className={`container mx-auto px-4 ${settings.compactView ? 'py-2' : 'py-4'}`}>
-        {!creatorId ? (
-          // Trending View
-          isLoadingTrending ? (
-            <div className='flex justify-center items-center h-64'>
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          ) : trendingError ? (
-            <div className="text-center py-12">
-              <p className="text-red-500 mb-4">Failed to load trending profiles</p>
-              <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                Try Again
-              </button>
-            </div>
-          ) : trendingProfiles.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-400">No profiles found</p>
-            </div>
+
+      <div
+        className="flex-1 overflow-y-auto scroll-smooth"
+        ref={(el) => {
+          // Optional: Expose scroll container if needed
+        }}
+      >
+        <div className={`w-full px-2 ${settings.compactView ? 'py-1' : 'py-2'}`}>
+          {!creatorId ? (
+            // Trending View
+            isLoadingTrending ? (
+              <div className='flex justify-center items-center h-64'>
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              </div>
+            ) : trendingError ? (
+              <div className="text-center py-12">
+                <p className="text-red-500 mb-4">Failed to load trending profiles</p>
+                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                  Try Again
+                </button>
+              </div>
+            ) : displayedProfiles.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-400">No profiles found</p>
+              </div>
+            ) : (
+              <WaterfallGallery
+                items={displayedProfiles}
+                renderItem={(profile, index) => (
+                  <ProfileCard key={profile.id} profile={profile} index={index} onClick={() => handleProfileClick(profile)} />
+                )}
+                columnCount={settings.columnCount || 4}
+                hasNextPage={!!hasNextTrendingPage}
+                fetchNextPage={fetchNextTrendingPage}
+              />
+            )
           ) : (
-            <WaterfallGallery
-              items={trendingProfiles}
-              renderItem={(profile, index) => (
-                <ProfileCard key={profile.id} profile={profile} index={index} onClick={() => handleProfileClick(profile)} />
-              )}
-              columnCount={settings.compactView ? 4 : 3}
-              hasNextPage={!!hasNextTrendingPage}
-              fetchNextPage={fetchNextTrendingPage}
-            />
-          )
-        ) : (
-          // Profile View
-          isLoadingProfile ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            </div>
-          ) : profileError ? (
-            <div className="text-center py-12">
-              <p className="text-red-500 mb-4">Failed to load profile</p>
-              <button onClick={handleBackToTrending} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                Back to Trending
-              </button>
-            </div>
-          ) : creatorProfile ? (
-            <>
-              <ProfileHeader profile={creatorProfile} onClose={handleBackToTrending} />
-              
-              {isLoadingImages ? (
-                <div className="flex justify-center items-center h-64">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                </div>
-              ) : imagesError ? (
-                <div className="text-center py-12">
-                  <p className="text-red-500 mb-4">Failed to load images</p>
-                  <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                    Try Again
-                  </button>
-                </div>
-              ) : creatorImages.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-400">No images found for this creator</p>
-                </div>
-              ) : (
-                <WaterfallGallery
-                  items={creatorImages}
-                  renderItem={(image, index) => (
-                    <ImageCard key={image.id} image={image} index={index} onImageClick={handleImageClick} />
-                  )}
-                  columnCount={settings.compactView ? 5 : 4}
-                  hasNextPage={!!hasNextCreatorPage}
-                  fetchNextPage={fetchNextCreatorPage}
-                />
-              )}
-            </>
-          ) : null
-        )}
+            // Profile View
+            isLoadingProfile ? (
+              <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              </div>
+            ) : profileError ? (
+              <div className="text-center py-12">
+                <p className="text-red-500 mb-4">Failed to load profile</p>
+                <button onClick={handleBackToTrending} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                  Back to Trending
+                </button>
+              </div>
+            ) : creatorProfile ? (
+              <>
+                <ProfileHeader profile={creatorProfile} onClose={handleBackToTrending} />
+
+                {isLoadingImages ? (
+                  <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+                  </div>
+                ) : imagesError ? (
+                  <div className="text-center py-12">
+                    <p className="text-red-500 mb-4">Failed to load images</p>
+                    <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                      Try Again
+                    </button>
+                  </div>
+                ) : creatorImages.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-400">No images found for this creator</p>
+                  </div>
+                ) : (
+                  <WaterfallGallery
+                    items={creatorImages}
+                    renderItem={(image, index) => (
+                      <ImageCard key={image.id} image={image} index={index} onImageClick={handleImageClick} />
+                    )}
+                    columnCount={settings.columnCount || 4}
+                    hasNextPage={!!hasNextCreatorPage}
+                    fetchNextPage={fetchNextCreatorPage}
+                  />
+                )}
+              </>
+            ) : null
+          )}
+        </div>
       </div>
-      
+
       <ImageModal
         images={creatorImages}
         currentIndex={selectedImageIndex}
         isOpen={isImageModalOpen}
         onClose={handleModalClose}
       />
-      
+
       <SettingsPanel
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}

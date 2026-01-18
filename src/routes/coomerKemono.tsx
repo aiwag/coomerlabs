@@ -324,7 +324,7 @@ class AdvancedImageCache {
   private cleanupExpiredEntries() {
     const now = Date.now();
     const expiredKeys: string[] = [];
-    
+
     this.cache.forEach((value, key) => {
       if (now - value.timestamp > this.cacheExpiry) {
         expiredKeys.push(key);
@@ -352,7 +352,7 @@ class AdvancedImageCache {
   preloadImages(urls: string[]): void {
     urls.forEach(url => {
       if (!this.cache.has(url) && !this.loadingPromises.has(url)) {
-        this.getImage(url).catch(() => {});
+        this.getImage(url).catch(() => { });
       }
     });
   }
@@ -363,7 +363,7 @@ class AdvancedImageCache {
         URL.revokeObjectURL(value.url);
       }
     });
-    
+
     this.cache.clear();
     this.currentCacheSize = 0;
     localStorage.removeItem(this.storageKey);
@@ -580,7 +580,7 @@ class DownloadService {
 
     posts.forEach(async (post, index) => {
       const downloadId = `download-${post.id}-${Date.now()}`;
-      
+
       this.downloads.set(downloadId, {
         id: downloadId,
         post,
@@ -590,7 +590,7 @@ class DownloadService {
 
       try {
         this.downloads.get(downloadId)!.status = 'downloading';
-        
+
         const url = COOMER_SERVICES.includes(service)
           ? `https://coomer.st${post.file?.path || ''}`
           : `https://kemono.su${post.file?.path || ''}`;
@@ -599,8 +599,8 @@ class DownloadService {
         const filePath = `${dir}/${fileName}`;
 
         await this.downloadFile(
-          url, 
-          filePath, 
+          url,
+          filePath,
           (progress) => {
             this.downloads.get(downloadId)!.progress = progress;
           },
@@ -609,7 +609,7 @@ class DownloadService {
 
         this.downloads.get(downloadId)!.status = 'completed';
         this.downloads.get(downloadId)!.filePath = filePath;
-        
+
         toast.success(`Downloaded: ${fileName}`);
       } catch (error) {
         console.error('Download failed:', error);
@@ -781,9 +781,9 @@ const CompactCreatorCard = React.memo(({
           onMeasure(index, entry.contentRect.height);
         }
       });
-      
+
       resizeObserver.observe(cardRef.current);
-      
+
       return () => {
         resizeObserver.disconnect();
       };
@@ -937,7 +937,7 @@ const MediaComponent = React.memo(({
           loop
           playsInline
           onMouseEnter={(e) => {
-            e.currentTarget.play().catch(() => {});
+            e.currentTarget.play().catch(() => { });
           }}
           onMouseLeave={(e) => {
             e.currentTarget.pause();
@@ -1050,29 +1050,29 @@ const CompactPostGrid = React.memo(({
 
   const getPostMedia = (post: Post) => {
     const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.su';
-    
+
     if (post.file) {
       return {
         url: `${baseUrl}${post.file.path}`,
-        type: post.file.name?.includes('.mp4') || 
-              post.file.name?.includes('.mov') || 
-              post.file.name?.includes('.avi') || 
-              post.file.name?.includes('.webm') ? 'video' : 'image',
+        type: post.file.name?.includes('.mp4') ||
+          post.file.name?.includes('.mov') ||
+          post.file.name?.includes('.avi') ||
+          post.file.name?.includes('.webm') ? 'video' : 'image',
         name: post.file.name
       };
     }
-    
+
     if (post.attachments && post.attachments.length > 0) {
       return {
         url: `${baseUrl}${post.attachments[0].path}`,
-        type: post.attachments[0].name?.includes('.mp4') || 
-              post.attachments[0].name?.includes('.mov') || 
-              post.attachments[0].name?.includes('.avi') || 
-              post.attachments[0].name?.includes('.webm') ? 'video' : 'image',
+        type: post.attachments[0].name?.includes('.mp4') ||
+          post.attachments[0].name?.includes('.mov') ||
+          post.attachments[0].name?.includes('.avi') ||
+          post.attachments[0].name?.includes('.webm') ? 'video' : 'image',
         name: post.attachments[0].name
       };
     }
-    
+
     return null;
   };
 
@@ -1124,7 +1124,7 @@ const CompactPostGrid = React.memo(({
                 <MediaComponent
                   src={media.url}
                   alt={post.title}
-                  type={media.type}
+                  type={media.type as 'image' | 'video'}
                   className="w-full h-full"
                 />
               ) : (
@@ -1233,14 +1233,14 @@ const HoverPreview = ({
 
   if (!enabled || !isVisible || !mediaUrl) return null;
 
-  const isVideo = post.file?.name?.includes('.mp4') || 
-                 post.file?.name?.includes('.mov') || 
-                 post.file?.name?.includes('.avi') || 
-                 post.file?.name?.includes('.webm') ||
-                 post.attachments?.[0]?.name?.includes('.mp4') ||
-                 post.attachments?.[0]?.name?.includes('.mov') ||
-                 post.attachments?.[0]?.name?.includes('.avi') ||
-                 post.attachments?.[0]?.name?.includes('.webm');
+  const isVideo = post.file?.name?.includes('.mp4') ||
+    post.file?.name?.includes('.mov') ||
+    post.file?.name?.includes('.avi') ||
+    post.file?.name?.includes('.webm') ||
+    post.attachments?.[0]?.name?.includes('.mp4') ||
+    post.attachments?.[0]?.name?.includes('.mov') ||
+    post.attachments?.[0]?.name?.includes('.avi') ||
+    post.attachments?.[0]?.name?.includes('.webm');
 
   return (
     <div
@@ -1363,27 +1363,27 @@ const MovieMode = ({
 
   const getPostMedia = (post: Post) => {
     const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.su';
-    
+
     if (post.file) {
       return {
         url: `${baseUrl}${post.file.path}`,
-        type: post.file.name?.includes('.mp4') || 
-              post.file.name?.includes('.mov') || 
-              post.file.name?.includes('.avi') || 
-              post.file.name?.includes('.webm') ? 'video' : 'image'
+        type: post.file.name?.includes('.mp4') ||
+          post.file.name?.includes('.mov') ||
+          post.file.name?.includes('.avi') ||
+          post.file.name?.includes('.webm') ? 'video' : 'image'
       };
     }
-    
+
     if (post.attachments && post.attachments.length > 0) {
       return {
         url: `${baseUrl}${post.attachments[0].path}`,
-        type: post.attachments[0].name?.includes('.mp4') || 
-              post.attachments[0].name?.includes('.mov') || 
-              post.attachments[0].name?.includes('.avi') || 
-              post.attachments[0].name?.includes('.webm') ? 'video' : 'image'
+        type: post.attachments[0].name?.includes('.mp4') ||
+          post.attachments[0].name?.includes('.mov') ||
+          post.attachments[0].name?.includes('.avi') ||
+          post.attachments[0].name?.includes('.webm') ? 'video' : 'image'
       };
     }
-    
+
     return null;
   };
 
@@ -1588,33 +1588,33 @@ const GalleryViewer = ({
 
   const mediaItems = useMemo(() => {
     if (!post) return [];
-    
+
     const items = [];
-    
+
     if (post.file) {
       items.push({
-        type: post.file.name?.includes('.mp4') || 
-              post.file.name?.includes('.mov') || 
-              post.file.name?.includes('.avi') || 
-              post.file.name?.includes('.webm') ? 'video' : 'image',
+        type: post.file.name?.includes('.mp4') ||
+          post.file.name?.includes('.mov') ||
+          post.file.name?.includes('.avi') ||
+          post.file.name?.includes('.webm') ? 'video' : 'image',
         url: getMediaUrl(post.file.path, service),
         name: post.file.name
       });
     }
-    
+
     if (post.attachments && post.attachments.length > 0) {
       post.attachments.forEach(att => {
         items.push({
-          type: att.name?.includes('.mp4') || 
-                att.name?.includes('.mov') || 
-                att.name?.includes('.avi') || 
-                att.name?.includes('.webm') ? 'video' : 'image',
+          type: att.name?.includes('.mp4') ||
+            att.name?.includes('.mov') ||
+            att.name?.includes('.avi') ||
+            att.name?.includes('.webm') ? 'video' : 'image',
           url: getMediaUrl(att.path, service),
           name: att.name
         });
       });
     }
-    
+
     return items;
   }, [post, service]);
 
@@ -1948,7 +1948,7 @@ const GalleryViewer = ({
                   <ChevronLeft size={20} />
                 </button>
               )}
-              
+
               {currentMedia.type === 'video' && (
                 <button
                   onClick={() => setIsPlaying(!isPlaying)}
@@ -1957,7 +1957,7 @@ const GalleryViewer = ({
                   {isPlaying ? <Pause size={20} /> : <Play size={20} />}
                 </button>
               )}
-              
+
               {hasNext && (
                 <button
                   onClick={onNext}
@@ -2264,16 +2264,16 @@ const CompactProfileViewer = ({
   const handleDownloadSelected = async () => {
     const downloadService = DownloadService.getInstance();
     const selectedPostsList = filteredPosts.filter(post => selectedPosts.has(post.id));
-    
+
     await downloadService.downloadPosts(selectedPostsList, creator?.service || '');
   };
 
   const handleSyncForOffline = async () => {
     if (!creator) return;
-    
+
     setIsSyncing(true);
     setSyncProgress(0);
-    
+
     try {
       const interval = setInterval(() => {
         setSyncProgress(prev => {
@@ -2284,7 +2284,7 @@ const CompactProfileViewer = ({
           return prev + 10;
         });
       }, 500);
-      
+
       await offlineSyncManager.syncCreatorPosts(creator.id, posts);
       setIsSynced(true);
       toast('Posts synced for offline viewing');
@@ -2350,8 +2350,8 @@ const CompactProfileViewer = ({
                 <button
                   onClick={handleFollow}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${isFollowing
-                      ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'
-                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                    ? 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
                     }`}
                 >
                   {isFollowing ? 'Following' : 'Follow'}
@@ -2360,8 +2360,8 @@ const CompactProfileViewer = ({
                 <button
                   onClick={handleLike}
                   className={`p-2 rounded-full transition-colors ${isLiked
-                      ? 'bg-red-500 text-white'
-                      : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-red-500 hover:text-white'
+                    ? 'bg-red-500 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-red-500 hover:text-white'
                     }`}
                 >
                   <Heart size={16} className={isLiked ? 'fill-current' : ''} />
@@ -2471,13 +2471,12 @@ const CompactProfileViewer = ({
                 <button
                   onClick={handleSyncForOffline}
                   disabled={isSyncing || isSynced}
-                  className={`flex items-center gap-1 px-3 py-1 text-sm rounded-full transition-colors ${
-                    isSynced 
-                      ? 'bg-green-600 text-white' 
-                      : isSyncing 
-                        ? 'bg-gray-400 text-white cursor-not-allowed' 
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
+                  className={`flex items-center gap-1 px-3 py-1 text-sm rounded-full transition-colors ${isSynced
+                    ? 'bg-green-600 text-white'
+                    : isSyncing
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
                 >
                   {isSyncing ? (
                     <>
@@ -2570,8 +2569,8 @@ const CompactProfileViewer = ({
                 <span className="text-gray-900 dark:text-white">{cacheInfo.sizeMB} MB / {cacheInfo.maxSizeMB} MB</span>
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full" 
+                <div
+                  className="bg-blue-500 h-2 rounded-full"
                   style={{ width: `${(cacheInfo.sizeMB / cacheInfo.maxSizeMB) * 100}%` }}
                 />
               </div>
@@ -2647,10 +2646,10 @@ function RouteComponent() {
   const [showPageInput, setShowPageInput] = useState(false);
   const [layoutMode, setLayoutMode] = useState<'grid' | 'masonry'>('grid');
   const loadMoreRef = useRef<HTMLDivElement>(null);
-  
+
   const isOnline = useNetworkStatus();
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
-  
+
   const { containerRef, layout, measureItem } = useMasonryLayout(
     layoutMode === 'masonry' ? creators : [],
     gridColumns,
@@ -2780,7 +2779,7 @@ function RouteComponent() {
       }
 
       setLastUpdated(new Date());
-     
+
     } catch (error: any) {
       console.error('Fetch failed:', error);
       setApiError('Failed to fetch creators data');
@@ -2795,12 +2794,37 @@ function RouteComponent() {
     }
   }, [loadFromIndexedDB, selectedService]);
 
+  // AbortController ref to cancel previous searches
+  const searchAbortControllerRef = useRef<AbortController | null>(null);
+  const previousSearchTermRef = useRef<string>('');
+  const creatorsRef = useRef<Creator[]>([]); // Ref to hold the latest creators array
+
+  // Update creatorsRef whenever creators state changes
+  useEffect(() => {
+    creatorsRef.current = creators;
+  }, [creators]);
+
   const searchCreators = useCallback(async (term: string) => {
+    // Cancel any ongoing search
+    if (searchAbortControllerRef.current) {
+      searchAbortControllerRef.current.abort();
+    }
+
+    // Don't search if term hasn't changed
+    if (term === previousSearchTermRef.current) {
+      return;
+    }
+    previousSearchTermRef.current = term;
+
     if (!term.trim()) {
       setSearchMode(false);
       setSearchResults([]);
       return;
     }
+
+    // Create new AbortController for this search
+    const abortController = new AbortController();
+    searchAbortControllerRef.current = abortController;
 
     setIsSearching(true);
     setSearchMode(true);
@@ -2808,48 +2832,69 @@ function RouteComponent() {
     try {
       // Try to search from cached data first if offline
       if (!isOnline) {
-        const cachedResults = creators.filter(creator =>
+        // Use functional update to get current creators without depending on it
+        setSearchResults(creatorsRef.current.filter(creator =>
           creator.name.toLowerCase().includes(term.toLowerCase())
-        );
-        setSearchResults(cachedResults);
+        ));
         setIsSearching(false);
         return;
       }
 
       // Search from API
       let apiUrl: string;
-      
+      let results: Creator[] = [];
+
       if (selectedService === 'all') {
         const [coomerResponse, kemonoResponse] = await Promise.all([
-          axios.get<CreatorApiResponse>(`${COOMER_API_BASE_URL}?search=${encodeURIComponent(term)}`),
-          axios.get<CreatorApiResponse>(`${KEMONO_API_BASE_URL}?search=${encodeURIComponent(term)}`)
+          axios.get<CreatorApiResponse>(`${COOMER_API_BASE_URL}?search=${encodeURIComponent(term)}`, {
+            signal: abortController.signal
+          }),
+          axios.get<CreatorApiResponse>(`${KEMONO_API_BASE_URL}?search=${encodeURIComponent(term)}`, {
+            signal: abortController.signal
+          })
         ]);
-        
-        const combinedData = [...coomerResponse.data.data, ...kemonoResponse.data.data];
-        setSearchResults(combinedData);
+
+        results = [...coomerResponse.data.data, ...kemonoResponse.data.data];
       } else if (selectedService === 'coomer' || selectedService === 'kemono') {
         apiUrl = selectedService === 'coomer' ? COOMER_API_BASE_URL : KEMONO_API_BASE_URL;
-        const response = await axios.get<CreatorApiResponse>(`${apiUrl}?search=${encodeURIComponent(term)}`);
-        setSearchResults(response.data.data);
+        const response = await axios.get<CreatorApiResponse>(`${apiUrl}?search=${encodeURIComponent(term)}`, {
+          signal: abortController.signal
+        });
+        results = response.data.data;
       } else {
         const isCoomer = COOMER_SERVICES.includes(selectedService);
         apiUrl = isCoomer ? COOMER_API_BASE_URL : KEMONO_API_BASE_URL;
-        const response = await axios.get<CreatorApiResponse>(`${apiUrl}/${selectedService}?search=${encodeURIComponent(term)}`);
-        setSearchResults(response.data.data);
+        const response = await axios.get<CreatorApiResponse>(`${apiUrl}/${selectedService}?search=${encodeURIComponent(term)}`, {
+          signal: abortController.signal
+        });
+        results = response.data.data;
+      }
+
+      // Only update if this request wasn't aborted
+      if (!abortController.signal.aborted) {
+        setSearchResults(results);
       }
     } catch (error) {
+      // Don't show error if request was cancelled
+      if (axios.isCancel(error) || (error as Error).name === 'AbortError') {
+        console.log('Search request cancelled');
+        return;
+      }
+
       console.error('Search failed:', error);
       toast.error('Search failed. Showing cached results if available.');
-      
-      // Fallback to cached results
-      const cachedResults = creators.filter(creator =>
+
+      // Fallback to cached results - use functional update
+      setSearchResults(creatorsRef.current.filter(creator =>
         creator.name.toLowerCase().includes(term.toLowerCase())
-      );
-      setSearchResults(cachedResults);
+      ));
     } finally {
-      setIsSearching(false);
+      // Only update loading state if this search wasn't cancelled
+      if (!abortController.signal.aborted) {
+        setIsSearching(false);
+      }
     }
-  }, [selectedService, isOnline, creators]);
+  }, [selectedService, isOnline]); // Removed 'creators' from dependencies
 
   const loadMoreCreators = useCallback(() => {
     if (!hasMore || loading) return;
@@ -2893,12 +2938,12 @@ function RouteComponent() {
 
   const filteredCreators = useMemo(() => {
     let filtered = searchMode ? searchResults : creators;
-    
+
     if (showFavoritesOnly) {
       const favoriteIds = favoritesManager.getFavorites();
       filtered = filtered.filter(creator => favoriteIds.includes(creator.id));
     }
-    
+
     return filtered;
   }, [creators, searchResults, searchMode, showFavoritesOnly]);
 
@@ -3022,11 +3067,10 @@ function RouteComponent() {
 
               <button
                 onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  showFavoritesOnly 
-                    ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400' 
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
+                className={`p-1.5 rounded-lg transition-colors ${showFavoritesOnly
+                  ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                  }`}
               >
                 <Star className="h-4 w-4" />
               </button>
@@ -3151,14 +3195,14 @@ function RouteComponent() {
           >
             <ChevronLeft size={16} />
           </button>
-          
+
           <button
             onClick={() => setShowPageInput(true)}
             className="px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
           >
             {currentPage} / {totalPages}
           </button>
-          
+
           <button
             onClick={handleNextPage}
             disabled={currentPage === totalPages}

@@ -6,6 +6,7 @@ import {
   installExtension,
   REACT_DEVELOPER_TOOLS,
 } from "electron-devtools-installer";
+import { dbService } from "./services/sqliteService";
 
 // import { ElectronBlocker } from "@ghostery/adblocker-electron";
 // import "@ghostery/adblocker-electron-preload";
@@ -31,8 +32,8 @@ async function createWindow() {
   // 🪟 Create main window
   const preload = path.join(__dirname, "preload.js");
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1200,
+    height: 800,
     webPreferences: {
       devTools: inDevelopment,
       contextIsolation: true,
@@ -40,7 +41,7 @@ async function createWindow() {
       nodeIntegrationInSubFrames: false,
       webviewTag: true,
       preload: preload,
-      webSecurity: false
+      webSecurity: false,
     },
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "hidden",
     trafficLightPosition:
@@ -53,7 +54,7 @@ async function createWindow() {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
     mainWindow.loadFile(
-      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`)
+      path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
     );
   }
 }
@@ -68,11 +69,41 @@ async function installExtensions() {
   }
 }
 
-// 👇 Modify whenReady to wait for adblock setup
-app.whenReady().then(createWindow).then(installExtensions);
+// 🗄️ Initialize database
+async function initializeDatabase() {
+  try {
+    dbService.init();
+    console.log("📊 Database initialized successfully");
+
+    // Log stats in development
+    if (inDevelopment) {
+      const stats = dbService.getStats();
+      console.log("Database stats:", stats);
+    }
+  } catch (error) {
+    console.error("Failed to initialize database:", error);
+  }
+}
+
+// 🌐 Initialize server (disabled for now due to build issues)
+async function initializeServer() {
+  console.log("⚠️ Server integration temporarily disabled due to build issues");
+  return null;
+}
+
+// 👇 Modified app ready sequence
+app
+  .whenReady()
+  .then(initializeDatabase)
+  .then(initializeServer)
+  .then(createWindow)
+  .then(installExtensions);
 
 // macOS: quit app when all windows closed
 app.on("window-all-closed", () => {
+  // Clean up database connection
+  dbService.close();
+
   if (process.platform !== "darwin") {
     app.quit();
   }
@@ -82,4 +113,9 @@ app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// Clean up on quit
+app.on("before-quit", () => {
+  dbService.close();
 });

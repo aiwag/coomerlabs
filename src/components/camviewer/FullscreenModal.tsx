@@ -83,11 +83,9 @@
 //   );
 // }
 
-
-
-import React, { useRef, useEffect, useCallback } from 'react';
-import { X } from 'lucide-react';
-import { useGridStore } from '@/state/gridStore';
+import React, { useRef, useEffect, useCallback } from "react";
+import { X } from "lucide-react";
+import { useGridStore } from "@/state/gridStore";
 
 export function FullscreenModal() {
   const { fullscreenStream, setFullscreenStream } = useGridStore();
@@ -114,9 +112,13 @@ export function FullscreenModal() {
         } catch (e) { console.error('Injection Error:', e); }
       })();
     `;
-    
+
     // Use a small delay for injection
-    setTimeout(() => webview.executeJavaScript(script).catch(console.error), 300);
+    setTimeout(() => {
+      if ("executeJavaScript" in webview) {
+        (webview as any).executeJavaScript(script).catch(console.error);
+      }
+    }, 300);
   }, []);
 
   useEffect(() => {
@@ -132,15 +134,27 @@ export function FullscreenModal() {
   if (!fullscreenStream) return null;
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
-      <header className="bg-neutral-800 text-white p-2 flex justify-between items-center select-none" style={{ WebkitAppRegion: 'drag' }}>
+    <div className="fixed inset-0 z-50 flex flex-col bg-black">
+      <header
+        className="flex items-center justify-between bg-neutral-800 p-2 text-white select-none"
+        style={{ WebKitAppRegion: "drag" } as any}
+      >
         <h2 className="text-lg font-semibold">{fullscreenStream.username}</h2>
-        <button onClick={() => setFullscreenStream(null)} className="p-1 rounded hover:bg-neutral-700" style={{ WebkitAppRegion: 'no-drag' }}>
-            <X size={20} />
+        <button
+          onClick={() => setFullscreenStream(null)}
+          className="rounded p-1 hover:bg-neutral-700"
+          style={{ WebKitAppRegion: "no-drag" } as any}
+        >
+          <X size={20} />
         </button>
       </header>
       <div className="flex-1">
-        <webview ref={webviewRef} src={fullscreenStream.url} className="w-full h-full" preload="./preload.js" />
+        <webview
+          ref={webviewRef}
+          src={fullscreenStream.url}
+          className="h-full w-full"
+          preload="./preload.js"
+        />
       </div>
     </div>
   );
