@@ -10,6 +10,7 @@ import {
   Maximize2,
   Minimize2,
   Trash2,
+  ExternalLink,
 } from "lucide-react";
 import { useGridStore } from "@/state/gridStore";
 import { useSettingsStore } from "@/state/settingsStore";
@@ -34,7 +35,6 @@ interface SortableWebviewProps {
   viewMode?: "grid" | "waterfall" | "clean-fit" | "full-expand";
   isZenMode?: boolean;
   isSmartAudio?: boolean;
-  isSentryMode?: boolean;
   isGlobalMute?: boolean;
   colSpan?: number;
 }
@@ -69,10 +69,10 @@ export function SortableWebview({
   viewMode = "grid",
   isZenMode = false,
   isSmartAudio = false,
-  isSentryMode = false,
   isGlobalMute = false,
   colSpan = 1,
 }: SortableWebviewProps) {
+  const { setFullViewMode } = useGridStore();
   const { attributes, listeners, setNodeRef, transform, transition, isOver } =
     useSortable({ id, disabled: !isDraggable });
   const webviewRef = useRef<Electron.WebviewTag>(null);
@@ -85,7 +85,6 @@ export function SortableWebview({
   const [isPaused, setIsPaused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [domReady, setDomReady] = useState(false);
-  const [activityLevel, setActivityLevel] = useState(0);
   const [isZoomed, setIsZoomed] = useState(false);
 
   const { ref: viewRef, inView } = useInView({ rootMargin: "200px 0px" });
@@ -269,8 +268,11 @@ export function SortableWebview({
         if (!isDragging) setIsZoomed(e.shiftKey);
       }}
       onDoubleClick={() => {
-        console.log("Double-click on stream:", username);
-        toggleFullscreenView();
+        if (isFullViewMode) {
+          setFullViewMode(null);
+        } else {
+          setFullViewMode(index);
+        }
       }}
       onMouseEnter={() => {
         setShowStreamInfo(true);
@@ -289,16 +291,6 @@ export function SortableWebview({
     >
       <div className={dropIndicatorClasses} />
 
-      {/* Sentry Mode Overlay */}
-      {isSentryMode && activityLevel > 20 && (
-        <div className="absolute inset-0 z-10 pointer-events-none animate-pulse border-2 border-red-500/80 shadow-[inset_0_0_40px_rgba(255,0,0,0.4)]">
-          <div className="absolute top-2 right-2 flex items-center gap-1 bg-red-600/90 text-white px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-widest shadow-lg">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-            MOTION
-          </div>
-        </div>
-      )}
-
       {/* Hide Controls in Zen Mode */}
       {isDraggable && !isZenMode && (
         <div
@@ -314,13 +306,23 @@ export function SortableWebview({
 
       {/* Trash Button - Always visible top left unless Zen Mode */}
       {!isZenMode && (
-        <button
-          onClick={() => removeStream(index)}
-          className="absolute top-2 left-2 z-40 rounded-full bg-red-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-red-600"
-          title="Remove Stream"
-        >
-          <Trash2 size={12} />
-        </button>
+        <>
+          <button
+            onClick={() => removeStream(index)}
+            className="absolute top-2 left-2 z-40 rounded-full bg-red-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-red-600"
+            title="Remove Stream"
+          >
+            <Trash2 size={12} />
+          </button>
+
+          <button
+            onClick={() => window.open(url, '_blank', 'width=800,height=600')}
+            className="absolute top-2 left-9 z-40 rounded-full bg-blue-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-blue-600"
+            title="Pop-out Window"
+          >
+            <ExternalLink size={12} />
+          </button>
+        </>
       )}
 
       {loadingStage !== "ready" && !domReady && (

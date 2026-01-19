@@ -143,7 +143,10 @@ function CamViewerPage() {
               className="relative z-20 flex flex-col border-r border-white/10 bg-black/40 backdrop-blur-sm"
               style={{ width: sidebarExpanded ? "12rem" : "3.5rem" }}
             >
-              <StreamListSidebar collapsed={!sidebarExpanded} />
+              <StreamListSidebar
+                collapsed={!sidebarExpanded}
+                onToggleCollapse={() => setSidebarExpanded(!sidebarExpanded)}
+              />
             </motion.aside>
           )}
         </AnimatePresence>

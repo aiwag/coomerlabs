@@ -6,16 +6,16 @@ import {
   useSensors,
   DragOverlay,
 } from "@dnd-kit/core";
-import { SortableContext, rectSortingStrategy } from "@dnd-kit/sortable";
+import { SortableContext, rectSwappingStrategy } from "@dnd-kit/sortable";
 import { useGridStore } from "@/state/gridStore";
 import { useSettingsStore } from "@/state/settingsStore";
 import { SortableWebview } from "./SortableWebview";
 import { WaterfallLayout } from "./WaterfallLayout";
-import { getUsernameFromUrl, generateThumbUrl } from "@/utils/formatters";
 import {
   Maximize2, Minimize2, Ear, Volume2, SlidersHorizontal, VolumeX,
-  Grid3X3, LayoutGrid, Monitor, Activity, ShieldAlert, Zap
+  Grid3X3, LayoutGrid, Monitor, Activity, ShieldAlert, Zap, Repeat
 } from "lucide-react";
+import { getUsernameFromUrl, generateThumbUrl } from "@/utils/formatters";
 
 function DraggingItem({ url }: { url: string }) {
   const username = getUsernameFromUrl(url);
@@ -35,7 +35,7 @@ function DraggingItem({ url }: { url: string }) {
 }
 
 export function StreamGrid() {
-  const { streamUrls, handleDragEnd, isGlobalMute, setGlobalMute } = useGridStore();
+  const { streamUrls, handleDragEnd, isGlobalMute, setGlobalMute, rotateStreams } = useGridStore();
   const { layoutMode, setLayoutMode } = useSettingsStore(); // Allow changing layout mode
   const [activeId, setActiveId] = useState<string | null>(null);
   const gridRef = React.useRef<HTMLDivElement>(null);
@@ -78,12 +78,21 @@ export function StreamGrid() {
     };
   }, [isGlobalMute, setGlobalMute]);
 
-  // Window Resize for Smart Layout
-  const [windowSize, setWindowSize] = useState({ w: typeof window !== 'undefined' ? window.innerWidth : 1920, h: typeof window !== 'undefined' ? window.innerHeight : 1080 });
+  // Container Resize for Smart Layout
+  const [containerSize, setContainerSize] = useState({ w: 1920, h: 1080 });
+
   useEffect(() => {
-    const handleResize = () => setWindowSize({ w: window.innerWidth, h: window.innerHeight });
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    if (!gridRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for (let entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 0 && height > 0) {
+          setContainerSize({ w: width, h: height });
+        }
+      }
+    });
+    ro.observe(gridRef.current);
+    return () => ro.disconnect();
   }, []);
 
   const getSmartDimensions = (index: number, count: number) => {
@@ -91,22 +100,14 @@ export function StreamGrid() {
 
     let pattern: number[] = [];
     // Sophisticated Auto-Balancing Algorithm
-    // Goal: Create a grid where finding N items results in optimal Aspect Ratio match for cells
 
-    // 1. Calculate ideal grid dimensions if it were a perfect grid
-    const containerRatio = windowSize.w / windowSize.h;
-    // We want CellRatio ~ 16/9 (1.77) usually. 
-    // let N = Cols * Rows.
-    // (W/Cols) / (H/Rows) = TargetRatio
-    // (W/H) * (Rows/Cols) = TargetRatio
-    // Rows/Cols = TargetRatio / ContainerRatio
-    // Rows = Cols * (TargetRatio / ContainerRatio)
-    // Cols * Cols * Factor = N  => Cols = Sqrt(N / Factor)
+    // 1. Calculate ideal grid dimensions based on ACTUAL CONTAINER size
+    const containerRatio = containerSize.w / containerSize.h;
 
     const targetCellRatio = 1.77;
     const factor = targetCellRatio / containerRatio;
 
-    // Estimate ideal Rows based on maintaining aspect ratio
+    // Estimate ideal Rows based on maintaining aspect ratio (using containerSize)
     const idealRows = Math.round(Math.sqrt(count * factor));
     const numRows = Math.max(1, Math.min(count, idealRows));
 
@@ -153,11 +154,40 @@ export function StreamGrid() {
   // Luxury Features Stat
   const [zenMode, setZenMode] = useState(false);
   const [smartAudio, setSmartAudio] = useState(false);
-  const [sentryMode, setSentryMode] = useState(false); // NEW: Sentry Mode
   const [panicMode, setPanicMode] = useState(false); // NEW: Panic Shield
   const [manualCols, setManualCols] = useState(0); // 0 = auto
   const [gridGap, setGridGap] = useState(1);
   const [showControls, setShowControls] = useState(false);
+  const [patrolMode, setPatrolMode] = useState(false); // PATROL MODE
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (patrolMode) {
+      interval = setInterval(() => {
+        rotateStreams();
+      }, 8000);
+    }
+    return () => clearInterval(interval);
+  }, [patrolMode, rotateStreams]);
+
+  // Keyboard Hotkeys
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.altKey) {
+        switch (e.key) {
+          case '1': setLayoutMode('clean-fit'); break;
+          case '2': setLayoutMode('smart-fit'); break;
+          case '3': setLayoutMode('waterfall'); break;
+          case '4': setLayoutMode('magic'); break;
+          case '0': setZenMode(prev => !prev); break;
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setLayoutMode, setZenMode]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
@@ -191,7 +221,7 @@ export function StreamGrid() {
             display: 'flex',
             flexWrap: 'wrap',
             alignContent: 'stretch',
-            gap: gap
+            gap: 0 // FORCE ZERO GAP for "Full Utilization"
           },
           currentCols: 0
         };
@@ -218,9 +248,10 @@ export function StreamGrid() {
           cols = 4;
           rows = Math.ceil(count / 4);
           break;
+        case "smart-fit": // Smart Fit handled above as Flex, but fallbacks?
         case "magic":
         default:
-          const aspect = windowSize.w / windowSize.h;
+          const aspect = containerSize.w / containerSize.h;
           if (aspect > 1) {
             cols = Math.ceil(Math.sqrt(count * aspect));
             rows = Math.ceil(count / cols);
@@ -239,7 +270,7 @@ export function StreamGrid() {
       },
       currentCols: cols
     };
-  }, [streamUrls.length, layoutMode, manualCols, gridGap, zenMode, windowSize]);
+  }, [streamUrls.length, layoutMode, manualCols, gridGap, zenMode, containerSize]);
 
   return (
     <DndContext
@@ -256,7 +287,7 @@ export function StreamGrid() {
         onMouseLeave={() => setShowControls(false)}
       >
         <div className={`h-full w-full transition-all duration-300 ${panicMode ? 'blur-3xl brightness-0 scale-105 pointer-events-none' : ''}`}>
-          <SortableContext items={streamUrls} strategy={rectSortingStrategy}>
+          <SortableContext items={streamUrls} strategy={rectSwappingStrategy}>
             <div
               ref={gridRef}
               className={`h-full w-full transition-all duration-500 ${layoutMode === 'smart-fit' ? 'flex content-start' : 'grid'} ${zenMode ? "" : "p-2"}`}
@@ -274,7 +305,6 @@ export function StreamGrid() {
                     isDraggable={isDraggable}
                     isZenMode={zenMode}
                     isSmartAudio={smartAudio && !panicMode}
-                    isSentryMode={sentryMode && !panicMode}
                     isGlobalMute={isGlobalMute || panicMode}
                     width={smartDims?.width}
                     height={smartDims?.height}
@@ -330,6 +360,17 @@ export function StreamGrid() {
 
           <div className="w-px h-6 bg-white/10" />
 
+          {/* Patrol Mode Toggle */}
+          <button
+            onClick={() => setPatrolMode(!patrolMode)}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${patrolMode ? 'bg-green-500/20 text-green-500 ring-1 ring-green-500/50' : 'text-gray-400 hover:text-white'}`}
+            title="Patrol Mode (Auto-Cycle Streams)"
+          >
+            <Repeat size={18} className={patrolMode ? 'animate-spin' : ''} style={{ animationDuration: '3s' }} />
+          </button>
+
+          <div className="w-px h-6 bg-white/10" />
+
           {/* Smart Audio Toggle */}
           <button
             onClick={() => setSmartAudio(!smartAudio)}
@@ -338,18 +379,6 @@ export function StreamGrid() {
           >
             {smartAudio ? <Ear size={18} /> : <Volume2 size={18} />}
             <span className="text-xs font-semibold">Focus</span>
-          </button>
-
-          <div className="w-px h-6 bg-white/10" />
-
-          {/* Sentry Mode Toggle */}
-          <button
-            onClick={() => setSentryMode(!sentryMode)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${sentryMode ? 'bg-red-500/20 text-red-500 animate-pulse' : 'text-gray-400 hover:text-white'}`}
-            title="Sentry Mode (Motion Detection)"
-          >
-            <Activity size={18} />
-            <span className="text-xs font-semibold">SENTRY</span>
           </button>
 
           <div className="w-px h-6 bg-white/10" />
