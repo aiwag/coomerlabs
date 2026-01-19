@@ -4,7 +4,7 @@ import { dbService } from '@/services/databaseService';
 
 interface GridState {
   streamUrls: string[];
-  favorites: Set<number>;
+  favorites: Set<string>;
   mutedStreams: Set<number>;
   playingStreams: Set<number>;
   fullViewMode: number | null;
@@ -15,7 +15,7 @@ interface GridState {
   addStream: (url: string) => Promise<void>;
   removeStream: (index: number) => Promise<void>;
   handleDragEnd: (event: any) => Promise<void>;
-  toggleFavorite: (index: number) => void;
+  toggleFavorite: (url: string) => void;
   toggleMute: (index: number) => void;
   setGlobalMute: (mute: boolean) => void;
   setPlaying: (index: number, isPlaying: boolean) => void;
@@ -31,6 +31,7 @@ interface GridState {
 
 const STREAM_ORDER_KEY = 'streamOrder';
 const PRESETS_KEY = 'savedPresets';
+const FAVORITES_KEY = 'favorites';
 
 export const useGridStore = create<GridState>((set, get) => ({
   streamUrls: [],
@@ -55,7 +56,10 @@ export const useGridStore = create<GridState>((set, get) => ({
     // Load Presets
     const savedPresets = ((await dbService.getViewArrangement(PRESETS_KEY)) as unknown as { name: string; urls: string[] }[]) || [];
 
-    set({ streamUrls: finalUrls, presets: savedPresets });
+    // Load Favorites
+    const savedFavs = (await dbService.getViewArrangement(FAVORITES_KEY)) || [];
+
+    set({ streamUrls: finalUrls, presets: savedPresets, favorites: new Set(savedFavs) });
   },
 
   addStream: async (url) => {
@@ -89,7 +93,13 @@ export const useGridStore = create<GridState>((set, get) => ({
     }
   },
 
-  toggleFavorite: (index) => { const newFavorites = new Set(get().favorites); if (newFavorites.has(index)) newFavorites.delete(index); else newFavorites.add(index); set({ favorites: newFavorites }); },
+  toggleFavorite: (url) => {
+    const newFavorites = new Set(get().favorites);
+    if (newFavorites.has(url)) newFavorites.delete(url);
+    else newFavorites.add(url);
+    set({ favorites: newFavorites });
+    dbService.setViewArrangement(FAVORITES_KEY, Array.from(newFavorites));
+  },
   toggleMute: (index) => { const newMuted = new Set(get().mutedStreams); if (newMuted.has(index)) newMuted.delete(index); else newMuted.add(index); set({ mutedStreams: newMuted }); },
   setPlaying: (index, isPlaying) => { const newPlaying = new Set(get().playingStreams); if (isPlaying) newPlaying.add(index); else newPlaying.delete(index); set({ playingStreams: newPlaying }); },
   setGlobalMute: (mute) => set({ isGlobalMute: mute }),

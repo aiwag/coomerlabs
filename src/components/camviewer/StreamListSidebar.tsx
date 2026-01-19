@@ -62,7 +62,7 @@ export function StreamListSidebar({
           url,
           username: username ?? `stream-${index}`,
           thumb: generateThumbUrl(username),
-          isFavorite: favorites.has(index),
+          isFavorite: favorites.has(url),
           isPlaying: playingStreams.has(index),
         };
       }),
@@ -209,7 +209,7 @@ export function StreamListSidebar({
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        toggleFavorite(index);
+                        toggleFavorite(stream.url);
                       }}
                       className="p-0.5 text-neutral-500 transition-colors hover:text-yellow-400"
                     >
