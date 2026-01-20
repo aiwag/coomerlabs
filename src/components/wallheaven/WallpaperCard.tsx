@@ -64,10 +64,17 @@ export const WallpaperCard = React.memo<WallpaperCardProps>(({ wallpaper, index,
         )}
 
         <img
-          src={getWallpaperUrl(wallpaper, 'thumb')}
+          src={wallpaper.thumbs?.original || wallpaper.path}
           alt={wallpaper.id}
           className={`w-full h-full object-cover transition-all duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'} group-hover:scale-105`}
           onLoad={() => setImageLoaded(true)}
+          onError={(e) => {
+            // Fallback to full path if thumbnail fails
+            const target = e.target as HTMLImageElement;
+            if (target.src !== wallpaper.path) {
+              target.src = wallpaper.path;
+            }
+          }}
         />
 
         {/* Purity Badge */}
