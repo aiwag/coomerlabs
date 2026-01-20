@@ -11,7 +11,7 @@ import {
   Clock,
   Star,
   Hash,
-  Gender,
+  Users,
   Venus,
   Mars,
 } from 'lucide-react';
@@ -29,11 +29,11 @@ export const Header = React.memo<HeaderProps>(({ onSortChange }) => {
   const [showSortFilter, setShowSortFilter] = useState(false);
 
   const genderOptions = [
-    { value: 'all', label: 'All', icon: Gender },
+    { value: 'all', label: 'All', icon: Users },
     { value: 'straight', label: 'Straight', icon: Venus },
     { value: 'gay', label: 'Gay', icon: Mars },
     { value: 'lesbian', label: 'Lesbian', icon: Venus },
-    { value: 'trans', label: 'Trans', icon: Gender },
+    { value: 'trans', label: 'Trans', icon: Users },
   ];
 
   const getSortIcon = (sortId: string) => {
@@ -115,7 +115,7 @@ export const Header = React.memo<HeaderProps>(({ onSortChange }) => {
               }}
               className="flex items-center gap-2 liquid-button px-3 py-2 text-sm"
             >
-              {React.createElement(genderOptions.find((g) => g.value === gender)?.icon || Gender, { size: 14 })}
+              {React.createElement(genderOptions.find((g) => g.value === gender)?.icon || Users, { size: 14 })}
               <span className="hidden sm:inline text-white/80">
                 {genderOptions.find((g) => g.value === gender)?.label || 'All'}
               </span>
