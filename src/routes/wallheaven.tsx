@@ -17,6 +17,13 @@ import {
   Filter,
   ChevronDown,
   ArrowUp,
+  Grid,
+  Monitor,
+  Settings2,
+  Expand,
+  ZoomIn,
+  Heart,
+  Bookmark,
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -348,17 +355,22 @@ const ImageGridSkeleton = () => (
   </div>
 );
 
-// Enhanced Image Card Component with glassmorphic design
+// Enhanced Image Card Component with glassmorphic design & hover preview
 const ImageCard = ({
   wallpaper,
   onClick,
+  onHover,
 }: {
   wallpaper: Wallpaper;
   onClick: () => void;
+  onHover: (wallpaper: Wallpaper | null) => void;
 }) => {
   const uploaderName = wallpaper.uploader?.username ?? 'Anonymous';
   const thumbSrc = wallpaper.thumbs?.small ?? wallpaper.thumbs?.original ?? wallpaper.path;
   const [imageError, setImageError] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const purityColors = {
     sfw: 'bg-green-500',
@@ -370,7 +382,32 @@ const ImageCard = ({
     <div
       className="group relative block w-full aspect-[2/3] glass-card overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:z-10"
       onClick={onClick}
+      onMouseEnter={() => {
+        onHover(wallpaper);
+        setShowPreview(true);
+      }}
+      onMouseLeave={() => {
+        onHover(null);
+        setShowPreview(false);
+      }}
     >
+      {/* Hover Preview Modal */}
+      {showPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-8 pointer-events-none">
+          <div className="relative max-w-4xl max-h-[90vh] glass-card p-2 pointer-events-auto">
+            <img
+              src={wallpaper.path}
+              alt={`Preview ${wallpaper.id}`}
+              className="max-w-full max-h-[85vh] object-contain rounded-lg"
+            />
+            <div className="absolute bottom-4 left-4 right-4 text-white">
+              <p className="text-sm font-bold">{wallpaper.resolution}</p>
+              <p className="text-xs text-white/60">by {uploaderName}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Purity Indicator */}
       <div className={`absolute top-2 left-2 w-2 h-2 rounded-full z-10 ${purityColors[wallpaper.purity as keyof typeof purityColors]} shadow-sm`} />
 
@@ -396,7 +433,10 @@ const ImageCard = ({
         <div className="text-white">
           <p className="text-sm font-semibold truncate">{wallpaper.resolution}</p>
           <div className="flex items-center justify-between text-xs mt-1">
-            <span className="flex items-center">❤️ {wallpaper.favorites.toLocaleString()}</span>
+            <span className="flex items-center gap-1">
+              <Heart size={10} className={isLiked ? 'fill-red-500 text-red-500' : ''} />
+              {wallpaper.favorites.toLocaleString()}
+            </span>
             <span className="flex items-center">👁️ {wallpaper.views.toLocaleString()}</span>
           </div>
           <p className="text-xs mt-1 truncate">by {uploaderName}</p>
@@ -404,7 +444,29 @@ const ImageCard = ({
       </div>
 
       {/* Quick Actions */}
-      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsLiked(!isLiked);
+          }}
+          className={`p-1.5 rounded-full transition-colors border ${
+            isLiked ? 'bg-red-500/80 border-red-500/50' : 'bg-black/60 hover:bg-black/80 border-white/10'
+          } backdrop-blur-md`}
+        >
+          <Heart size={12} fill={isLiked ? 'white' : 'none'} className={isLiked ? 'text-white' : 'text-white/80'} />
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsBookmarked(!isBookmarked);
+          }}
+          className={`p-1.5 rounded-full transition-colors border ${
+            isBookmarked ? 'bg-blue-500/80 border-blue-500/50' : 'bg-black/60 hover:bg-black/80 border-white/10'
+          } backdrop-blur-md`}
+        >
+          <Bookmark size={12} fill={isBookmarked ? 'white' : 'none'} className={isBookmarked ? 'text-white' : 'text-white/80'} />
+        </button>
         <button
           className="p-1.5 rounded-full text-white transition-colors bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10"
           onClick={(e) => {
@@ -790,6 +852,11 @@ function RouteComponent() {
   const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const slideshowIntervalRef = useRef<number | null>(null);
 
+  // New: Grid & View Controls
+  const [gridColumns, setGridColumns] = useState(6); // Resizable grid
+  const [cinemaMode, setCinemaMode] = useState(false); // Cinema mode
+  const [hoveredWallpaper, setHoveredWallpaper] = useState<Wallpaper | null>(null);
+
   // Filter state
   const [filters, setFilters] = useState<FilterOptions>({
     categories: {
@@ -901,21 +968,78 @@ function RouteComponent() {
     });
   }, [allWallpapers.length]);
 
+  // Keyboard shortcuts for cinema mode and grid size
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cinema mode toggle (C key)
+      if (e.key === 'c' || e.key === 'C') {
+        setCinemaMode((prev) => !prev);
+      }
+      // Grid size controls (+/- keys)
+      if (e.key === '=' || e.key === '+') {
+        setGridColumns((prev) => Math.min(12, prev + 1));
+      }
+      if (e.key === '-' || e.key === '_') {
+        setGridColumns((prev) => Math.max(2, prev - 1));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   return (
     <div className="h-screen w-screen flex flex-col bg-black">
-      <header className="flex-shrink-0 sticky top-0 z-40 glass-header">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-3xl font-bold tracking-tight text-white">Wallhaven Explorer</h1>
-          <div className="flex items-center gap-4">
-            {activeImageIndex !== null && (
+      <header className={`flex-shrink-0 sticky top-0 z-40 glass-header transition-all duration-500 ${cinemaMode ? 'opacity-0 hover:opacity-100' : ''}`}>
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center mb-3">
+            <h1 className="text-3xl font-bold tracking-tight text-white">Wallhaven Explorer</h1>
+            <div className="flex items-center gap-3">
+              {/* Cinema Mode Toggle */}
               <button
-                onClick={startSlideshow}
-                className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors liquid-button"
+                onClick={() => setCinemaMode(!cinemaMode)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                  cinemaMode ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'liquid-button'
+                }`}
+                title="Toggle Cinema Mode (C)"
               >
-                <Play size={18} />
-                <span className="font-bold">Slideshow</span>
+                <Monitor size={18} />
+                <span className="font-bold text-sm">{cinemaMode ? 'Exit' : 'Cinema'}</span>
               </button>
-            )}
+            </div>
+          </div>
+
+          {/* Controls Row */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {/* Grid Size Control */}
+              <div className="flex items-center gap-2 px-3 py-2 glass-card">
+                <Grid size={16} className="text-white/60" />
+                <span className="text-xs font-bold text-white/60">GRID</span>
+                <input
+                  type="range"
+                  min="2"
+                  max="12"
+                  value={gridColumns}
+                  onChange={(e) => setGridColumns(parseInt(e.target.value))}
+                  className="w-24 accent-cyan-500"
+                />
+                <span className="text-xs font-mono text-cyan-400">{gridColumns}</span>
+              </div>
+
+              {/* Slideshow Button */}
+              {activeImageIndex !== null && (
+                <button
+                  onClick={startSlideshow}
+                  className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors liquid-button"
+                >
+                  <Play size={18} />
+                  <span className="font-bold">Slideshow</span>
+                </button>
+              )}
+            </div>
+
+            {/* Filters */}
             <FilterPanel
               filters={filters}
               setFilters={setFilters}
@@ -964,12 +1088,13 @@ function RouteComponent() {
                   </p>
                 }
               >
-                <div className="grid grid-cols-2 overflow-hidden sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+                <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
                   {allWallpapers.map((wallpaper, index) => (
                     <ImageCard
                       key={`${wallpaper.id}-${index}`}
                       wallpaper={wallpaper}
                       onClick={() => setActiveImageIndex(index)}
+                      onHover={setHoveredWallpaper}
                     />
                   ))}
                 </div>
