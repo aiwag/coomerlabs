@@ -391,18 +391,20 @@ const ImageCard = ({
         setShowPreview(false);
       }}
     >
-      {/* Hover Preview Modal */}
+      {/* Hover Preview - Fixed Position */}
       {showPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-8 pointer-events-none">
-          <div className="relative max-w-4xl max-h-[90vh] glass-card p-2 pointer-events-auto">
-            <img
-              src={wallpaper.path}
-              alt={`Preview ${wallpaper.id}`}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg"
-            />
-            <div className="absolute bottom-4 left-4 right-4 text-white">
-              <p className="text-sm font-bold">{wallpaper.resolution}</p>
-              <p className="text-xs text-white/60">by {uploaderName}</p>
+        <div className="fixed bottom-4 right-4 z-50 w-80 glass-card p-2 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+          <img
+            src={wallpaper.path}
+            alt={`Preview ${wallpaper.id}`}
+            className="w-full rounded-lg"
+          />
+          <div className="mt-2 px-2">
+            <p className="text-sm font-bold text-white">{wallpaper.resolution}</p>
+            <p className="text-xs text-white/60">by {uploaderName}</p>
+            <div className="flex items-center gap-2 mt-1 text-xs text-white/50">
+              <span>❤️ {wallpaper.favorites.toLocaleString()}</span>
+              <span>👁️ {wallpaper.views.toLocaleString()}</span>
             </div>
           </div>
         </div>
