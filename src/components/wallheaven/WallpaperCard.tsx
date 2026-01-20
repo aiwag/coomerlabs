@@ -1,11 +1,11 @@
 // Wallheaven - Glassmorphic WallpaperCard Component
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, Heart, Download, ExternalLink, Monitor, Loader2 } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { toast } from 'react-hot-toast';
 import { Wallpaper } from './types';
-import { getWallpaperUrl, downloadWallpaper } from './api';
+import { downloadWallpaper } from './api';
 import { useWallheavenSettings } from './hooks';
 
 interface WallpaperCardProps {
@@ -22,9 +22,10 @@ export const WallpaperCard = React.memo<WallpaperCardProps>(({ wallpaper, index,
   });
 
   const { showInfo } = useWallheavenSettings();
-  const [imageLoaded, setImageLoaded] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
 
   const handleDownload = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -45,61 +46,77 @@ export const WallpaperCard = React.memo<WallpaperCardProps>(({ wallpaper, index,
     toast(isLiked ? 'Removed from favorites' : 'Added to favorites');
   }, [isLiked]);
 
+  const handleImageLoad = useCallback(() => {
+    setImageError(false);
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    if (!imageError && imgRef.current && imgRef.current.src !== wallpaper.path) {
+      imgRef.current.src = wallpaper.path;
+    } else {
+      setImageError(true);
+    }
+  }, [imageError, wallpaper.path]);
+
+  const imageUrl = wallpaper.thumbs?.original || wallpaper.path;
+
   return (
     <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : 20 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="group relative liquid-card-dark overflow-hidden cursor-pointer"
-      style={{ aspectRatio: `${wallpaper.width}/${wallpaper.height}` }}
+      className="group relative glass-card overflow-hidden cursor-pointer"
+      style={{
+        aspectRatio: `${wallpaper.width}/${wallpaper.height}`,
+        minHeight: '200px',
+      }}
       onClick={() => onWallpaperClick(wallpaper)}
     >
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-black/60 to-black/40" />
+
       {/* Image */}
-      <div className="absolute inset-0 bg-black/50">
-        {!imageLoaded && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+      <img
+        ref={imgRef}
+        src={imageUrl}
+        alt={wallpaper.id}
+        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+        onLoad={handleImageLoad}
+        onError={handleImageError}
+        style={{ opacity: imageError ? 0 : 1 }}
+      />
+
+      {/* Error State */}
+      {imageError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80">
+          <Monitor className="w-12 h-12 text-white/40 mb-2" />
+          <p className="text-white/40 text-xs">Image unavailable</p>
+        </div>
+      )}
+
+      {/* Purity Badge */}
+      <div className="absolute top-2 left-2">
+        {wallpaper.purity === 'sfw' && (
+          <div className="px-2 py-1 rounded-full bg-green-500/80 backdrop-blur-sm border border-green-400/30">
+            <span className="text-[9px] font-bold text-white uppercase">SFW</span>
           </div>
         )}
-
-        <img
-          src={wallpaper.thumbs?.original || wallpaper.path}
-          alt={wallpaper.id}
-          className={`w-full h-full object-cover transition-all duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'} group-hover:scale-105`}
-          onLoad={() => setImageLoaded(true)}
-          onError={(e) => {
-            // Fallback to full path if thumbnail fails
-            const target = e.target as HTMLImageElement;
-            if (target.src !== wallpaper.path) {
-              target.src = wallpaper.path;
-            }
-          }}
-        />
-
-        {/* Purity Badge */}
-        <div className="absolute top-2 left-2">
-          {wallpaper.purity === 'sfw' && (
-            <div className="px-2 py-1 rounded-full bg-green-500/80 backdrop-blur-sm">
-              <span className="text-[9px] font-bold text-white uppercase">SFW</span>
-            </div>
-          )}
-          {wallpaper.purity === 'sketchy' && (
-            <div className="px-2 py-1 rounded-full bg-yellow-500/80 backdrop-blur-sm">
-              <span className="text-[9px] font-bold text-white uppercase">Sketchy</span>
-            </div>
-          )}
-          {wallpaper.purity === 'nsfw' && (
-            <div className="px-2 py-1 rounded-full bg-red-500/80 backdrop-blur-sm">
-              <span className="text-[9px] font-bold text-white uppercase">NSFW</span>
-            </div>
-          )}
-        </div>
+        {wallpaper.purity === 'sketchy' && (
+          <div className="px-2 py-1 rounded-full bg-yellow-500/80 backdrop-blur-sm border border-yellow-400/30">
+            <span className="text-[9px] font-bold text-white uppercase">Sketchy</span>
+          </div>
+        )}
+        {wallpaper.purity === 'nsfw' && (
+          <div className="px-2 py-1 rounded-full bg-red-500/80 backdrop-blur-sm border border-red-400/30">
+            <span className="text-[9px] font-bold text-white uppercase">NSFW</span>
+          </div>
+        )}
       </div>
 
       {/* Info Overlay - Bottom */}
       {showInfo && (
-        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/95 via-black/60 to-transparent">
           <div className="flex items-center justify-between text-white text-xs">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1">
@@ -119,7 +136,7 @@ export const WallpaperCard = React.memo<WallpaperCardProps>(({ wallpaper, index,
               href={`https://wallhaven.cc/w/${wallpaper.id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors border border-white/10"
               onClick={(e) => e.stopPropagation()}
             >
               <ExternalLink size={12} className="text-white/80" />
@@ -135,7 +152,7 @@ export const WallpaperCard = React.memo<WallpaperCardProps>(({ wallpaper, index,
           whileTap={{ scale: 0.9 }}
           onClick={handleLike}
           disabled={isDownloading}
-          className="p-1.5 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm transition-colors"
+          className="p-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md transition-colors border border-white/10"
         >
           <Heart size={14} className={isLiked ? 'fill-red-500 text-red-500' : 'text-white/80'} />
         </motion.button>
@@ -144,7 +161,7 @@ export const WallpaperCard = React.memo<WallpaperCardProps>(({ wallpaper, index,
           whileTap={{ scale: 0.9 }}
           onClick={handleDownload}
           disabled={isDownloading}
-          className="p-1.5 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-sm transition-colors"
+          className="p-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md transition-colors border border-white/10"
         >
           {isDownloading ? (
             <Loader2 size={14} className="text-white/80 animate-spin" />
@@ -154,10 +171,13 @@ export const WallpaperCard = React.memo<WallpaperCardProps>(({ wallpaper, index,
         </motion.button>
       </div>
 
+      {/* Hover Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
       {/* Zoom Indicator on Hover */}
       <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 pointer-events-none">
         <div className="transform scale-90 group-hover:scale-100 transition-transform duration-300">
-          <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center shadow-2xl">
+          <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-xl border border-white/20 flex items-center justify-center shadow-2xl">
             <Monitor className="w-8 h-8 text-white" />
           </div>
         </div>
