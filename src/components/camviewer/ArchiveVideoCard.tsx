@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { Play, Clock, Eye, Calendar, ExternalLink } from 'lucide-react';
-import { ArchiveVideo } from '@/services/archivebateService';
+import { Play, Clock, Eye, Calendar, ExternalLink, Loader2 } from 'lucide-react';
+import { ArchiveVideo, getVideoEmbedUrl } from '@/services/archivebateService';
 
 interface ArchiveVideoCardProps {
   video: ArchiveVideo;
@@ -10,11 +10,28 @@ interface ArchiveVideoCardProps {
 export const ArchiveVideoCard = React.memo(({ video, onPlay }: ArchiveVideoCardProps) => {
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoadingEmbed, setIsLoadingEmbed] = useState(false);
   const videoRef = useRef<HTMLDivElement>(null);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (onPlay) {
-      onPlay(video);
+      // If we don't have an embed URL yet, fetch it
+      if (!video.embedUrl && video.pageUrl) {
+        setIsLoadingEmbed(true);
+        try {
+          const embedUrl = await getVideoEmbedUrl(video.pageUrl);
+          const updatedVideo = { ...video, embedUrl };
+          setIsLoadingEmbed(false);
+          onPlay(updatedVideo);
+        } catch (error) {
+          console.error('Error fetching embed URL:', error);
+          setIsLoadingEmbed(false);
+          // Still play with what we have
+          onPlay(video);
+        }
+      } else {
+        onPlay(video);
+      }
     } else if (video.embedUrl) {
       // Default behavior: open embed URL
       window.open(video.embedUrl, '_blank');
@@ -57,12 +74,18 @@ export const ArchiveVideoCard = React.memo(({ video, onPlay }: ArchiveVideoCardP
         {/* Play Overlay */}
         <div
           className={`absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm transition-opacity duration-300 ${
-            isHovered ? 'opacity-100' : 'opacity-0'
+            isHovered || isLoadingEmbed ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          <div className="w-14 h-14 rounded-full bg-cyan-500/80 flex items-center justify-center shadow-lg transform transition-transform duration-300 group-hover:scale-110">
-            <Play size={24} className="text-white fill-white" />
-          </div>
+          {isLoadingEmbed ? (
+            <div className="w-14 h-14 rounded-full bg-cyan-500/80 flex items-center justify-center shadow-lg">
+              <Loader2 size={24} className="text-white animate-spin" />
+            </div>
+          ) : (
+            <div className="w-14 h-14 rounded-full bg-cyan-500/80 flex items-center justify-center shadow-lg transform transition-transform duration-300 group-hover:scale-110">
+              <Play size={24} className="text-white fill-white" />
+            </div>
+          )}
         </div>
       </div>
 

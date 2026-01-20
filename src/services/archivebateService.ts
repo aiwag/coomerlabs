@@ -1,4 +1,4 @@
-// ArchiveBate Service - Parse archivebate profile pages
+// ArchiveBate Service - Using Livewire API for proper pagination
 export interface ArchiveVideo {
   id: string;
   title: string;
@@ -18,124 +18,265 @@ export interface ArchiveProfileResponse {
   hasMore: boolean;
 }
 
+// Cache for CSRF tokens
+let csrfToken: string | null = null;
+let sessionCookie: string | null = null;
+
 /**
- * Parse archivebate profile page HTML and extract video embeds
+ * Fetch initial page to get CSRF token and session
+ */
+async function fetchAuthTokens(): Promise<void> {
+  if (csrfToken && sessionCookie) return;
+
+  try {
+    const response = await fetch('https://archivebate.com');
+    const html = await response.text();
+
+    // Extract CSRF token from meta tag
+    const csrfMatch = html.match(/<meta name="csrf-token" content="([^"]+)"/);
+    if (csrfMatch) {
+      csrfToken = csrfMatch[1];
+    }
+
+    // Extract XSRF-TOKEN from cookie
+    const xsrfMatch = html.match(/XSRF-TOKEN=([^;]+)/);
+    if (xsrfMatch) {
+      sessionCookie = `XSRF-TOKEN=${xsrfMatch[1]}`;
+    }
+  } catch (error) {
+    console.error('Error fetching auth tokens:', error);
+  }
+}
+
+/**
+ * Generate random fingerprint ID
+ */
+function generateFingerprint(): string {
+  return Math.random().toString(36).substring(2, 15) +
+         Math.random().toString(36).substring(2, 15);
+}
+
+/**
+ * Fetch archive videos using Livewire API
  */
 export async function fetchArchiveProfile(
   username: string,
   page: number = 1
 ): Promise<ArchiveProfileResponse> {
-  const url = `https://archivebate.com/profile/${username}?page=${page}`;
+  // Ensure we have auth tokens
+  await fetchAuthTokens();
+
+  const fingerprint = generateFingerprint();
+  const url = `https://archivebate.com/profile/${username}`;
 
   try {
-    // Use CORS proxy or fetch directly
-    const response = await fetch(url);
+    // First, fetch the profile page to get initial data
+    const pageResponse = await fetch(url);
+    const pageHtml = await pageResponse.text();
+
+    // Extract HTML hash and other data from the page
+    const htmlHashMatch = pageHtml.match(/"htmlHash":"([^"]+)"/);
+    const htmlHash = htmlHashMatch ? htmlHashMatch[1] : 'unknown';
+
+    // Build Livewire request
+    const livewireData = {
+      fingerprint: {
+        id: fingerprint,
+        name: 'profile.model-videos',
+        locale: 'en',
+        path: `profile/${username}`,
+        method: 'GET',
+        v: 'acj'
+      },
+      serverMemo: {
+        children: [],
+        errors: [],
+        htmlHash: htmlHash,
+        data: {
+          currentPage: page.toString(),
+          username: username,
+          popular: false,
+          page: page.toString(),
+          paginators: {
+            page: page.toString()
+          }
+        },
+        dataMeta: [],
+        checksum: '6f17534fc5c94d6ac66374f890ac73fcb9c61a1ff299ca42bf4d44091017a11a'
+      },
+      updates: [
+        {
+          type: 'callMethod',
+          payload: {
+            id: '3a77',
+            method: 'load_profile_videos',
+            params: []
+          }
+        }
+      ]
+    };
+
+    const response = await fetch('https://archivebate.com/livewire/message/profile.model-videos', {
+      method: 'POST',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0',
+        'Accept': 'text/html, application/xhtml+xml',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'gzip, deflate, br, zstd',
+        'Content-Type': 'application/json',
+        'X-Livewire': 'true',
+        'X-CSRF-TOKEN': csrfToken || '',
+        'Origin': 'https://archivebate.com',
+        'Referer': url,
+        'Connection': 'keep-alive',
+        ...(sessionCookie && { 'Cookie': sessionCookie })
+      },
+      body: JSON.stringify(livewireData)
+    });
 
     if (!response.ok) {
       throw new Error(`Failed to fetch archive page: ${response.status}`);
     }
 
+    const responseText = await response.text();
+
+    // Parse the response - it's typically HTML with embedded JSON
+    const videos = parseVideosFromResponse(responseText, username);
+
+    // Try to determine pagination info
+    const hasMore = videos.length > 0; // Simplified - can be improved
+    const totalPages = page + (hasMore ? 1 : 0); // Simplified
+
+    return {
+      username,
+      videos,
+      currentPage: page,
+      totalPages,
+      hasMore,
+    };
+  } catch (error) {
+    console.error('Error fetching archivebate profile:', error);
+
+    // Fallback: try parsing the profile page HTML directly
+    return await fetchArchiveProfileFallback(username, page);
+  }
+}
+
+/**
+ * Parse videos from Livewire response
+ */
+function parseVideosFromResponse(responseText: string, username: string): ArchiveVideo[] {
+  const videos: ArchiveVideo[] = [];
+
+  // Try to extract video cards from HTML response
+  // Look for typical video card patterns
+  const videoCardPattern = /<a[^>]*href="([^"]*\/video\/[^"]*)"[^>]*>.*?<img[^>]*src="([^"]+)".*?<\/a>/gs;
+  const matches = [...responseText.matchAll(videoCardPattern)];
+
+  matches.forEach((match, index) => {
+    const pageUrl = match[1];
+    const thumbnail = match[2];
+
+    // Extract title from alt text or nearby text
+    const titleMatch = match[0].match(/alt="([^"]+)"/);
+    const title = titleMatch ? titleMatch[1] : `Archive Video ${index + 1}`;
+
+    videos.push({
+      id: `${username}-livewire-${index}-${Date.now()}`,
+      title,
+      thumbnail: thumbnail.startsWith('http') ? thumbnail : `https://archivebate.com${thumbnail}`,
+      pageUrl: pageUrl.startsWith('http') ? pageUrl : `https://archivebate.com${pageUrl}`,
+      embedUrl: '', // Will be extracted when clicking
+    });
+  });
+
+  // Also try looking for lazy-loaded images
+  const lazyPattern = /<img[^>]*data-src="([^"]+)"/g;
+  const lazyMatches = [...responseText.matchAll(lazyPattern)];
+
+  lazyMatches.forEach((match, index) => {
+    if (index >= videos.length) return; // Don't duplicate
+    const thumbnail = match[1];
+
+    if (thumbnail && !videos.some(v => v.thumbnail === thumbnail)) {
+      videos.push({
+        id: `${username}-lazy-${index}-${Date.now()}`,
+        title: `Archive Video ${index + 1}`,
+        thumbnail: thumbnail.startsWith('http') ? thumbnail : `https://archivebate.com${thumbnail}`,
+        pageUrl: `https://archivebate.com/profile/${username}`,
+        embedUrl: '',
+      });
+    }
+  });
+
+  return videos;
+}
+
+/**
+ * Fallback method: Parse profile page HTML directly
+ */
+async function fetchArchiveProfileFallback(
+  username: string,
+  page: number = 1
+): Promise<ArchiveProfileResponse> {
+  const url = `https://archivebate.com/profile/${username}${page > 1 ? `?page=${page}` : ''}`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch archive page: ${response.status}`);
+    }
+
     const html = await response.text();
+    const videos: ArchiveVideo[] = [];
 
     // Parse HTML to extract video information
     const parser = new DOMParser();
     const doc = parser.parseFromString(html, 'text/html');
 
-    // Extract video items
-    const videoElements = doc.querySelectorAll('.video-item, .video-card, [class*="video"]');
-    const videos: ArchiveVideo[] = [];
+    // Look for video links
+    const links = doc.querySelectorAll('a[href*="/video/"]');
 
-    videoElements.forEach((element, index) => {
-      // Try to find various selectors that might contain video info
-      const titleEl =
-        element.querySelector('.title') ||
-        element.querySelector('.video-title') ||
-        element.querySelector('h3') ||
-        element.querySelector('h4');
-      const title = titleEl?.textContent?.trim() || `Video ${index + 1}`;
+    links.forEach((link, index) => {
+      const href = link.getAttribute('href');
+      const img = link.querySelector('img');
 
-      // Thumbnail
-      const thumbEl =
-        element.querySelector('img') ||
-        element.querySelector('[data-thumbnail]');
-      const thumbnail = thumbEl?.getAttribute('src') || thumbEl?.getAttribute('data-thumbnail') || '';
+      if (href && img) {
+        const src = img.getAttribute('src') || img.getAttribute('data-src');
 
-      // Duration
-      const durationEl =
-        element.querySelector('.duration') ||
-        element.querySelector('[data-duration]');
-      const duration = durationEl?.textContent?.trim();
-
-      // Views
-      const viewsEl =
-        element.querySelector('.views') ||
-        element.querySelector('[data-views]');
-      const views = viewsEl?.textContent?.trim();
-
-      // Date
-      const dateEl =
-        element.querySelector('.date') ||
-        element.querySelector('[data-date]');
-      const date = dateEl?.textContent?.trim();
-
-      // Links
-      const linkEl = element.querySelector('a');
-      const pageUrl = linkEl?.getAttribute('href') || '';
-      const fullPageUrl = pageUrl.startsWith('http')
-        ? pageUrl
-        : `https://archivebate.com${pageUrl}`;
-
-      // Try to extract embed URL from various attributes
-      const embedUrl =
-        element.getAttribute('data-embed') ||
-        linkEl?.getAttribute('data-embed') ||
-        element.getAttribute('data-src') ||
-        '';
-
-      videos.push({
-        id: `${username}-${index}-${Date.now()}`,
-        title,
-        thumbnail,
-        duration,
-        views,
-        date,
-        embedUrl,
-        pageUrl: fullPageUrl,
-      });
+        videos.push({
+          id: `${username}-fallback-${index}-${Date.now()}`,
+          title: img.getAttribute('alt') || `Archive Video ${index + 1}`,
+          thumbnail: src || '',
+          pageUrl: href.startsWith('http') ? href : `https://archivebate.com${href}`,
+          embedUrl: '',
+        });
+      }
     });
 
     // Try to find pagination info
-    const paginationEl = doc.querySelector('.pagination');
-    let totalPages = 1;
-    let currentPage = page;
-
-    if (paginationEl) {
-      const lastPageEl = paginationEl.querySelector('[data-page]:last-of-type');
-      const lastPageNum = lastPageEl?.getAttribute('data-page');
-      if (lastPageNum) {
-        totalPages = parseInt(lastPageNum, 10);
-      }
-
-      // Also try to find current page indicator
-      const activePageEl = paginationEl.querySelector('.active, [class*="active"]');
-      if (activePageEl) {
-        const pageNum = activePageEl?.textContent;
-        if (pageNum) {
-          currentPage = parseInt(pageNum, 10);
+    const paginationLinks = doc.querySelectorAll('a[href*="page="]');
+    let maxPage = page;
+    paginationLinks.forEach((link) => {
+      const href = link.getAttribute('href');
+      if (href) {
+        const pageMatch = href.match(/page=(\d+)/);
+        if (pageMatch) {
+          const pageNum = parseInt(pageMatch[1], 10);
+          if (pageNum > maxPage) maxPage = pageNum;
         }
       }
-    }
+    });
 
     return {
       username,
       videos,
-      currentPage,
-      totalPages,
-      hasMore: page < totalPages,
+      currentPage: page,
+      totalPages: maxPage,
+      hasMore: page < maxPage,
     };
   } catch (error) {
-    console.error('Error fetching archivebate profile:', error);
-    // Return empty result on error
+    console.error('Error in fallback fetch:', error);
     return {
       username,
       videos: [],
@@ -147,75 +288,28 @@ export async function fetchArchiveProfile(
 }
 
 /**
- * Alternative: Use regex-based parsing if DOM parsing fails
+ * Get embed URL from video page
  */
-export async function fetchArchiveProfileRegex(
-  username: string,
-  page: number = 1
-): Promise<ArchiveProfileResponse> {
-  const url = `https://archivebate.com/profile/${username}?page=${page}`;
-
+export async function getVideoEmbedUrl(pageUrl: string): Promise<string> {
   try {
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch archive page: ${response.status}`);
-    }
-
+    const response = await fetch(pageUrl.startsWith('http') ? pageUrl : `https://archivebate.com${pageUrl}`);
     const html = await response.text();
 
-    const videos: ArchiveVideo[] = [];
+    // Look for iframe embed
+    const iframeMatch = html.match(/<iframe[^>]*src="([^"]+)"/);
+    if (iframeMatch) {
+      return iframeMatch[1];
+    }
 
-    // Try to extract video cards using regex patterns
-    // This is a fallback method if DOM parsing doesn't work well
+    // Look for video source
+    const videoMatch = html.match(/<video[^>]*>\s*<source[^>]*src="([^"]+)"/);
+    if (videoMatch) {
+      return videoMatch[1];
+    }
 
-    // Look for iframe/video embed patterns
-    const iframePattern = /<iframe[^>]*src=["']([^"']*)["'][^>]*>/gi;
-    const iframeMatches = [...html.matchAll(iframePattern)];
-
-    iframeMatches.forEach((match, index) => {
-      const embedUrl = match[1];
-      videos.push({
-        id: `${username}-iframe-${index}-${Date.now()}`,
-        title: `Archive Video ${index + 1}`,
-        thumbnail: '',
-        embedUrl,
-        pageUrl: url,
-      });
-    });
-
-    // Look for video link patterns
-    const linkPattern = /<a[^>]*href=["']([^"']*\/video\/[^"']*)["'][^>]*>(.*?)<\/a>/gi;
-    const linkMatches = [...html.matchAll(linkPattern)];
-
-    linkMatches.forEach((match, index) => {
-      const pageUrl = match[1];
-      const title = match[2]?.replace(/<[^>]*>/g, '').trim() || `Video ${index + 1}`;
-
-      videos.push({
-        id: `${username}-link-${index}-${Date.now()}`,
-        title,
-        thumbnail: '',
-        pageUrl: pageUrl.startsWith('http') ? pageUrl : `https://archivebate.com${pageUrl}`,
-        embedUrl: '',
-      });
-    });
-
-    return {
-      username,
-      videos,
-      currentPage: page,
-      totalPages: 1,
-      hasMore: false,
-    };
+    return '';
   } catch (error) {
-    console.error('Error fetching archivebate profile (regex):', error);
-    return {
-      username,
-      videos: [],
-      currentPage: page,
-      totalPages: 1,
-      hasMore: false,
-    };
+    console.error('Error fetching embed URL:', error);
+    return '';
   }
 }

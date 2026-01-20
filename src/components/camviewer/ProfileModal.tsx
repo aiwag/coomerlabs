@@ -90,28 +90,30 @@ export function ProfileModal({ username, onClose }: ProfileModalProps) {
 
         {/* Content */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">
-          <div className="p-6 space-y-6">
-            {/* Live Cam Section */}
-            <section>
-              <div className="flex items-center gap-2 mb-3">
+          <div className="flex flex-col h-full">
+            {/* Live Cam Section - Takes available height, but limited */}
+            <section className="flex-shrink-0">
+              <div className="flex items-center gap-2 mb-3 px-6 pt-6">
                 <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Video size={18} className="text-red-400" />
                   Live Cam
                 </h2>
               </div>
-              <div className="aspect-video glass-card rounded-xl overflow-hidden">
-                <SortableWebview
-                  id={`live-${username}`}
-                  url={liveCamUrl}
-                  removable={false}
-                  style={{ width: "100%", height: "100%" }}
-                />
+              <div className="px-6">
+                <div className="aspect-video glass-card rounded-xl overflow-hidden max-h-[50vh]">
+                  <SortableWebview
+                    id={`live-${username}`}
+                    url={liveCamUrl}
+                    removable={false}
+                    style={{ width: "100%", height: "100%" }}
+                  />
+                </div>
               </div>
             </section>
 
-            {/* Archive Videos Section */}
-            <section>
+            {/* Archive Videos Section - Scrollable */}
+            <section className="flex-1 px-6 py-6 min-h-0">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-lg font-bold text-white flex items-center gap-2">
                   <Film size={18} className="text-purple-400" />
@@ -174,7 +176,7 @@ export function ProfileModal({ username, onClose }: ProfileModalProps) {
 
               {/* End of Results */}
               {!hasNextPage && !isLoading && allVideos.length > 0 && (
-                <div className="text-center py-8 text-sm text-neutral-500">
+                <div className="text-center py-8 text-sm text-neutral-500 pb-6">
                   You've reached the end of the archives
                 </div>
               )}
