@@ -84,13 +84,17 @@ export const useRedgifsPlayer = create<PlayerState>((set, get) => ({
 interface SearchState {
   query: string;
   searchType: 'gifs' | 'creators' | 'niches';
+  gender: string; // 'all', 'straight', 'gay', 'lesbian', 'trans'
   setQuery: (query: string) => void;
   setSearchType: (type: 'gifs' | 'creators' | 'niches') => void;
+  setGender: (gender: string) => void;
 }
 
 export const useRedgifsSearch = create<SearchState>((set) => ({
   query: '',
   searchType: 'gifs',
+  gender: 'all',
   setQuery: (query) => set({ query }),
   setSearchType: (searchType) => set({ searchType }),
+  setGender: (gender) => set({ gender }),
 }));

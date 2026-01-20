@@ -23,18 +23,28 @@ export const getAuthToken = async (): Promise<string> => {
 };
 
 // Fetch trending GIFs
-export const fetchTrendingGifs = async ({ pageParam = 1 }: { pageParam?: number }) => {
+export const fetchTrendingGifs = async ({
+  pageParam = 1,
+  gender
+}: {
+  pageParam?: number;
+  gender?: string;
+}) => {
   const token = await getAuthToken();
 
   try {
-    const response = await axios.get(
-      `${API_BASE}/gifs/search?order=trending&count=50&type=g&verified=y&page=${pageParam}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }
-    );
+    let url = `${API_BASE}/gifs/search?order=trending&count=50&type=g&verified=y&page=${pageParam}`;
+
+    // Add gender filter if specified
+    if (gender && gender !== 'all') {
+      url += `&tags=${encodeURIComponent(gender)}`;
+    }
+
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
 
     return {
       gifs: response.data.gifs || [],
@@ -46,19 +56,31 @@ export const fetchTrendingGifs = async ({ pageParam = 1 }: { pageParam?: number 
   }
 };
 
-// Search GIFs
-export const searchGifs = async ({ query, pageParam = 1 }: { query: string; pageParam?: number }) => {
+// Search GIFs with gender filter
+export const searchGifs = async ({
+  query,
+  pageParam = 1,
+  gender
+}: {
+  query: string;
+  pageParam?: number;
+  gender?: string;
+}) => {
   const token = await getAuthToken();
 
   try {
-    const response = await axios.get(
-      `${API_BASE}/gifs/search?search_text=${encodeURIComponent(query)}&count=50&type=g&verified=y&page=${pageParam}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }
-    );
+    let url = `${API_BASE}/gifs/search?search_text=${encodeURIComponent(query)}&count=50&type=g&verified=y&page=${pageParam}`;
+
+    // Add gender filter if specified
+    if (gender && gender !== 'all') {
+      url += `&tags=${encodeURIComponent(gender)}`;
+    }
+
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
 
     return {
       gifs: response.data.gifs || [],
