@@ -44,17 +44,18 @@ export function StreamControls({
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [volume, setVolume] = useState(100);
 
-  const isMuted = mutedStreams.has(index);
-  const isFavorite = favorites.has(index);
+  const url = streamUrls[index];
+  const isMuted = mutedStreams.has(url);
+  const isFavorite = favorites.has(url);
   const isInFullView = fullViewMode === index;
-  const isFullscreen = fullscreenStream?.url === streamUrls[index];
+  const isFullscreen = fullscreenStream?.url === url;
   const isPlaying = playingStreams.has(index);
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseInt(e.target.value);
     setVolume(newVolume);
     if (newVolume === 0) {
-      toggleMute(index);
+      toggleMute(url);
     }
   };
 
@@ -86,28 +87,37 @@ export function StreamControls({
   }: any) => (
     <button
       onClick={onClick}
-      className={`rounded-full p-1.5 text-white transition-all hover:scale-110 active:scale-95 ${
-        active
-          ? "bg-cyan-500/80 hover:bg-cyan-500"
+      className={`rounded-full p-1.5 text-white transition-all hover:scale-110 active:scale-95 ${active
+          ? "bg-cyan-500/80 hover:bg-cyan-500 shadow-lg shadow-cyan-500/50"
           : danger
-            ? "bg-red-600/70 hover:bg-red-600"
-            : "bg-black/50 hover:bg-black/70"
-      } ${className}`}
+            ? "bg-red-600/70 hover:bg-red-600 shadow-lg shadow-red-600/50"
+            : "bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10"
+        } ${className}`}
       title={title}
+      style={{
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+      }}
     >
       <Icon size={14} />
     </button>
   );
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between bg-gradient-to-t from-black/90 via-black/70 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+    <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between p-2 opacity-0 transition-all duration-300 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0"
+         style={{
+             background: 'linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 100%)',
+             backdropFilter: 'blur(20px) saturate(180%)',
+             WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+             borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+         }}>
       <div className="flex items-center gap-1">
         <div className="relative">
           <ControlButton
             icon={isMuted ? VolumeX : Volume2}
             title={isMuted ? "Unmute" : "Mute"}
             onClick={() => {
-              toggleMute(index);
+              toggleMute(url);
               if (isMuted) setVolume(100);
             }}
             onMouseEnter={() => setShowVolumeSlider(true)}
@@ -115,9 +125,15 @@ export function StreamControls({
           />
           {showVolumeSlider && (
             <div
-              className="absolute bottom-full left-1/2 mb-2 w-24 -translate-x-1/2 rounded-lg bg-black/90 p-2 backdrop-blur"
+              className="absolute bottom-full left-1/2 mb-2 w-24 -translate-x-1/2 rounded-lg p-2 shadow-2xl"
               onMouseEnter={() => setShowVolumeSlider(true)}
               onMouseLeave={() => setShowVolumeSlider(false)}
+              style={{
+                background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(20, 20, 20, 0.7) 100%)',
+                backdropFilter: 'blur(30px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+              }}
             >
               <input
                 type="range"
@@ -146,7 +162,7 @@ export function StreamControls({
           icon={Star}
           active={isFavorite}
           title="Favorite"
-          onClick={() => toggleFavorite(index)}
+          onClick={() => toggleFavorite(url)}
           className={isFavorite ? "text-yellow-400" : ""}
         />
       </div>

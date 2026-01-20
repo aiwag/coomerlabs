@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useGridStore } from "@/state/gridStore";
 import { useSettingsStore } from "@/state/settingsStore";
 import { Activity, Play, Pause, Star, Trash2, Layers } from "lucide-react";
+import { getUsernameFromUrl, generateThumbUrl } from "@/utils/formatters";
 
 interface MinimizedStreamProps {
   url: string;
@@ -18,13 +19,29 @@ export function MinimizedStream({ url, index }: MinimizedStreamProps) {
   } = useGridStore();
   const { toggleFullscreenView } = useSettingsStore();
   const isPlaying = playingStreams.has(index);
-  const isFavorite = favorites.has(index);
-  const username = url.match(/chaturbate\.com\/([^/]+)/)?.[1] ?? "unknown";
-  const thumbUrl = `https://jpeg.live.mmcdn.com/stream?room=${username}`;
+  const isFavorite = favorites.has(url);
+  const username = getUsernameFromUrl(url) ?? "unknown";
+
+  const [thumbKey, setThumbKey] = useState(Date.now());
+  const baseThumb = generateThumbUrl(username);
+  const separator = baseThumb.includes('?') ? '&' : '?';
+  const thumbUrl = `${baseThumb}${separator}t=${thumbKey}`;
+
+  // Auto-refresh every 10 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setThumbKey(Date.now());
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleRefreshThumb = () => {
+    setThumbKey(Date.now());
+  };
 
   const handleToggleFavorite = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleFavorite(index);
+    toggleFavorite(url);
   };
 
   const handleRemove = (e: React.MouseEvent) => {
@@ -43,7 +60,10 @@ export function MinimizedStream({ url, index }: MinimizedStreamProps) {
   };
 
   return (
-    <div className="group relative h-full w-32 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-800 transition-all hover:scale-105 hover:shadow-xl hover:shadow-cyan-500/20">
+    <div
+      className="group relative h-full w-32 flex-shrink-0 overflow-hidden rounded-lg bg-neutral-800 transition-all hover:scale-105 hover:shadow-xl hover:shadow-cyan-500/20"
+      onMouseEnter={handleRefreshThumb}
+    >
       <button
         className="relative h-full w-full"
         onClick={() => setFullViewMode(index)}
@@ -62,9 +82,8 @@ export function MinimizedStream({ url, index }: MinimizedStreamProps) {
         {/* Playing Status Indicator - Top Right */}
         <div className="absolute top-2 right-2">
           <div
-            className={`flex items-center justify-center rounded-full bg-black/70 px-2 py-1 backdrop-blur-sm ${
-              isPlaying ? "text-green-400" : "text-red-400"
-            }`}
+            className={`flex items-center justify-center rounded-full bg-black/70 px-2 py-1 backdrop-blur-sm ${isPlaying ? "text-green-400" : "text-red-400"
+              }`}
           >
             <Activity size={12} className={isPlaying ? "animate-pulse" : ""} />
           </div>

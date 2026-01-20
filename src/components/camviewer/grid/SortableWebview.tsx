@@ -18,6 +18,7 @@ import { StreamControls } from "./StreamControls";
 import { StreamInfoOverlay } from "./StreamInfoOverlay";
 import { LoadingIndicator } from "./LoadingIndicator";
 import { getUsernameFromUrl, generateThumbUrl } from "@/utils/formatters";
+import { StreamSkeleton } from "./StreamSkeleton";
 import { webviewInjectionScript } from "@/lib/webview-injection";
 
 interface SortableWebviewProps {
@@ -76,7 +77,9 @@ export function SortableWebview({
   const { attributes, listeners, setNodeRef, transform, transition, isOver } =
     useSortable({ id, disabled: !isDraggable });
   const webviewRef = useRef<Electron.WebviewTag>(null);
-  const { removeStream, setPlaying } = useGridStore();
+  const { removeStream, setPlaying, mutedStreams, toggleMute } = useGridStore();
+  const isMuted = mutedStreams.has(url);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const { toggleFullscreenView } = useSettingsStore();
 
   const [loadingStage, setLoadingStage] = useState<LoadingStage>("connecting");
@@ -190,12 +193,13 @@ export function SortableWebview({
     };
   }, [url]); // Fixed dependencies
 
-  // Enforce Global Mute
+  // Enforce Global Mute or Local Mute
   useEffect(() => {
-    if (domReady && isGlobalMute) {
-      executeWebviewScript(webviewRef.current, "const v=document.querySelector('video');if(v){v.muted=true;}");
+    if (domReady) {
+      const mute = isGlobalMute || isMuted;
+      executeWebviewScript(webviewRef.current, `const v=document.querySelector('video');if(v){v.muted=${mute};}`);
     }
-  }, [isGlobalMute, domReady]);
+  }, [isGlobalMute, isMuted, domReady]);
 
   useEffect(() => {
     if (!domReady) return;
@@ -203,7 +207,7 @@ export function SortableWebview({
     const shouldPlay = inView || isFullViewMode || viewMode === "full-expand";
     setIsPaused(!shouldPlay);
     const script = shouldPlay
-      ? "const v=document.querySelector('video');if(v){v.muted=false;v.play();}"
+      ? `const v=document.querySelector('video');if(v){v.muted=${isGlobalMute || isMuted};v.play();}`
       : "document.querySelector('video')?.pause();";
     executeWebviewScript(webviewRef.current, script);
     setPlaying(index, shouldPlay);
@@ -225,12 +229,22 @@ export function SortableWebview({
   const style = {
     transform: isZoomed ? 'scale(1.8)' : CSS.Transform.toString(transform),
     transition: isZoomed ? 'transform 0.1s ease-out' : transition,
-    zIndex: isDragging ? 100 : (isZoomed ? 9999 : 10),
+    zIndex: isFullViewMode ? 100 : (isDragging ? 101 : (isZoomed ? 9999 : 10)),
     gridColumn: `span ${colSpan}`,
-    ...(width !== undefined && { width }),
-    ...(height !== undefined && { height }),
-    ...(top !== undefined && { top }),
-    ...(left !== undefined && { left }),
+    ...(isFullViewMode ? {
+      position: 'absolute' as const,
+      top: 0,
+      left: 0,
+      width: '100%',
+      height: '100%',
+      transform: 'none',
+      borderRadius: 0,
+    } : {
+      ...(width !== undefined && { width }),
+      ...(height !== undefined && { height }),
+      ...(top !== undefined && { top }),
+      ...(left !== undefined && { left }),
+    }),
     ...(isZoomed && {
       boxShadow: '0 20px 50px rgba(0,0,0,0.9)',
       outline: '2px solid cyan',
@@ -241,12 +255,11 @@ export function SortableWebview({
   // ...
 
   const containerClasses = [
-    "relative bg-black rounded-lg",
+    "relative bg-black transition-all duration-300 ease-in-out",
+    isFullViewMode ? "rounded-none" : "rounded-lg",
     isZoomed ? "overflow-visible" : "overflow-hidden",
     isDragging ? "opacity-0" : "opacity-100",
-    "transition-all duration-300 ease-in-out",
     "hover:shadow-xl hover:shadow-cyan-500/10",
-    // ...
   ].join(" ");
 
   const dropIndicatorClasses = [
@@ -266,6 +279,10 @@ export function SortableWebview({
       className={containerClasses}
       onMouseMove={(e) => {
         if (!isDragging) setIsZoomed(e.shiftKey);
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        setContextMenu({ x: e.clientX, y: e.clientY });
       }}
       onDoubleClick={() => {
         if (isFullViewMode) {
@@ -325,12 +342,8 @@ export function SortableWebview({
         </>
       )}
 
-      {loadingStage !== "ready" && !domReady && (
-        <LoadingIndicator
-          progress={loadingProgress}
-          stage={loadingStage}
-          message={error || undefined}
-        />
+      {!domReady && !error && (
+        <StreamSkeleton />
       )}
 
       <webview
@@ -381,6 +394,44 @@ export function SortableWebview({
           setPlaying(index, isPaused);
         }}
       />
+      {/* Context Menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-[99999] w-48 rounded-lg glass-card p-1 shadow-2xl"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          onMouseLeave={() => setContextMenu(null)}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => { handleReload(); setContextMenu(null); }}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-white hover:bg-white/10"
+          >
+            Reload Stream
+          </button>
+          <button
+            onClick={() => { toggleMute(url); setContextMenu(null); }}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-white hover:bg-white/10"
+          >
+            {isMuted ? "Unmute Stream" : "Mute Stream"}
+          </button>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(url);
+              setContextMenu(null);
+            }}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-white hover:bg-white/10"
+          >
+            Copy Stream URL
+          </button>
+          <div className="my-1 border-t border-white/5" />
+          <button
+            onClick={() => { removeStream(index); setContextMenu(null); }}
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-400 hover:bg-red-500/10"
+          >
+            Remove from Grid
+          </button>
+        </div>
+      )}
     </div>
   );
 }

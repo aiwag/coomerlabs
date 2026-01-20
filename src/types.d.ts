@@ -18,7 +18,13 @@ interface ElectronWindow {
   close: () => Promise<void>;
 }
 
+interface ElectronAPI {
+  openExternal: (url: string) => Promise<void>;
+  db: any;
+}
+
 declare interface Window {
   themeMode: ThemeModeContext;
   electronWindow: ElectronWindow;
+  electronAPI: ElectronAPI;
 }

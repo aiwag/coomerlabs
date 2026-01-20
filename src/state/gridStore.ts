@@ -5,7 +5,7 @@ import { dbService } from '@/services/databaseService';
 interface GridState {
   streamUrls: string[];
   favorites: Set<string>;
-  mutedStreams: Set<number>;
+  mutedStreams: Set<string>;
   playingStreams: Set<number>;
   fullViewMode: number | null;
   fullscreenStream: { url: string; username: string } | null;
@@ -16,7 +16,7 @@ interface GridState {
   removeStream: (index: number) => Promise<void>;
   handleDragEnd: (event: any) => Promise<void>;
   toggleFavorite: (url: string) => void;
-  toggleMute: (index: number) => void;
+  toggleMute: (url: string) => void;
   setGlobalMute: (mute: boolean) => void;
   setPlaying: (index: number, isPlaying: boolean) => void;
   setFullViewMode: (index: number | null) => void;
@@ -32,6 +32,7 @@ interface GridState {
 const STREAM_ORDER_KEY = 'streamOrder';
 const PRESETS_KEY = 'savedPresets';
 const FAVORITES_KEY = 'favorites';
+const MUTED_KEY = 'mutedStreams';
 
 export const useGridStore = create<GridState>((set, get) => ({
   streamUrls: [],
@@ -59,7 +60,15 @@ export const useGridStore = create<GridState>((set, get) => ({
     // Load Favorites
     const savedFavs = (await dbService.getViewArrangement(FAVORITES_KEY)) || [];
 
-    set({ streamUrls: finalUrls, presets: savedPresets, favorites: new Set(savedFavs) });
+    // Load Mutes
+    const savedMutes = (await dbService.getViewArrangement(MUTED_KEY)) || [];
+
+    set({
+      streamUrls: finalUrls,
+      presets: savedPresets,
+      favorites: new Set(savedFavs as string[]),
+      mutedStreams: new Set(savedMutes as string[])
+    });
   },
 
   addStream: async (url) => {
@@ -100,7 +109,13 @@ export const useGridStore = create<GridState>((set, get) => ({
     set({ favorites: newFavorites });
     dbService.setViewArrangement(FAVORITES_KEY, Array.from(newFavorites));
   },
-  toggleMute: (index) => { const newMuted = new Set(get().mutedStreams); if (newMuted.has(index)) newMuted.delete(index); else newMuted.add(index); set({ mutedStreams: newMuted }); },
+  toggleMute: (url) => {
+    const newMuted = new Set(get().mutedStreams);
+    if (newMuted.has(url)) newMuted.delete(url);
+    else newMuted.add(url);
+    set({ mutedStreams: newMuted });
+    dbService.setViewArrangement(MUTED_KEY, Array.from(newMuted));
+  },
   setPlaying: (index, isPlaying) => { const newPlaying = new Set(get().playingStreams); if (isPlaying) newPlaying.add(index); else newPlaying.delete(index); set({ playingStreams: newPlaying }); },
   setGlobalMute: (mute) => set({ isGlobalMute: mute }),
   setFullViewMode: (index) => set({ fullViewMode: index }),

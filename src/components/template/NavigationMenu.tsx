@@ -3,8 +3,8 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { useTranslation } from "react-i18next";
 import InitialIcons from "@/components/template/InitialIcons";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
-import { 
-  Home, Camera, Video, Image, Users, Menu, X, ChevronUp, ChevronDown, 
+import {
+  Home, Camera, Video, Image, Users, Menu, X, ChevronUp, ChevronDown,
   Settings, Minimize2, Maximize2
 } from "lucide-react";
 import { GlobalSearch } from "@/components/template/GlobalSearch";
@@ -29,9 +29,9 @@ export default function NavigationMenu() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMenuVisible, setIsMenuVisible] = useState(true);
   const [isMiniMode, setIsMiniMode] = useState(false);
-  const [floatingButtonPosition, setFloatingButtonPosition] = useState<FloatingButtonPosition>({ 
-    x: typeof window !== 'undefined' ? window.innerWidth / 2 - 20 : 0, 
-    y: 20 
+  const [floatingButtonPosition, setFloatingButtonPosition] = useState<FloatingButtonPosition>({
+    x: typeof window !== 'undefined' ? window.innerWidth / 2 - 20 : 0,
+    y: 20
   });
   const [isDragging, setIsDragging] = useState(false);
   const [hasBeenDragged, setHasBeenDragged] = useState(false);
@@ -88,13 +88,13 @@ export default function NavigationMenu() {
         event.preventDefault();
         setIsMenuVisible(!isMenuVisible);
       }
-      
+
       // Ctrl/Cmd + Shift + M to toggle mini mode
       if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'M') {
         event.preventDefault();
         setIsMiniMode(!isMiniMode);
       }
-      
+
       // Escape to close mobile menu
       if (event.key === 'Escape' && isMobileMenuOpen) {
         setIsMobileMenuOpen(false);
@@ -112,7 +112,7 @@ export default function NavigationMenu() {
         setIsMobileMenuOpen(false);
       }
     };
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -120,19 +120,19 @@ export default function NavigationMenu() {
   // Handle drag end for floating button
   const handleDragEnd = useCallback((event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     const { offset } = info;
-    
+
     // Calculate new position
     let newX = floatingButtonPosition.x + offset.x;
     let newY = floatingButtonPosition.y + offset.y;
-    
+
     // Get viewport dimensions
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    
+
     // Constrain position to viewport
     newX = Math.max(0, Math.min(newX, viewportWidth - 40)); // 40 is button width
     newY = Math.max(0, Math.min(newY, viewportHeight - 40)); // 40 is button height
-    
+
     setFloatingButtonPosition({ x: newX, y: newY });
     setIsDragging(false);
     setHasBeenDragged(true); // Mark as dragged after first drag
@@ -159,18 +159,18 @@ export default function NavigationMenu() {
             onDragStart={() => setIsDragging(true)}
             onDragEnd={handleDragEnd}
             initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ 
-              opacity: 1, 
+            animate={{
+              opacity: 1,
               scale: 1,
             }}
             exit={{ opacity: 0, scale: 0.8 }}
-            whileHover={{ 
+            whileHover={{
               scale: 1.05,
             }}
             whileTap={{ scale: 0.95 }}
             onClick={toggleMenu}
             className={`fixed z-50 w-10 h-10 bg-gradient-to-br from-gray-900 via-gray-800 to-black text-white rounded-full shadow-2xl transition-all ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-            style={{ 
+            style={{
               left: hasBeenDragged ? `${floatingButtonPosition.x}px` : '50%',
               transform: hasBeenDragged ? 'none' : 'translateX(-50%)',
               top: `${floatingButtonPosition.y}px`,
@@ -195,72 +195,85 @@ export default function NavigationMenu() {
             transition={{ duration: 0.2 }}
             className="relative z-50"
           >
-            <div className={`border-b border-white/10 bg-black/40 backdrop-blur-xl ${isMiniMode ? 'h-10' : ''}`}>
-              <div className="mx-auto max-w-full px-4">
-                <div className={`flex items-center justify-between ${isMiniMode ? 'h-10' : 'h-14'}`}>
+            <div className={`glass-header bg-transparent transition-all duration-500 ${isMiniMode ? 'h-10' : 'h-16'}`}>
+              <div className="mx-auto max-w-full px-6">
+                <div className={`flex items-center justify-between ${isMiniMode ? 'h-10' : 'h-16'}`}>
                   {/* Logo Section */}
                   <div className="flex items-center">
-                    <Link to="/" className="flex items-center space-x-2">
-                      <InitialIcons />
+                    <Link to="/" className="flex items-center space-x-3 group transition-transform active:scale-95">
+                      <div className="p-1.5 rounded-xl bg-white/5 border border-white/10 group-hover:bg-white/10 transition-all">
+                        <InitialIcons />
+                      </div>
                       {!isMiniMode && (
                         <div className="hidden sm:block">
-                          <h1 className="text-lg font-light tracking-wide text-white">
-                            <span className="font-medium">Coomer</span>Labs
-                            <span className="ml-2 text-xs text-gray-400">/ {getCurrentRouteName()}</span>
+                          <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
+                            <span>Coomer</span>
+                            <span className="text-white/40 font-light">Labs</span>
+                            <div className="h-4 w-[1px] bg-white/10 mx-1" />
+                            <span className="text-[10px] uppercase tracking-[0.2em] text-cyan-400 font-black">{getCurrentRouteName()}</span>
                           </h1>
                         </div>
                       )}
                     </Link>
                   </div>
 
-                  {/* Navigation Icons - Desktop */}
-                  <div className="hidden items-center space-x-1 lg:flex">
+                  {/* Navigation Icons - Desktop Segment Control */}
+                  <div className="hidden items-center p-1 bg-black/20 rounded-xl lg:flex border border-white/5">
                     {menuItems.map((item) => (
                       <Link
                         key={item.to}
                         to={item.to}
-                        className={`group relative flex items-center justify-center rounded-lg ${isMiniMode ? 'p-1.5' : 'p-2.5'} transition-all ${isMenuItemActive(item.to) ? "bg-purple-600/20 text-purple-400" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+                        className={`group relative flex items-center justify-center rounded-lg px-4 ${isMiniMode ? 'py-1' : 'py-2'} transition-all duration-300 ${isMenuItemActive(item.to) ? "bg-white/10 text-white shadow-lg backdrop-blur-md border border-white/5" : "text-neutral-500 hover:text-neutral-300"}`}
                         title={t(item.label)}
                       >
-                        {item.icon}
+                        <div className="flex items-center gap-2">
+                          <div className={`${isMenuItemActive(item.to) ? 'scale-110' : 'scale-100'} transition-transform duration-300`}>
+                            {item.icon}
+                          </div>
+                          {!isMiniMode && <span className="text-[10px] font-black uppercase tracking-widest">{t(item.label)}</span>}
+                        </div>
                       </Link>
                     ))}
                   </div>
 
                   {/* Center Section - Global Search Component (hidden in mini mode) */}
-                  {!isMiniMode && <GlobalSearch />}
-                  
+                  {!isMiniMode && <div className="max-w-xs w-full px-4"><GlobalSearch /></div>}
+
                   {/* Right Section */}
-                  <div className="flex items-center space-x-1">
-                    {!isMiniMode && <NotificationPanel />}
-                    {!isMiniMode && <AccountDropdown />}
-                    
-                    {/* Mini Mode Toggle */}
-                    <motion.button
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setIsMiniMode(!isMiniMode)}
-                      className="p-2 text-gray-400 hover:text-white transition-colors"
-                      title={isMiniMode ? "Expand Menu (Ctrl/Cmd + Shift + M)" : "Mini Mode (Ctrl/Cmd + Shift + M)"}
-                    >
-                      {isMiniMode ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
-                    </motion.button>
-                    
-                    {/* Hide Menu Button */}
-                    {!isMiniMode && (
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
+                      {!isMiniMode && <NotificationPanel />}
+                      {!isMiniMode && <AccountDropdown />}
+
+                      <div className="w-[1px] h-4 bg-white/10 mx-1" />
+
+                      {/* Mini Mode Toggle */}
                       <motion.button
                         whileTap={{ scale: 0.95 }}
-                        onClick={toggleMenu}
-                        className="p-2 text-gray-400 hover:text-white transition-colors"
-                        title="Hide Menu (Ctrl/Cmd + M)"
+                        onClick={() => setIsMiniMode(!isMiniMode)}
+                        className="p-2 text-neutral-500 hover:text-white transition-colors"
+                        title={isMiniMode ? "Expand Menu" : "Mini Mode"}
                       >
-                        <ChevronUp size={18} />
+                        {isMiniMode ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
                       </motion.button>
-                    )}
-                    
+
+                      {/* Hide Menu Button */}
+                      {!isMiniMode && (
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
+                          onClick={toggleMenu}
+                          className="p-2 text-neutral-500 hover:text-white transition-colors"
+                          title="Hide Menu"
+                        >
+                          <ChevronUp size={16} />
+                        </motion.button>
+                      )}
+                    </div>
+
                     {/* Mobile Menu Toggle */}
                     <div className="lg:hidden">
-                      <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-400">
-                        {isMobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
+                      <motion.button whileTap={{ scale: 0.95 }} onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-400 bg-white/5 rounded-xl border border-white/5">
+                        {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
                       </motion.button>
                     </div>
                   </div>

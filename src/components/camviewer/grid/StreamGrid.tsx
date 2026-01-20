@@ -8,7 +8,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSwappingStrategy } from "@dnd-kit/sortable";
 import { useGridStore } from "@/state/gridStore";
-import { useSettingsStore } from "@/state/settingsStore";
+import { useSettingsStore, LayoutMode } from "@/state/settingsStore";
 import { SortableWebview } from "./SortableWebview";
 import { WaterfallLayout } from "./WaterfallLayout";
 import {
@@ -16,6 +16,7 @@ import {
   Grid3X3, LayoutGrid, Monitor, Activity, ShieldAlert, Zap, Repeat
 } from "lucide-react";
 import { getUsernameFromUrl, generateThumbUrl } from "@/utils/formatters";
+import { useHUDStore } from "@/state/hudStore";
 
 function DraggingItem({ url }: { url: string }) {
   const username = getUsernameFromUrl(url);
@@ -35,11 +36,66 @@ function DraggingItem({ url }: { url: string }) {
 }
 
 export function StreamGrid() {
-  const { streamUrls, handleDragEnd, isGlobalMute, setGlobalMute, rotateStreams } = useGridStore();
-  const { layoutMode, setLayoutMode } = useSettingsStore(); // Allow changing layout mode
+  const { streamUrls, handleDragEnd, isGlobalMute, setGlobalMute, rotateStreams, fullViewMode, setFullViewMode } = useGridStore();
+  const { layoutMode, setLayoutMode } = useSettingsStore();
   const [activeId, setActiveId] = useState<string | null>(null);
   const gridRef = React.useRef<HTMLDivElement>(null);
   const lastDeviceCount = React.useRef(0);
+
+  const { showHUD } = useHUDStore();
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+
+      const key = e.key.toLowerCase();
+
+      // Escape to exit full view
+      if (e.key === 'Escape') {
+        if (fullViewMode !== null) {
+          setFullViewMode(null);
+          showHUD("Exit Full View", "neutral", "exit");
+        }
+      }
+
+      // M for Mute
+      if (key === 'm') {
+        const nextMute = !isGlobalMute;
+        setGlobalMute(nextMute);
+        showHUD(nextMute ? "Muted" : "Unmuted", nextMute ? "warning" : "success", nextMute ? "mute" : "unmute");
+      }
+
+      // L for Layout Cycle
+      if (key === 'l') {
+        const modes: LayoutMode[] = ["magic", "smart-fit", "clean-fit", 2, 3];
+        const currentIndex = modes.indexOf(layoutMode);
+        const nextMode = modes[(currentIndex + 1) % modes.length];
+        setLayoutMode(nextMode);
+        showHUD(`Layout: ${nextMode}`, "info", "layout");
+      }
+
+      // P for Panic
+      if (key === 'p') {
+        // Since panicMode is local to StreamGrid, we'll need to lift it or just use the button
+        // For now, let's keep it as is or add more global keys here
+      }
+
+      // 1-9 for focusing
+      if (key >= '1' && key <= '9') {
+        const index = parseInt(key) - 1;
+        if (index < streamUrls.length) {
+          setFullViewMode(index);
+          const username = getUsernameFromUrl(streamUrls[index]);
+          showHUD(`Focus: ${username}`, "info", "enter");
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [isGlobalMute, layoutMode, fullViewMode, streamUrls, setFullViewMode, setGlobalMute, setLayoutMode, showHUD]);
 
   // Global Mute & Headphone Safety
   useEffect(() => {
@@ -222,12 +278,13 @@ export function StreamGrid() {
             flexWrap: 'wrap',
             alignContent: 'stretch',
             gap: 0 // FORCE ZERO GAP for "Full Utilization"
-          },
+          } as React.CSSProperties,
           currentCols: 0
         };
       }
 
-      switch (layoutMode) {
+      const mode = layoutMode as LayoutMode;
+      switch (mode) {
         case "clean-fit":
           cols = Math.ceil(Math.sqrt(count));
           rows = Math.ceil(count / cols);
@@ -250,6 +307,8 @@ export function StreamGrid() {
           break;
         case "smart-fit": // Smart Fit handled above as Flex, but fallbacks?
         case "magic":
+        case "waterfall":
+        case "hierarchical":
         default:
           const aspect = containerSize.w / containerSize.h;
           if (aspect > 1) {
@@ -267,10 +326,10 @@ export function StreamGrid() {
         gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
         gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
         gap,
-      },
+      } as React.CSSProperties,
       currentCols: cols
     };
-  }, [streamUrls.length, layoutMode, manualCols, gridGap, zenMode, containerSize]);
+  }, [streamUrls.length, layoutMode, gridGap, zenMode, containerSize]);
 
   return (
     <DndContext
@@ -282,7 +341,7 @@ export function StreamGrid() {
       }}
     >
       <div
-        className="relative h-full w-full bg-black overflow-hidden"
+        className="relative h-full w-full bg-transparent overflow-hidden"
         onMouseEnter={() => setShowControls(true)}
         onMouseLeave={() => setShowControls(false)}
       >
@@ -301,6 +360,7 @@ export function StreamGrid() {
                     id={url}
                     url={url}
                     index={index}
+                    isFullViewMode={fullViewMode === index}
                     isDragging={activeId === url}
                     isDraggable={isDraggable}
                     isZenMode={zenMode}
@@ -325,7 +385,7 @@ export function StreamGrid() {
 
         {/* --- LUXURY CONTROL BAR --- */}
         <div
-          className={`absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-4 px-6 py-3 bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl transition-all duration-500 z-50 ${showControls || activeId ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'}`}
+          className={`absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-4 px-6 py-3 glass-card rounded-2xl transition-all duration-500 z-50 ${showControls || activeId ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'}`}
         >
           {/* Panic Shield - Priority Left */}
           <button

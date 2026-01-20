@@ -1,11 +1,10 @@
 import React, {
   useState,
   useEffect,
-  useCallback,
   useMemo,
   useRef,
 } from "react";
-import { Search, X, Filter, Clock, ChevronDown } from "lucide-react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 
 interface SearchFilters {
   query: string;
@@ -15,7 +14,7 @@ interface SearchFilters {
   sortBy: "newest" | "oldest" | "mostviewed" | "rating";
 }
 
-interface VideoData {
+export interface VideoData {
   id: string;
   code: string;
   title: string;
@@ -27,23 +26,21 @@ interface VideoData {
   tags?: string[];
   actresses?: string[];
   uploadedAt: string;
-}
-
-interface SearchSuggestions {
-  query: string;
-  suggestions: string[];
-}
-
-interface SearchHistory {
-  id: string;
-  query: string;
-  timestamp: Date;
-  results: number;
+  videoUrl?: string;
 }
 
 const ADVANCED_SEARCH_DEBOUNCE = 300;
 
-export const useAdvancedSearch = () => {
+type SortType = "main" | "top_favorites" | "uncensored" | "most_viewed" | "top_rated" | "being_watched" | "search";
+
+interface UseAdvancedSearchOptions {
+  sortType?: SortType;
+  initialQuery?: string;
+}
+
+export const useAdvancedSearch = (options: UseAdvancedSearchOptions = {}) => {
+  const { sortType = "main", initialQuery = "" } = options;
+
   const [filters, setFilters] = useState<SearchFilters>({
     query: "",
     duration: "all",
@@ -52,179 +49,64 @@ export const useAdvancedSearch = () => {
     sortBy: "newest",
   });
 
-  const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
-  const [suggestions, setSuggestions] = useState<SearchSuggestions[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Mock video data for now
-  const [allVideos, setAllVideos] = useState<VideoData[]>([]);
-  const [filteredVideos, setFilteredVideos] = useState<VideoData[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const fetchVideos = async () => {
-      try {
-        const response = await fetch("http://localhost:8080/api/videos");
-        if (!response.ok) throw new Error("Failed to fetch videos");
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ["javtube-videos", sortType, debouncedQuery],
+    queryFn: async ({ pageParam = 1 }) => {
+      const params = new URLSearchParams({ page: String(pageParam) });
+      if (sortType !== "main") params.append("sort", sortType);
+      if (sortType === "search" && debouncedQuery) params.append("q", debouncedQuery);
 
-        const videos = await response.json();
-        setAllVideos(videos);
-        setFilteredVideos(videos);
-        setLoading(false);
-      } catch (error) {
-        console.error("Search error:", error);
-        setError("Failed to load videos");
-        setLoading(false);
+      const response = await fetch(`http://127.0.0.1:8080/api/videos?${params}`);
+      if (!response.ok) throw new Error("Failed to fetch videos");
+      return response.json();
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage && lastPage.length > 0) {
+        return allPages.length + 1;
       }
-    };
+      return undefined;
+    },
+  });
 
-    fetchVideos();
-  }, []);
+  const allVideos = useMemo(() => {
+    return data?.pages.flat() || [];
+  }, [data]);
 
-  // Debounced search
   useEffect(() => {
     if (searchQuery !== debouncedQuery) {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
       searchTimeoutRef.current = setTimeout(() => {
         setDebouncedQuery(searchQuery);
-        performSearch();
       }, ADVANCED_SEARCH_DEBOUNCE);
     }
-
     return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     };
   }, [searchQuery, debouncedQuery]);
 
-  const performSearch = useCallback(async () => {
-    if (!debouncedQuery.trim()) {
-      setFilteredVideos(allVideos);
-      setSuggestions([]);
-      return;
-    }
+  const filteredVideos = useMemo(() => {
+    if (!debouncedQuery.trim() || sortType === "search") return allVideos;
 
-    setIsSearching(true);
-    setSearchHistory((prev) => [
-      {
-        id: Date.now().toString(),
-        query: debouncedQuery,
-        timestamp: new Date(),
-        results: 0,
-      },
-      ...prev.slice(0, 9),
-    ]);
-
-    try {
-      // Enhanced search with title, code, and tags
-      const queryLower = debouncedQuery.toLowerCase();
-      const results = allVideos.filter(
-        (video) =>
-          video.title.toLowerCase().includes(queryLower) ||
-          video.code.toLowerCase().includes(queryLower) ||
-          video.tags?.some((tag) => tag.toLowerCase().includes(queryLower)) ||
-          video.actresses?.some((actress) =>
-            actress.toLowerCase().includes(queryLower),
-          ),
-      );
-
-      setFilteredVideos(results);
-
-      // Generate suggestions
-      const uniqueTitles = Array.from(
-        new Set(allVideos.map((v) => v.title.toLowerCase())),
-      );
-      const uniqueCodes = Array.from(
-        new Set(allVideos.map((v) => v.code.toLowerCase())),
-      );
-
-      const textSuggestions = uniqueTitles
-        .filter((title) => title.includes(queryLower))
-        .slice(0, 5)
-        .map((title) => ({ query: debouncedQuery, suggestions: [title] }));
-
-      const codeSuggestions = uniqueCodes
-        .filter((code) => code.includes(queryLower))
-        .slice(0, 3)
-        .map((code) => ({ query: debouncedQuery, suggestions: [code] }));
-
-      setSuggestions([...textSuggestions, ...codeSuggestions]);
-    } catch (error) {
-      console.error("Search error:", error);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [allVideos, debouncedQuery]);
-
-  // Apply filters
-  const filteredVideosWithFilters = useMemo(() => {
-    let filtered = [...filteredVideos];
-
-    if (filters.duration !== "all") {
-      const durationMap = {
-        short: [0, 600],
-        medium: [601, 1800],
-        long: [1801, 999999],
-      };
-      const [min, max] = durationMap[filters.duration] || [0, 999999];
-      filtered = filtered.filter((video) => {
-        const duration = parseInt(video.duration) || 0;
-        return duration >= min && duration <= max;
-      });
-    }
-
-    if (filters.quality !== "all") {
-      const qualityOrder = ["360p", "480p", "720p", "fullhd"];
-      const qualityIndex = qualityOrder.indexOf(filters.quality);
-      if (qualityIndex > -1) {
-        filtered = filtered.filter((video) => {
-          const videoQuality = video.quality.toLowerCase().replace("p", "");
-          return qualityOrder.includes(videoQuality);
-        });
-      }
-    }
-
-    if (filters.category) {
-      filtered = filtered.filter((video) => {
-        const tags = video.tags || [];
-        return tags.some((tag) =>
-          tag.toLowerCase().includes(filters.category.toLowerCase()),
-        );
-      });
-    }
-
-    // Apply sorting
-    switch (filters.sortBy) {
-      case "newest":
-        filtered.sort(
-          (a, b) =>
-            new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime(),
-        );
-        break;
-      case "oldest":
-        filtered.sort(
-          (a, b) =>
-            new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime(),
-        );
-        break;
-      case "mostviewed":
-        filtered.sort(
-          (a, b) =>
-            (parseInt(b.views || "0") || 0) - (parseInt(a.views || "0") || 0),
-        );
-        break;
-      case "rating":
-        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        break;
-    }
-
-    return filtered;
-  }, [filteredVideos, filters, allVideos]);
+    const queryLower = debouncedQuery.toLowerCase();
+    return allVideos.filter(
+      (video) =>
+        video.title.toLowerCase().includes(queryLower) ||
+        video.code.toLowerCase().includes(queryLower)
+    );
+  }, [allVideos, debouncedQuery, sortType]);
 
   const handleFilterChange = (key: keyof SearchFilters, value: any) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -245,17 +127,17 @@ export const useAdvancedSearch = () => {
   return {
     filters,
     searchQuery,
+    setSearchQuery,
     debouncedQuery,
-    searchHistory,
-    suggestions,
-    isSearching,
-    filteredVideos,
-    showFilters,
     allVideos,
-    loading,
-    error,
+    filteredVideos,
+    loading: isLoading,
+    error: isError ? "Failed to load videos" : null,
     handleFilterChange,
     clearFilters,
-    performSearch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
   };
 };

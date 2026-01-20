@@ -9,12 +9,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// Simple video data extraction
-async function extractVideoDataFromMainPage() {
+// Simple video data extraction with pagination
+async function extractVideoData(page = 1, sortType = "main", searchQuery = "") {
   try {
-    const response = await fetch("https://javtiful.com/main");
+    let url = "";
+    if (sortType === "search" && searchQuery) {
+      url = `https://javtiful.com/search/videos?search_query=${encodeURIComponent(searchQuery)}&page=${page}`;
+    } else if (sortType === "uncensored") {
+      url = page > 1 ? `https://javtiful.com/uncensored/page-${page}` : "https://javtiful.com/uncensored";
+    } else if (sortType === "main") {
+      url = page > 1 ? `https://javtiful.com/main/page-${page}` : "https://javtiful.com/main";
+    } else {
+      url = page > 1 ? `https://javtiful.com/videos/sort=${sortType}/page-${page}` : `https://javtiful.com/videos/sort=${sortType}`;
+    }
+    console.log(`Scraping Videos [${sortType}]: ${url}`);
+
+    const response = await fetch(url);
     if (!response.ok) {
-      console.error("Failed to fetch main page");
+      console.error(`Failed to fetch ${sortType} page ${page}`);
       return [];
     }
 
@@ -64,11 +76,136 @@ async function extractVideoDataFromMainPage() {
       }
     });
 
-    console.log(`Found ${videos.length} videos on main page`);
+    console.log(`Found ${videos.length} videos [${sortType}] page ${page}`);
     return videos;
   } catch (error) {
-    console.error("Error fetching main page:", error);
+    console.error(`Error fetching ${sortType} page ${page}:`, error);
     return [];
+  }
+}
+
+// Simple actress data extraction with pagination
+async function extractActresses(page = 1) {
+  try {
+    const url = page > 1 ? `https://javtiful.com/actresses?page=${page}` : "https://javtiful.com/actresses";
+    console.log(`Scraping Actresses: ${url}`);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Failed to fetch actresses page ${page}`);
+      return [];
+    }
+
+    const html = await response.text();
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
+    const actressCards = document.querySelectorAll(".channel-item");
+    const actresses = [];
+
+    actressCards.forEach((card) => {
+      try {
+        const linkElement = card.querySelector("a[href^='https://javtiful.com/actress/']");
+        if (!linkElement) return;
+
+        const href = linkElement.getAttribute("href");
+        const name = card.querySelector(".channel-item__name_details a")?.textContent?.trim() || "";
+        const imgElement = card.querySelector("img");
+        const thumbnail = imgElement?.getAttribute("src") || "";
+        const videoCount = card.querySelector(".channel-item__name_details__total_videos .fw-bold")?.textContent?.trim() || "0";
+
+        actresses.push({
+          id: href.split("/").pop(),
+          name,
+          thumbnail,
+          videoCount,
+          url: href
+        });
+      } catch (error) {
+        console.error("Error parsing actress card:", error);
+      }
+    });
+
+    console.log(`Found ${actresses.length} actresses on page ${page}`);
+    return actresses;
+  } catch (error) {
+    console.error(`Error fetching actresses page ${page}:`, error);
+    return [];
+  }
+}
+
+async function extractActressVideos(id, page = 1) {
+  try {
+    const url = page > 1 ? `https://javtiful.com/actress/${id}?page=${page}` : `https://javtiful.com/actress/${id}`;
+    console.log(`Scraping Actress Videos: ${url}`);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Failed to fetch actress videos for ${id} page ${page}`);
+      return { videos: [], actress: null };
+    }
+
+    const html = await response.text();
+    const dom = new JSDOM(html);
+    const document = dom.window.document;
+
+    // Extract Actress Info
+    let actressInfo = null;
+    const header = document.querySelector(".col-12 .shadow.p-3");
+    if (header) {
+      const name = header.querySelector("h4")?.textContent?.trim() || id;
+      const img = header.querySelector("img")?.getAttribute("src") || "";
+      const stats = header.querySelector(".channel-item__name_details__total_videos")?.textContent?.trim() || "";
+      actressInfo = { name, img, stats };
+    }
+
+    const videoCards = document.querySelectorAll(".col.pb-3 .card");
+    const videos = [];
+
+    videoCards.forEach((card) => {
+      try {
+        const linkElement = card.querySelector("a.video-tmb");
+        if (!linkElement) return;
+
+        const href = linkElement.getAttribute("href");
+        if (!href) return;
+
+        const videoIdMatch = href.match(/\/video\/(\d+)\//);
+        if (!videoIdMatch) return;
+
+        const videoId = videoIdMatch[1];
+        const imgElement = linkElement.querySelector("img");
+        const thumbnail =
+          imgElement?.getAttribute("data-src") ||
+          imgElement?.getAttribute("src") ||
+          "";
+        const hdLabel =
+          linkElement.querySelector(".label-hd")?.textContent || "";
+        const duration =
+          linkElement.querySelector(".label-duration")?.textContent || "";
+        const code =
+          linkElement.querySelector(".label-code")?.textContent || "";
+        const titleLink = card.querySelector(".video-link");
+        const title =
+          titleLink?.getAttribute("title") || titleLink?.textContent || "";
+
+        videos.push({
+          id: videoId,
+          code,
+          title,
+          thumbnail,
+          duration,
+          quality: hdLabel,
+        });
+      } catch (error) {
+        console.error("Error parsing actress video card:", error);
+      }
+    });
+
+    console.log(`Found ${videos.length} videos for actress ${id} on page ${page}`);
+    return { videos, actress: actressInfo };
+  } catch (error) {
+    console.error(`Error fetching actress videos ${id} page ${page}:`, error);
+    return { videos: [], actress: null };
   }
 }
 
@@ -206,8 +343,11 @@ const server = http.createServer(async (req, res) => {
   // API route to get a list of videos
   if (url.pathname === "/api/videos") {
     try {
-      console.log("Fetching video list...");
-      const videos = await extractVideoDataFromMainPage();
+      const page = parseInt(url.searchParams.get("page")) || 1;
+      const sort = url.searchParams.get("sort") || "main";
+      const searchQuery = url.searchParams.get("q") || "";
+      console.log(`Fetching video list [${sort}] page ${page}...`);
+      const videos = await extractVideoData(page, sort, searchQuery);
       res.writeHead(200, {
         "Content-Type": "application/json",
         ...corsHeaders,
@@ -220,6 +360,57 @@ const server = http.createServer(async (req, res) => {
         ...corsHeaders,
       });
       res.end(JSON.stringify({ error: "Failed to fetch videos" }));
+    }
+    return;
+  }
+
+  // API route to get a list of actresses
+  if (url.pathname === "/api/actresses") {
+    try {
+      const page = parseInt(url.searchParams.get("page")) || 1;
+      console.log(`Fetching actress list for page ${page}...`);
+      const actresses = await extractActresses(page);
+      res.writeHead(200, {
+        "Content-Type": "application/json",
+        ...corsHeaders,
+      });
+      res.end(JSON.stringify(actresses));
+    } catch (error) {
+      console.error("Error fetching actresses:", error);
+      res.writeHead(500, {
+        "Content-Type": "application/json",
+        ...corsHeaders,
+      });
+      res.end(JSON.stringify({ error: "Failed to fetch actresses" }));
+    }
+    return;
+  }
+  // API route to get a list of videos for a specific actress
+  if (url.pathname === "/api/actress-videos") {
+    try {
+      const id = url.searchParams.get("id");
+      const page = parseInt(url.searchParams.get("page")) || 1;
+
+      if (!id) {
+        res.writeHead(400, { "Content-Type": "application/json", ...corsHeaders });
+        res.end(JSON.stringify({ error: "Actress ID is required" }));
+        return;
+      }
+
+      console.log(`Fetching videos for actress ${id} page ${page}...`);
+      const data = await extractActressVideos(id, page);
+      res.writeHead(200, {
+        "Content-Type": "application/json",
+        ...corsHeaders,
+      });
+      res.end(JSON.stringify(data));
+    } catch (error) {
+      console.error("Error fetching actress videos:", error);
+      res.writeHead(500, {
+        "Content-Type": "application/json",
+        ...corsHeaders,
+      });
+      res.end(JSON.stringify({ error: "Failed to fetch actress videos" }));
     }
     return;
   }
@@ -300,6 +491,7 @@ function startServer(port = 8080) {
         console.log("   ✅ Direct video source detection");
         console.log("   ✅ CDN fallback with better error handling");
         console.log("   GET  /api/videos - Get list of videos");
+        console.log("   GET  /api/actresses - Get list of actresses");
         console.log("   POST /api/video-url - Get streaming URL for a video");
         resolve(port);
       })

@@ -38,24 +38,24 @@ export function EmptyState({ type, onAction, actionLabel }: EmptyStateProps) {
   const current = config[type];
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center bg-neutral-900 p-8">
-      <div className="flex max-w-md flex-col items-center text-center">
-        <div className="mb-4 rounded-full bg-neutral-800 p-4">
+    <div className="flex h-full w-full flex-col items-center justify-center bg-transparent p-8">
+      <div className="flex max-w-md flex-col items-center text-center glass-card p-12 rounded-[2.5rem]">
+        <div className="mb-8 rounded-[2rem] bg-white/5 p-6 shadow-xl">
           {current.icon}
         </div>
 
-        <h2 className="mb-2 text-2xl font-bold text-white">{current.title}</h2>
+        <h2 className="mb-4 text-3xl font-black text-white tracking-tight leading-tight">{current.title}</h2>
 
-        <p className="mb-6 text-sm text-neutral-400">{current.description}</p>
+        <p className="mb-10 text-base text-neutral-400 leading-relaxed font-medium">{current.description}</p>
 
         {onAction && (
-          <Button
+          <button
             onClick={onAction}
-            className="flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500"
+            className="flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-sm hover:scale-105 active:scale-95 transition-all shadow-2xl liquid-button text-white"
           >
             {current.actionIcon}
-            <span>{actionLabel || current.defaultActionLabel}</span>
-          </Button>
+            <span>{(actionLabel || current.defaultActionLabel).toUpperCase()}</span>
+          </button>
         )}
       </div>
     </div>

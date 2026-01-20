@@ -35,7 +35,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     <div className={`relative ${className}`}>
       <form onSubmit={handleSubmit} className="flex gap-2">
         <div className="relative flex-1">
-          <Search className="absolute top-1/2 left-3 h-5 w-5 text-gray-400" />
+          <Search className="absolute top-1/2 left-3 h-5 w-5 text-white/40" />
           <input
             type="text"
             value={query}
@@ -44,14 +44,14 @@ export const SearchBar: React.FC<SearchBarProps> = ({
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder={placeholder}
-            className={`w-full rounded-lg border border-gray-600 bg-gray-800 py-3 pr-4 pl-10 text-white placeholder-gray-400 focus:border-transparent focus:ring-2 focus:ring-purple-500 focus:outline-none ${isFocused ? "ring-opacity-100" : ""}`}
+            className="w-full py-3 pr-4 pl-10 text-white placeholder:text-white/40 liquid-input"
           />
 
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="absolute top-1/2 right-3 p-2 text-gray-400 hover:text-gray-600"
+              className="absolute top-1/2 right-3 p-2 text-white/40 hover:text-white transition-colors"
             >
               <X size={16} />
             </button>
@@ -62,7 +62,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           type="submit"
           onClick={handleSubmit}
           disabled={!query.trim()}
-          className="flex items-center gap-2 rounded-lg bg-purple-600 px-6 py-3 text-white transition-colors hover:bg-purple-700 disabled:cursor-not-allowed disabled:bg-gray-600"
+          className="flex items-center gap-2 px-6 py-3 text-white transition-colors disabled:cursor-not-allowed disabled:opacity-50 liquid-button"
         >
           <Search size={16} />
           <span className="text-sm font-medium">Search</span>

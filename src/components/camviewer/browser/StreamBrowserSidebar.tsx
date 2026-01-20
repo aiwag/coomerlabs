@@ -84,19 +84,15 @@ export function StreamBrowserSidebar() {
   }, []);
 
   useEffect(() => {
-    if (browserVisible) {
-      if (filteredStreamers.length === 0) {
-        fetchStreamers();
-      }
-    } else {
-      cleanup();
+    if (filteredStreamers.length === 0) {
+      fetchStreamers();
     }
     return () => {
       cleanup();
     };
-  }, [browserVisible, fetchStreamers, cleanup]);
+  }, []);
 
-  if (!browserVisible) return null;
+  // if (!browserVisible) return null; // Removed for embedding logic
 
   const hasActiveFilters = Object.values(filters).some(
     (v) => v !== "" && v !== false && v !== 0,
@@ -113,44 +109,46 @@ export function StreamBrowserSidebar() {
   ] as const;
 
   return (
-    <aside className="flex h-full w-96 flex-col border-r border-neutral-700 bg-neutral-900/95 shadow-2xl backdrop-blur-sm">
-      <header className="flex flex-shrink-0 items-center justify-between border-b border-neutral-700 bg-neutral-900 p-3">
-        <div className="flex items-center gap-1.5">
+    <div className="flex h-full w-full flex-col glass-sidebar bg-transparent">
+      <header className="flex flex-shrink-0 items-center justify-between glass-header p-2">
+        <div className="flex items-center gap-1 bg-black/20 rounded-lg p-1">
           {browseModes.map(({ mode, label, icon }) => (
-            <Button
+            <button
               key={mode}
-              variant={browseMode === mode ? "secondary" : "ghost"}
-              size="sm"
               onClick={() => setBrowseMode(mode as any)}
-              className="h-8 text-xs font-medium transition-all"
+              className={`h-7 px-3 text-[10px] font-bold rounded-md transition-all duration-300 ${browseMode === mode ? 'bg-white/15 text-white shadow-lg backdrop-blur-md' : 'text-neutral-500 hover:text-neutral-300'}`}
             >
-              {icon}
-              <span className="ml-1">{label}</span>
-            </Button>
+              <div className="flex items-center gap-1.5">
+                {icon}
+                <span>{label.toUpperCase()}</span>
+              </div>
+            </button>
           ))}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setBrowserVisible(false)}
-          className="hover:bg-neutral-800"
-        >
-          <X size={16} />
-        </Button>
+        {!browserVisible && ( // Hide close button if embedded/always visible via tabs
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setBrowserVisible(false)}
+            className="hover:bg-neutral-800"
+          >
+            <X size={16} />
+          </Button>
+        )}
       </header>
 
-      <div className="flex flex-shrink-0 gap-2 border-b border-neutral-700 bg-neutral-900/50 p-3">
-        <div className="relative flex-grow">
+      <div className="flex flex-shrink-0 gap-2 glass-header bg-black/10 p-2.5">
+        <div className="relative flex-grow group">
           <Search
-            className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400"
-            size={16}
+            className="absolute top-1/2 left-3 -translate-y-1/2 text-neutral-500 group-focus-within:text-cyan-400 transition-colors"
+            size={14}
           />
           <input
             type="text"
             placeholder="Search streamers..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-lg border border-neutral-700 bg-neutral-800 py-2 pr-3 pl-9 text-sm text-white transition-all focus:border-transparent focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+            className="w-full rounded-xl border border-white/5 bg-white/5 py-2 pr-3 pl-9 text-xs text-white transition-all placeholder:text-neutral-600 focus:bg-white/10 focus:ring-1 focus:ring-white/20 focus:outline-none"
           />
         </div>
         <Button
@@ -262,7 +260,7 @@ export function StreamBrowserSidebar() {
           Top
         </Button>
       )}
-    </aside>
+    </div>
   );
 }
 

@@ -8,31 +8,64 @@ import { Button } from '@/components/ui/button';
 
 interface StreamerCardProps { streamer: Streamer; }
 
-export const StreamerCardSkeleton = () => (<div className="p-2 animate-pulse"><div className="bg-neutral-800 rounded-lg border border-neutral-700 flex h-[96px]"><div className="w-24 bg-neutral-700"/><div className="p-2 flex flex-col justify-between flex-grow"><div><div className="h-4 w-3/4 bg-neutral-700 rounded"/><div className="flex gap-2 mt-2"><div className="h-3 w-10 bg-neutral-700 rounded"/><div className="h-3 w-10 bg-neutral-700 rounded"/></div></div><div className="h-8 w-8 bg-neutral-700 rounded self-end"/></div></div></div>);
-
-export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
-  const addStream = useGridStore((state) => state.addStream);
-  const handleAddStream = (e: React.MouseEvent) => { e.stopPropagation(); addStream(`https://www.chaturbate.com/fullvideo/?b=${streamer.username}`); };
-
-  return (
-    <div className="p-2">
-        <div className="bg-neutral-800 rounded-lg overflow-hidden border border-neutral-700 hover:border-cyan-500 transition-all group flex h-[96px]">
-            <div className="w-24 relative flex-shrink-0 cursor-pointer" onClick={handleAddStream}>
-                <img src={streamer.img} alt={streamer.username} className="w-full h-full object-cover" loading="lazy" />
-                <div className="absolute top-1 left-1.5"><span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white ${getGenderColor(streamer.gender)}`}>{streamer.gender.toUpperCase()}</span></div>
-            </div>
-            <div className="p-2 flex flex-col justify-between flex-grow min-w-0">
+export const StreamerCardSkeleton = () => (
+    <div className="p-1 animate-pulse">
+        <div className="bg-white/5 rounded-xl border border-white/5 flex h-[96px]">
+            <div className="w-24 bg-white/5" />
+            <div className="p-3 flex flex-col justify-between flex-grow">
                 <div>
-                    <h3 className="text-white font-bold text-sm truncate">{streamer.username}</h3>
-                    <div className="flex items-center gap-3 text-xs text-neutral-300 mt-1">
-                        <div className="flex items-center gap-1" title="Viewers"><Users size={14}/><span>{formatNumber(streamer.num_users)}</span></div>
-                        <div className="flex items-center gap-1" title="Age"><User size={14}/><span>{streamer.display_age}</span></div>
-                        <div title="Country"><span>{streamer.country}</span></div>
+                    <div className="h-4 w-3/4 bg-white/10 rounded" />
+                    <div className="flex gap-2 mt-2">
+                        <div className="h-3 w-10 bg-white/10 rounded" />
+                        <div className="h-3 w-10 bg-white/10 rounded" />
                     </div>
                 </div>
-                 <Button size="icon" className="h-8 w-8 self-end flex-shrink-0" onClick={handleAddStream} title="Add to Grid"><Plus size={16}/></Button>
+                <div className="h-8 w-8 bg-white/10 rounded-lg self-end" />
             </div>
         </div>
     </div>
-  );
+);
+
+export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
+    const addStream = useGridStore((state) => state.addStream);
+    const handleAddStream = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        addStream(`https://www.chaturbate.com/fullvideo/?b=${streamer.username}`);
+    };
+
+    return (
+        <div className="p-1">
+            <div className="glass-card rounded-xl overflow-hidden hover:border-cyan-500/50 hover:bg-white/5 transition-all duration-300 group flex h-[96px]">
+                <div className="w-24 relative flex-shrink-0 cursor-pointer overflow-hidden" onClick={handleAddStream}>
+                    <img
+                        src={streamer.img}
+                        alt={streamer.username}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        loading="lazy"
+                    />
+                    <div className="absolute top-1 left-1.5">
+                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] font-black text-white ${getGenderColor(streamer.gender)}`}>
+                            {streamer.gender.toUpperCase()}
+                        </span>
+                    </div>
+                </div>
+                <div className="p-3 flex flex-col justify-between flex-grow min-w-0">
+                    <div>
+                        <h3 className="text-white font-bold text-sm tracking-tight truncate">{streamer.username}</h3>
+                        <div className="flex items-center gap-3 text-[10px] text-neutral-400 mt-1">
+                            <div className="flex items-center gap-1" title="Viewers"><Users size={12} /><span>{formatNumber(streamer.num_users)}</span></div>
+                            <div className="flex items-center gap-1" title="Age"><User size={12} /><span>{streamer.display_age}</span></div>
+                        </div>
+                    </div>
+                    <button
+                        onClick={handleAddStream}
+                        className="self-end h-8 w-8 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center hover:bg-cyan-500 hover:text-white transition-all active:scale-95"
+                        title="Add to Grid"
+                    >
+                        <Plus size={16} />
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
 });
