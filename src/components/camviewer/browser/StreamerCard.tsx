@@ -36,7 +36,9 @@ export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
         addStream(`https://www.chaturbate.com/fullvideo/?b=${streamer.username}`);
     };
 
-    const handleProfileClick = () => {
+    const handleProfileClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log('Profile button clicked for:', streamer.username);
         navigate({ to: `/camviewer/room/${streamer.username}` });
     };
 
@@ -67,8 +69,9 @@ export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
                     <div className="flex gap-2">
                         <button
                             onClick={handleProfileClick}
-                            className="h-8 px-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-all active:scale-95"
+                            className="h-8 px-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-all active:scale-95 cursor-pointer"
                             title="View Profile & Archives"
+                            type="button"
                         >
                             <UserCircle size={16} />
                         </button>
