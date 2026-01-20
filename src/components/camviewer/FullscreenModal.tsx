@@ -153,7 +153,6 @@ export function FullscreenModal() {
           ref={webviewRef}
           src={fullscreenStream.url}
           className="h-full w-full"
-          preload="./preload.js"
         />
       </div>
     </div>

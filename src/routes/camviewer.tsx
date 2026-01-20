@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useGridStore } from "@/state/gridStore";
 import { useSettingsStore } from "@/state/settingsStore";
+import { useProfileModalStore } from "@/state/profileModalStore";
 import { StreamListSidebar } from "@/components/camviewer/StreamListSidebar";
 import { StreamGrid } from "@/components/camviewer/grid/StreamGrid";
 import { FullViewLayout } from "@/components/camviewer/FullViewLayout";
 import { FullscreenModal } from "@/components/camviewer/FullscreenModal";
 import { StatusHUD } from "@/components/camviewer/StatusHUD";
 import { EmptyState } from "@/components/camviewer/EmptyState";
+import { ProfileModal } from "@/components/camviewer/ProfileModal";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   closeWindow,
@@ -26,6 +28,7 @@ export function CamViewerPage() {
     layoutMode,
     setLayoutMode,
   } = useSettingsStore();
+  const { isOpen: isProfileOpen, username: profileUsername, closeProfile } = useProfileModalStore();
 
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<"streams" | "rooms" | "browse">("streams");
@@ -145,6 +148,13 @@ export function CamViewerPage() {
 
       <StatusHUD />
       <FullscreenModal />
+
+      {/* Profile Modal */}
+      <AnimatePresence>
+        {isProfileOpen && profileUsername && (
+          <ProfileModal username={profileUsername} onClose={closeProfile} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

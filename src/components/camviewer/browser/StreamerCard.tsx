@@ -2,6 +2,7 @@ import React from 'react';
 import { Plus, User, Users, UserCircle } from 'lucide-react';
 import { Streamer } from '@/services/chaturbateApiService';
 import { useGridStore } from '@/state/gridStore';
+import { useProfileModalStore } from '@/state/profileModalStore';
 import { formatNumber, getGenderColor } from '@/utils/formatters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ export const StreamerCardSkeleton = () => (
 
 export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
     const addStream = useGridStore((state) => state.addStream);
+    const openProfile = useProfileModalStore((state) => state.openProfile);
 
     const handleAddStream = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -36,8 +38,7 @@ export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
 
     const handleProfileClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        console.log('Navigating to profile:', streamer.username);
-        window.location.href = `/camviewer/room/${streamer.username}`;
+        openProfile(streamer.username);
     };
 
     return (
