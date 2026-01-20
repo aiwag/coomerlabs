@@ -258,7 +258,7 @@ export function SortableWebview({
   // ...
 
   const containerClasses = [
-    "relative bg-black transition-all duration-300 ease-in-out",
+    "relative bg-black transition-all duration-300 ease-in-out group",
     isFullViewMode ? "rounded-none" : "rounded-lg",
     isZoomed ? "overflow-visible" : "overflow-hidden",
     isDragging ? "opacity-0" : "opacity-100",
