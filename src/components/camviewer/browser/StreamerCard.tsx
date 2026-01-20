@@ -5,7 +5,6 @@ import { useGridStore } from '@/state/gridStore';
 import { formatNumber, getGenderColor } from '@/utils/formatters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Link } from '@tanstack/react-router';
 
 interface StreamerCardProps { streamer: Streamer; }
 
@@ -35,6 +34,11 @@ export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
         addStream(`https://www.chaturbate.com/fullvideo/?b=${streamer.username}`);
     };
 
+    const handleProfileClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        window.location.href = `#/camviewer/room/${streamer.username}`;
+    };
+
     return (
         <div className="p-1">
             <div className="glass-card rounded-xl overflow-hidden hover:border-cyan-500/50 hover:bg-white/5 transition-all duration-300 group flex h-[96px]">
@@ -60,14 +64,14 @@ export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <Link
-                            to={`/camviewer/room/${streamer.username}`}
-                            onClick={(e) => e.stopPropagation()}
+                        <button
+                            onClick={handleProfileClick}
                             className="h-8 px-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-all active:scale-95 cursor-pointer"
                             title="View Profile & Archives"
+                            type="button"
                         >
                             <UserCircle size={16} />
-                        </Link>
+                        </button>
                         <button
                             onClick={handleAddStream}
                             className="h-8 w-8 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center hover:bg-cyan-500 hover:text-white transition-all active:scale-95"

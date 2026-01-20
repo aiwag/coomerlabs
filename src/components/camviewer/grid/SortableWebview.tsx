@@ -21,7 +21,6 @@ import { LoadingIndicator } from "./LoadingIndicator";
 import { getUsernameFromUrl, generateThumbUrl } from "@/utils/formatters";
 import { StreamSkeleton } from "./StreamSkeleton";
 import { webviewInjectionScript } from "@/lib/webview-injection";
-import { Link } from "@tanstack/react-router";
 
 interface SortableWebviewProps {
   id: string;
@@ -343,14 +342,17 @@ export function SortableWebview({
           </button>
 
           {username && (
-            <Link
-              to={`/camviewer/room/${username}`}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute top-2 left-16 z-40 rounded-full bg-purple-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-purple-600 flex items-center justify-center"
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                window.location.href = `#/camviewer/room/${username}`;
+              }}
+              className="absolute top-2 left-16 z-40 rounded-full bg-purple-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-purple-600"
               title="View Profile & Archives"
+              type="button"
             >
               <User size={12} />
-            </Link>
+            </button>
           )}
         </>
       )}
