@@ -4,14 +4,16 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   Grid,
-  Users,
-  Hash,
   Sliders,
   X,
   ChevronDown,
   TrendingUp,
   Clock,
   Star,
+  Hash,
+  Gender,
+  Venus,
+  Mars,
 } from 'lucide-react';
 import { useRedgifsSettings, useRedgifsSearch } from './hooks';
 import { sortOptions, viewModes } from './types';
@@ -22,8 +24,27 @@ interface HeaderProps {
 
 export const Header = React.memo<HeaderProps>(({ onSortChange }) => {
   const { viewMode, setViewMode, sortBy, setSortBy } = useRedgifsSettings();
-  const { query, setQuery } = useRedgifsSearch();
-  const [showFilters, setShowFilters] = useState(false);
+  const { query, setQuery, gender, setGender } = useRedgifsSearch();
+  const [showGenderFilter, setShowGenderFilter] = useState(false);
+  const [showSortFilter, setShowSortFilter] = useState(false);
+
+  const genderOptions = [
+    { value: 'all', label: 'All', icon: Gender },
+    { value: 'straight', label: 'Straight', icon: Venus },
+    { value: 'gay', label: 'Gay', icon: Mars },
+    { value: 'lesbian', label: 'Lesbian', icon: Venus },
+    { value: 'trans', label: 'Trans', icon: Gender },
+  ];
+
+  const getSortIcon = (sortId: string) => {
+    switch (sortId) {
+      case 'trending': return TrendingUp;
+      case 'latest': return Clock;
+      case 'top': return Star;
+      case 'random': return Hash;
+      default: return Sliders;
+    }
+  };
 
   return (
     <div className="liquid-glass-dark border-b border-white/10 px-4 py-3">
@@ -83,15 +104,72 @@ export const Header = React.memo<HeaderProps>(({ onSortChange }) => {
             ))}
           </div>
 
+          {/* Gender Filter Dropdown */}
+          <div className="relative">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                setShowGenderFilter(!showGenderFilter);
+                setShowSortFilter(false);
+              }}
+              className="flex items-center gap-2 liquid-button px-3 py-2 text-sm"
+            >
+              {React.createElement(genderOptions.find((g) => g.value === gender)?.icon || Gender, { size: 14 })}
+              <span className="hidden sm:inline text-white/80">
+                {genderOptions.find((g) => g.value === gender)?.label || 'All'}
+              </span>
+              <ChevronDown size={12} className="text-white/60" />
+            </motion.button>
+
+            <AnimatePresence>
+              {showGenderFilter && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  className="absolute top-full right-0 mt-2 w-40 liquid-glass-dark rounded-xl border border-white/10 shadow-2xl z-50 overflow-hidden"
+                >
+                  <div className="p-1">
+                    {genderOptions.map((option) => {
+                      const Icon = option.icon;
+                      return (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setGender(option.value);
+                            setShowGenderFilter(false);
+                            onSortChange(sortBy);
+                          }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                            gender === option.value
+                              ? 'bg-white/20 text-white'
+                              : 'text-white/70 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <Icon size={14} />
+                          <span>{option.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* Sort Dropdown */}
           <div className="relative">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={() => {
+                setShowSortFilter(!showSortFilter);
+                setShowGenderFilter(false);
+              }}
               className="flex items-center gap-2 liquid-button px-3 py-2 text-sm"
             >
-              <Sliders size={14} />
+              {React.createElement(getSortIcon(sortOptions.find((o) => o.value === sortBy)?.id || ''), { size: 14 })}
               <span className="hidden sm:inline text-white/80">
                 {sortOptions.find((o) => o.value === sortBy)?.label || 'Sort'}
               </span>
@@ -99,7 +177,7 @@ export const Header = React.memo<HeaderProps>(({ onSortChange }) => {
             </motion.button>
 
             <AnimatePresence>
-              {showFilters && (
+              {showSortFilter && (
                 <motion.div
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -107,27 +185,27 @@ export const Header = React.memo<HeaderProps>(({ onSortChange }) => {
                   className="absolute top-full right-0 mt-2 w-48 liquid-glass-dark rounded-xl border border-white/10 shadow-2xl z-50 overflow-hidden"
                 >
                   <div className="p-1">
-                    {sortOptions.map((option) => (
-                      <button
-                        key={option.id}
-                        onClick={() => {
-                          setSortBy(option.value);
-                          onSortChange(option.value);
-                          setShowFilters(false);
-                        }}
-                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-                          sortBy === option.value
-                            ? 'bg-white/20 text-white'
-                            : 'text-white/70 hover:bg-white/10 hover:text-white'
-                        }`}
-                      >
-                        {option.id === 'trending' && <TrendingUp size={14} />}
-                        {option.id === 'latest' && <Clock size={14} />}
-                        {option.id === 'top' && <Star size={14} />}
-                        {option.id === 'random' && <Hash size={14} />}
-                        <span>{option.label}</span>
-                      </button>
-                    ))}
+                    {sortOptions.map((option) => {
+                      const Icon = getSortIcon(option.id);
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            setSortBy(option.value);
+                            onSortChange(option.value);
+                            setShowSortFilter(false);
+                          }}
+                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
+                            sortBy === option.value
+                              ? 'bg-white/20 text-white'
+                              : 'text-white/70 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <Icon size={14} />
+                          <span>{option.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </motion.div>
               )}

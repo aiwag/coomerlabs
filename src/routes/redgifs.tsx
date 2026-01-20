@@ -18,7 +18,7 @@ import { GifItem } from '../components/redgifs/types';
 
 const RedgifsRoute = () => {
   const { viewMode, sortBy } = useRedgifsSettings();
-  const { query } = useRedgifsSearch();
+  const { query, gender } = useRedgifsSearch();
   const [selectedGifIndex, setSelectedGifIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -31,12 +31,12 @@ const RedgifsRoute = () => {
     error,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['redgifs-gifs', sortBy, query],
+    queryKey: ['redgifs-gifs', sortBy, query, gender],
     queryFn: ({ pageParam = 1 }) => {
       if (query) {
-        return api.searchGifs({ query, pageParam });
+        return api.searchGifs({ query, pageParam, gender });
       }
-      return api.fetchTrendingGifs({ pageParam });
+      return api.fetchTrendingGifs({ pageParam, gender });
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
