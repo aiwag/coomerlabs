@@ -36,7 +36,8 @@ export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
 
     const handleProfileClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        window.location.href = `#/camviewer/room/${streamer.username}`;
+        console.log('Navigating to profile:', streamer.username);
+        window.location.href = `/camviewer/room/${streamer.username}`;
     };
 
     return (

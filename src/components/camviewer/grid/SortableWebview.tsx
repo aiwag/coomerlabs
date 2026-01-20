@@ -345,7 +345,8 @@ export function SortableWebview({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                window.location.href = `#/camviewer/room/${username}`;
+                console.log('Navigating to profile:', username);
+                window.location.href = `/camviewer/room/${username}`;
               }}
               className="absolute top-2 left-16 z-40 rounded-full bg-purple-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-purple-600"
               title="View Profile & Archives"
