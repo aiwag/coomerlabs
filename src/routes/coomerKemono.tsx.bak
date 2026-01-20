@@ -857,13 +857,13 @@ const CompactCreatorCard = React.memo(({
           <div className="flex justify-end gap-1">
             <button
               onClick={handleFavorite}
-              className="p-1.5 rounded-full liquid-button text-white hover:bg-white/30 transition-colors"
+              className="p-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
             >
               <Star size={14} className={isFavorited ? 'fill-yellow-500 text-yellow-500' : ''} />
             </button>
             <button
               onClick={handleLike}
-              className="p-1.5 rounded-full liquid-button text-white hover:bg-white/30 transition-colors"
+              className="p-1.5 bg-white/20 backdrop-blur-sm rounded-full text-white hover:bg-white/30 transition-colors"
             >
               <Heart size={14} className={isLiked ? 'fill-red-500 text-red-500' : ''} />
             </button>
@@ -1115,7 +1115,7 @@ const CompactPostGrid = React.memo(({
               )}
 
               {hasMultiple && (
-                <div className="absolute top-2 right-2 z-10 glass-card rounded-full px-1.5 py-0.5">
+                <div className="absolute top-2 right-2 z-10 bg-black/50 rounded-full px-1.5 py-0.5">
                   <span className="text-xs text-white">+{post.attachments.length}</span>
                 </div>
               )}
@@ -1244,7 +1244,7 @@ const HoverPreview = ({
 
   return (
     <div
-      className="fixed z-50 glass-card rounded-lg shadow-2xl overflow-hidden border border-gray-800"
+      className="fixed z-50 bg-black rounded-lg shadow-2xl overflow-hidden border border-gray-800"
       style={{
         top: `${position.top}px`,
         left: `${position.left}px`,
@@ -1268,7 +1268,7 @@ const HoverPreview = ({
           objectFit="cover"
         />
       )}
-      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent glass-card p-2 text-white">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 text-white">
         <p className="text-sm font-semibold truncate">{post.title}</p>
         <div className="flex items-center gap-2 mt-1">
           <span className="flex items-center gap-1 text-xs">
@@ -1456,7 +1456,7 @@ const MovieMode = ({
                     e.stopPropagation();
                     handleStart();
                   }}
-                  className="p-2 text-white rounded-full liquid-button bg-green-500/50 transition-colors"
+                  className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 transition-colors"
                 >
                   <Play size={20} />
                 </button>
@@ -1466,7 +1466,7 @@ const MovieMode = ({
                     e.stopPropagation();
                     handleStop();
                   }}
-                  className="p-2 text-white rounded-full liquid-button bg-red-500/50 transition-colors"
+                  className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors"
                 >
                   <Pause size={20} />
                 </button>
@@ -1476,7 +1476,7 @@ const MovieMode = ({
                   e.stopPropagation();
                   setCurrentIndex(Math.max(0, currentIndex - 1));
                 }}
-                className="p-2 text-white rounded-full liquid-button hover:bg-gray-700 transition-colors"
+                className="p-2 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors"
               >
                 <ChevronLeft size={20} />
               </button>
@@ -1488,7 +1488,7 @@ const MovieMode = ({
                     return prev < maxIndex ? prev + 1 : prev;
                   });
                 }}
-                className="p-2 text-white rounded-full liquid-button hover:bg-gray-700 transition-colors"
+                className="p-2 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors"
               >
                 <ChevronRight size={20} />
               </button>
@@ -1510,7 +1510,7 @@ const MovieMode = ({
               e.stopPropagation();
               onClose();
             }}
-            className="p-2 text-white rounded-full liquid-button hover:bg-gray-700 transition-colors"
+            className="p-2 bg-gray-800 text-white rounded-full hover:bg-gray-700 transition-colors"
           >
             <X size={20} />
           </button>
