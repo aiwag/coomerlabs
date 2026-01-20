@@ -5,7 +5,7 @@ import { useGridStore } from '@/state/gridStore';
 import { formatNumber, getGenderColor } from '@/utils/formatters';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 
 interface StreamerCardProps { streamer: Streamer; }
 
@@ -29,17 +29,10 @@ export const StreamerCardSkeleton = () => (
 
 export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
     const addStream = useGridStore((state) => state.addStream);
-    const navigate = useNavigate();
 
     const handleAddStream = (e: React.MouseEvent) => {
         e.stopPropagation();
         addStream(`https://www.chaturbate.com/fullvideo/?b=${streamer.username}`);
-    };
-
-    const handleProfileClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        console.log('Profile button clicked for:', streamer.username);
-        navigate({ to: `/camviewer/room/${streamer.username}` });
     };
 
     return (
@@ -67,14 +60,14 @@ export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <button
-                            onClick={handleProfileClick}
+                        <Link
+                            to={`/camviewer/room/${streamer.username}`}
+                            onClick={(e) => e.stopPropagation()}
                             className="h-8 px-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-all active:scale-95 cursor-pointer"
                             title="View Profile & Archives"
-                            type="button"
                         >
                             <UserCircle size={16} />
-                        </button>
+                        </Link>
                         <button
                             onClick={handleAddStream}
                             className="h-8 w-8 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center hover:bg-cyan-500 hover:text-white transition-all active:scale-95"

@@ -21,7 +21,7 @@ import { LoadingIndicator } from "./LoadingIndicator";
 import { getUsernameFromUrl, generateThumbUrl } from "@/utils/formatters";
 import { StreamSkeleton } from "./StreamSkeleton";
 import { webviewInjectionScript } from "@/lib/webview-injection";
-import { useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 interface SortableWebviewProps {
   id: string;
@@ -76,7 +76,6 @@ export function SortableWebview({
   colSpan = 1,
 }: SortableWebviewProps) {
   const { setFullViewMode } = useGridStore();
-  const navigate = useNavigate();
   const { attributes, listeners, setNodeRef, transform, transition, isOver } =
     useSortable({ id, disabled: !isDraggable });
   const webviewRef = useRef<Electron.WebviewTag>(null);
@@ -344,13 +343,14 @@ export function SortableWebview({
           </button>
 
           {username && (
-            <button
-              onClick={() => navigate({ to: `/camviewer/room/${username}` })}
-              className="absolute top-2 left-16 z-40 rounded-full bg-purple-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-purple-600"
+            <Link
+              to={`/camviewer/room/${username}`}
+              onClick={(e) => e.stopPropagation()}
+              className="absolute top-2 left-16 z-40 rounded-full bg-purple-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-purple-600 flex items-center justify-center"
               title="View Profile & Archives"
             >
               <User size={12} />
-            </button>
+            </Link>
           )}
         </>
       )}
