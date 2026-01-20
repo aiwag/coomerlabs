@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, User, Users, ExternalLink } from 'lucide-react';
+import { Plus, User, Users, UserCircle } from 'lucide-react';
 import { Streamer } from '@/services/chaturbateApiService';
 import { useGridStore } from '@/state/gridStore';
 import { formatNumber, getGenderColor } from '@/utils/formatters';
@@ -36,16 +36,13 @@ export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
         addStream(`https://www.chaturbate.com/fullvideo/?b=${streamer.username}`);
     };
 
-    const handleCardClick = () => {
+    const handleProfileClick = () => {
         navigate({ to: `/camviewer/room/${streamer.username}` });
     };
 
     return (
         <div className="p-1">
-            <div
-                className="glass-card rounded-xl overflow-hidden hover:border-cyan-500/50 hover:bg-white/5 transition-all duration-300 group flex h-[96px] cursor-pointer"
-                onClick={handleCardClick}
-            >
+            <div className="glass-card rounded-xl overflow-hidden hover:border-cyan-500/50 hover:bg-white/5 transition-all duration-300 group flex h-[96px]">
                 <div className="w-24 relative flex-shrink-0 overflow-hidden">
                     <img
                         src={streamer.img}
@@ -61,16 +58,20 @@ export const StreamerCard = React.memo(({ streamer }: StreamerCardProps) => {
                 </div>
                 <div className="p-3 flex flex-col justify-between flex-grow min-w-0">
                     <div>
-                        <div className="flex items-center gap-1">
-                            <h3 className="text-white font-bold text-sm tracking-tight truncate">{streamer.username}</h3>
-                            <ExternalLink size={10} className="text-neutral-500 flex-shrink-0" />
-                        </div>
+                        <h3 className="text-white font-bold text-sm tracking-tight truncate">{streamer.username}</h3>
                         <div className="flex items-center gap-3 text-[10px] text-neutral-400 mt-1">
                             <div className="flex items-center gap-1" title="Viewers"><Users size={12} /><span>{formatNumber(streamer.num_users)}</span></div>
                             <div className="flex items-center gap-1" title="Age"><User size={12} /><span>{streamer.display_age}</span></div>
                         </div>
                     </div>
                     <div className="flex gap-2">
+                        <button
+                            onClick={handleProfileClick}
+                            className="h-8 px-2 rounded-lg bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center hover:bg-purple-500 hover:text-white transition-all active:scale-95"
+                            title="View Profile & Archives"
+                        >
+                            <UserCircle size={16} />
+                        </button>
                         <button
                             onClick={handleAddStream}
                             className="h-8 w-8 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 flex items-center justify-center hover:bg-cyan-500 hover:text-white transition-all active:scale-95"
