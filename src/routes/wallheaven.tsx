@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { useInView } from 'react-intersection-observer';
 import { Toaster, toast } from 'react-hot-toast';
+import Masonry from 'react-masonry-css';
 import {
   Search,
   X,
@@ -81,6 +82,7 @@ interface FilterOptions {
   };
   sorting: 'toplist' | 'date_added' | 'relevance' | 'random' | 'views' | 'favorites';
   topRange: '1d' | '3d' | '1w' | '1M' | '3M' | '6M' | '1y';
+  searchQuery: string;
 }
 
 // --- API Service ---
@@ -112,6 +114,11 @@ const fetchWallpapers = async ({ pageParam = 1, signal, filters }: FetchParams):
     topRange: filters.topRange,
     page: pageParam.toString(),
   });
+
+  // Add search query if provided
+  if (filters.searchQuery && filters.searchQuery.trim()) {
+    params.append('q', filters.searchQuery.trim());
+  }
 
   const response = await fetch(`${BASE_URL}?${params.toString()}`, { signal });
 
@@ -342,7 +349,18 @@ const FilterPanel = ({
 
 // Enhanced Skeleton Loader with glassmorphic design
 const ImageGridSkeleton = () => (
-  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-4">
+  <Masonry
+    breakpointCols={{
+      default: 6,
+      1536: 6,
+      1280: 4,
+      1024: 3,
+      768: 2,
+      640: 2,
+    }}
+    className="flex gap-4"
+    columnClassName="flex flex-col gap-4"
+  >
     {Array.from({ length: 24 }).map((_, index) => (
       <div key={index} className="group">
         <div className="aspect-[2/3] glass-card animate-pulse" />
@@ -352,7 +370,7 @@ const ImageGridSkeleton = () => (
         </div>
       </div>
     ))}
-  </div>
+  </Masonry>
 );
 
 // Enhanced Image Card Component with glassmorphic design & hover preview
@@ -371,6 +389,7 @@ const ImageCard = ({
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [imageHeight, setImageHeight] = useState<number | null>(null);
 
   const purityColors = {
     sfw: 'bg-green-500',
@@ -378,9 +397,15 @@ const ImageCard = ({
     nsfw: 'bg-red-500',
   };
 
+  // Calculate aspect ratio for masonry
+  const aspectRatio = wallpaper.dimension_x && wallpaper.dimension_y
+    ? wallpaper.dimension_y / wallpaper.dimension_x
+    : 1.5;
+
   return (
     <div
-      className="group relative block w-full aspect-[2/3] glass-card overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:z-10"
+      className="group relative block w-full glass-card overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:z-10"
+      style={{ paddingBottom: `${aspectRatio * 100}%` }}
       onClick={onClick}
       onMouseEnter={() => {
         onHover(wallpaper);
@@ -417,12 +442,12 @@ const ImageCard = ({
         <img
           src={thumbSrc}
           alt={`Wallpaper by ${uploaderName}`}
-          className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
           loading="lazy"
           onError={() => setImageError(true)}
         />
       ) : (
-        <div className="w-full h-full flex items-center justify-center bg-black/40">
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
           <span className="text-white/40">Failed to load</span>
         </div>
       )}
@@ -873,6 +898,7 @@ function RouteComponent() {
     },
     sorting: 'toplist',
     topRange: '1M',
+    searchQuery: '',
   });
 
   const { data, error, fetchNextPage, hasNextPage, isFetchingNextPage, status, refetch } = useInfiniteQuery({
@@ -1014,6 +1040,31 @@ function RouteComponent() {
           {/* Controls Row */}
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                <input
+                  type="text"
+                  value={filters.searchQuery}
+                  onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      refetch();
+                    }
+                  }}
+                  placeholder="Search wallpapers..."
+                  className="liquid-input pl-10 pr-10 py-2 w-64 text-sm text-white placeholder-white/40"
+                />
+                {filters.searchQuery && (
+                  <button
+                    onClick={() => setFilters({ ...filters, searchQuery: '' })}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
               {/* Grid Size Control */}
               <div className="flex items-center gap-2 px-3 py-2 glass-card">
                 <Grid size={16} className="text-white/60" />
@@ -1090,7 +1141,18 @@ function RouteComponent() {
                   </p>
                 }
               >
-                <div className={`grid gap-4`} style={{ gridTemplateColumns: `repeat(${gridColumns}, minmax(0, 1fr))` }}>
+                <Masonry
+                  breakpointCols={{
+                    default: gridColumns,
+                    1536: gridColumns,
+                    1280: Math.max(4, gridColumns - 2),
+                    1024: Math.max(3, gridColumns - 3),
+                    768: Math.max(2, gridColumns - 4),
+                    640: 2,
+                  }}
+                  className="flex gap-4"
+                  columnClassName="flex flex-col gap-4"
+                >
                   {allWallpapers.map((wallpaper, index) => (
                     <ImageCard
                       key={`${wallpaper.id}-${index}`}
@@ -1099,7 +1161,7 @@ function RouteComponent() {
                       onHover={setHoveredWallpaper}
                     />
                   ))}
-                </div>
+                </Masonry>
               </InfiniteScroll>
 
               {/* Infinite scroll trigger for fallback */}
