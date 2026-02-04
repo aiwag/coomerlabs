@@ -3,10 +3,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { ArrowLeft, Video, Film, Loader2, AlertCircle } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  fetchArchiveProfile,
-  ArchiveVideo,
-} from "@/services/archivebateService";
+import { fetchArchiveProfile } from "@/services/archivebateService";
 import { ArchiveVideoCard } from "@/components/camviewer/ArchiveVideoCard";
 import { SortableWebview } from "@/components/camviewer/grid/SortableWebview";
 

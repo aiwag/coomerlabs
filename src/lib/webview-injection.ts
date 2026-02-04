@@ -35,6 +35,17 @@ export const webviewInjectionScript = `
 
     const allSelectors = [...commonSelectors, ...siteSelectors];
 
+    // Throttle helper for performance
+    let cleanUIScheduled = false;
+    const throttledCleanUI = () => {
+      if (cleanUIScheduled) return;
+      cleanUIScheduled = true;
+      requestAnimationFrame(() => {
+        cleanUI();
+        cleanUIScheduled = false;
+      });
+    };
+
     const cleanUI = () => {
        allSelectors.forEach(sel => {
         document.querySelectorAll(sel).forEach(el => {
@@ -59,12 +70,13 @@ export const webviewInjectionScript = `
       }
     };
 
+    let videoStyled = false;
     const makeVideoFullscreen = () => {
       // Prioritize videos that look like content (longer duration, specific classes)
       const videos = Array.from(document.querySelectorAll('video'));
       const mainVideo = videos.find(v => v.duration > 5) || videos[0];
 
-      if (mainVideo) {
+      if (mainVideo && !videoStyled) {
         mainVideo.style.position='fixed'; 
         mainVideo.style.top='0'; 
         mainVideo.style.left='0';
@@ -83,19 +95,27 @@ export const webviewInjectionScript = `
           // For other sites, remove controls
           mainVideo.controls = false;
         }
+        videoStyled = true;
       }
     };
     
     cleanUI();
     makeVideoFullscreen();
+    // Reduced frequency from 1000ms to 2000ms
     setInterval(() => {
-        cleanUI();
+        throttledCleanUI();
         makeVideoFullscreen();
-    }, 1000);
+    }, 2000);
 
+    // Throttled mutation observer to prevent excessive triggers
+    let observerTimeout = null;
     const uiObserver = new MutationObserver(() => {
-        cleanUI();
-        makeVideoFullscreen();
+        if (observerTimeout) return;
+        observerTimeout = setTimeout(() => {
+          throttledCleanUI();
+          makeVideoFullscreen();
+          observerTimeout = null;
+        }, 500);
     });
     uiObserver.observe(document.body, { childList: true, subtree: true });
 
@@ -160,7 +180,7 @@ export const webviewInjectionScript = `
       }
     });
 
-    // Part 4: Sentry Mode (Computer Vision Motion Detection)
+    // Part 4: Sentry Mode (Computer Vision Motion Detection) - Optimized
     const initMotionDetector = () => {
       const video = document.querySelector('video');
       if (!video) return;
@@ -169,9 +189,9 @@ export const webviewInjectionScript = `
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) return;
 
-      // Low res for performance
-      canvas.width = 32;
-      canvas.height = 32;
+      // Even lower res for better performance - 24x24 is enough
+      canvas.width = 24;
+      canvas.height = 24;
       
       let prevData = null;
       let lastActivityEmit = 0;
@@ -180,25 +200,25 @@ export const webviewInjectionScript = `
         if (video.paused || video.ended) return;
 
         try {
-          ctx.drawImage(video, 0, 0, 32, 32);
-          const imageData = ctx.getImageData(0, 0, 32, 32);
+          ctx.drawImage(video, 0, 0, 24, 24);
+          const imageData = ctx.getImageData(0, 0, 24, 24);
           const data = imageData.data;
           
           if (prevData) {
             let diff = 0;
-            // Simple pixel diff
-            for (let i = 0; i < data.length; i += 4) {
+            // Optimized: Check every 8th pixel (sample) instead of all pixels
+            for (let i = 0; i < data.length; i += 32) {
                // Compare luminance/green channel roughly
                diff += Math.abs(data[i+1] - prevData[i+1]); 
             }
             
-            // Normalize score (0-100)
-            const score = Math.min(100, Math.floor(diff / (32 * 32) * 5));
+            // Normalize score (0-100) with adjusted calculation
+            const score = Math.min(100, Math.floor(diff / (24 * 3) * 5));
             
             if (score > 10) { // Threshold
                const now = Date.now();
-               // Throttle updates
-               if (now - lastActivityEmit > 200) {
+               // Increased throttle from 200ms to 500ms
+               if (now - lastActivityEmit > 500) {
                  if (window.electron?.ipcRenderer) {
                     window.electron.ipcRenderer.sendToHost('activity-update', score);
                  }
@@ -206,11 +226,12 @@ export const webviewInjectionScript = `
                }
             }
           }
-          prevData = data;
+          prevData = new Uint8ClampedArray(data); // Clone to prevent reference issues
         } catch (e) {}
       };
 
-      setInterval(checkMotion, 200); // Check 5 times a second
+      // Reduced from 200ms to 500ms - Check 2 times per second instead of 5
+      setInterval(checkMotion, 500);
     };
 
     // Try to init detector periodically until video exists

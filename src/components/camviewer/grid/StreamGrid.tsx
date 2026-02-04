@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -134,24 +134,35 @@ export function StreamGrid() {
     };
   }, [isGlobalMute, setGlobalMute]);
 
-  // Container Resize for Smart Layout
+  // Container Resize for Smart Layout - Throttled for performance
   const [containerSize, setContainerSize] = useState({ w: 1920, h: 1080 });
 
   useEffect(() => {
     if (!gridRef.current) return;
+
+    let resizeTimeout: NodeJS.Timeout | null = null;
     const ro = new ResizeObserver(entries => {
-      for (let entry of entries) {
-        const { width, height } = entry.contentRect;
-        if (width > 0 && height > 0) {
-          setContainerSize({ w: width, h: height });
+      // Throttle resize updates to max once every 150ms
+      if (resizeTimeout) return;
+
+      resizeTimeout = setTimeout(() => {
+        for (let entry of entries) {
+          const { width, height } = entry.contentRect;
+          if (width > 0 && height > 0) {
+            setContainerSize({ w: width, h: height });
+          }
         }
-      }
+        resizeTimeout = null;
+      }, 150);
     });
     ro.observe(gridRef.current);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+    };
   }, []);
 
-  const getSmartDimensions = (index: number, count: number) => {
+  const getSmartDimensions = useCallback((index: number, count: number) => {
     if (layoutMode !== 'smart-fit') return null;
 
     let pattern: number[] = [];
@@ -204,7 +215,7 @@ export function StreamGrid() {
     const itemWidth = 100 / itemsInRow;
 
     return { width: `${itemWidth}%`, height: `${rowHeight}%` };
-  };
+  }, [layoutMode, containerSize]);
 
 
   // Luxury Features Stat

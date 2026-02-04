@@ -1,10 +1,7 @@
 import React, { useState, useCallback } from "react";
 import { X, Video, Film, Loader2, AlertCircle, ExternalLink, Play } from "lucide-react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import {
-  fetchArchiveProfile,
-  ArchiveVideo,
-} from "@/services/archivebateService";
+import { fetchArchiveProfile } from "@/services/archivebateService";
 import { ArchiveVideoCard } from "@/components/camviewer/ArchiveVideoCard";
 import { SortableWebview } from "@/components/camviewer/grid/SortableWebview";
 

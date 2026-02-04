@@ -18,9 +18,40 @@ interface ElectronWindow {
   close: () => Promise<void>;
 }
 
+interface ArchiveVideo {
+  id: string;
+  title: string;
+  thumbnail: string;
+  duration?: string;
+  views?: string;
+  date?: string;
+  embedUrl: string;
+  pageUrl: string;
+}
+
+interface ArchiveProfileResponse {
+  username: string;
+  videos: ArchiveVideo[];
+  currentPage: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
 interface ElectronAPI {
   openExternal: (url: string) => Promise<void>;
   db: any;
+  archivebate: {
+    getProfile: (username: string, page?: number) => Promise<{
+      success: boolean;
+      data?: ArchiveProfileResponse;
+      error?: string;
+    }>;
+    getEmbedUrl: (pageUrl: string) => Promise<{
+      success: boolean;
+      data?: { embedUrl: string };
+      error?: string;
+    }>;
+  };
 }
 
 declare interface Window {

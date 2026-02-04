@@ -36,6 +36,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
       ipcRenderer.invoke('db:getStats'),
     vacuum: () =>
       ipcRenderer.invoke('db:vacuum'),
+  },
+
+  // ArchiveBate API
+  archivebate: {
+    getProfile: (username: string, page?: number) =>
+      ipcRenderer.invoke('archivebate:getProfile', username, page),
+    getEmbedUrl: (pageUrl: string) =>
+      ipcRenderer.invoke('archivebate:getEmbedUrl', pageUrl),
   }
 });
 

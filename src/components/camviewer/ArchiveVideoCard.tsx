@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Play, Clock, Eye, Calendar, ExternalLink, Loader2 } from 'lucide-react';
-import { ArchiveVideo, getVideoEmbedUrl } from '@/services/archivebateService';
+import { getVideoEmbedUrl } from '@/services/archivebateService';
 
 interface ArchiveVideoCardProps {
   video: ArchiveVideo;

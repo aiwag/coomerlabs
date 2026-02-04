@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback, useMemo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useInView } from "react-intersection-observer";
@@ -57,7 +57,7 @@ const executeWebviewScript = (
 
 type LoadingStage = "connecting" | "loading" | "ready" | "error";
 
-export function SortableWebview({
+const SortableWebviewComponent = ({
   id,
   url,
   index,
@@ -74,7 +74,7 @@ export function SortableWebview({
   isSmartAudio = false,
   isGlobalMute = false,
   colSpan = 1,
-}: SortableWebviewProps) {
+}: SortableWebviewProps) => {
   const { setFullViewMode } = useGridStore();
   const openProfile = useProfileModalStore((state) => state.openProfile);
   const { attributes, listeners, setNodeRef, transform, transition, isOver } =
@@ -93,7 +93,12 @@ export function SortableWebview({
   const [domReady, setDomReady] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
 
-  const { ref: viewRef, inView } = useInView({ rootMargin: "200px 0px" });
+  // Optimized intersection observer with threshold for better performance
+  const { ref: viewRef, inView } = useInView({
+    rootMargin: "200px 0px",
+    threshold: 0.1, // Only trigger when 10% visible
+    triggerOnce: false
+  });
 
   // Refs for stable access in listeners without re-triggering effects
   const indexRef = useRef(index);
@@ -214,22 +219,22 @@ export function SortableWebview({
       : "document.querySelector('video')?.pause();";
     executeWebviewScript(webviewRef.current, script);
     setPlaying(index, shouldPlay);
-  }, [inView, isFullViewMode, domReady, index, setPlaying, viewMode]);
+  }, [inView, isFullViewMode, domReady, index, setPlaying, viewMode, isGlobalMute, isMuted]);
 
-  const handleReload = () => {
+  const handleReload = useCallback(() => {
     console.log("[Webview] Reloading:", url);
     setLoadingStage("connecting");
     setLoadingProgress(0);
     setError(null);
     setDomReady(false);
     webviewRef.current?.reload();
-  };
+  }, [url]);
 
-  const username = getUsernameFromUrl(url);
+  const username = useMemo(() => getUsernameFromUrl(url), [url]);
+  const thumbUrl = useMemo(() => generateThumbUrl(username), [username]);
   const isFullExpand = viewMode === "full-expand";
-  const thumbUrl = generateThumbUrl(username);
 
-  const style = {
+  const style = useMemo(() => ({
     transform: isZoomed ? 'scale(1.8)' : CSS.Transform.toString(transform),
     transition: isZoomed ? 'transform 0.1s ease-out' : transition,
     zIndex: isFullViewMode ? 100 : (isDragging ? 101 : (isZoomed ? 9999 : 10)),
@@ -253,9 +258,40 @@ export function SortableWebview({
       outline: '2px solid cyan',
       borderRadius: '0.5rem'
     })
-  };
+  }), [isZoomed, transform, transition, isFullViewMode, isDragging, colSpan, width, height, top, left]);
 
-  // ...
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleDoubleClick = useCallback(() => {
+    if (isFullViewMode) {
+      setFullViewMode(null);
+    } else {
+      setFullViewMode(index);
+    }
+  }, [isFullViewMode, index, setFullViewMode]);
+
+  const handleMouseEnter = useCallback(() => {
+    setShowStreamInfo(true);
+    // Fallback or wrapper-level Smart Audio (if IPC fails or for faster response)
+    if (isSmartAudio && domReady && !isGlobalMute) {
+      executeWebviewScript(webviewRef.current, "const v=document.querySelector('video');if(v){v.muted=false;}");
+    }
+  }, [isSmartAudio, domReady, isGlobalMute]);
+
+  const handleMouseLeave = useCallback(() => {
+    setShowStreamInfo(false);
+    setIsZoomed(false);
+    if (isSmartAudio && domReady) {
+      executeWebviewScript(webviewRef.current, "const v=document.querySelector('video');if(v){v.muted=true;}");
+    }
+  }, [isSmartAudio, domReady]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging) setIsZoomed(e.shiftKey);
+  }, [isDragging]);
 
   const containerClasses = [
     "relative bg-black transition-all duration-300 ease-in-out group",
@@ -280,34 +316,11 @@ export function SortableWebview({
       }}
       style={style}
       className={containerClasses}
-      onMouseMove={(e) => {
-        if (!isDragging) setIsZoomed(e.shiftKey);
-      }}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        setContextMenu({ x: e.clientX, y: e.clientY });
-      }}
-      onDoubleClick={() => {
-        if (isFullViewMode) {
-          setFullViewMode(null);
-        } else {
-          setFullViewMode(index);
-        }
-      }}
-      onMouseEnter={() => {
-        setShowStreamInfo(true);
-        // Fallback or wrapper-level Smart Audio (if IPC fails or for faster response)
-        if (isSmartAudio && domReady && !isGlobalMute) {
-          executeWebviewScript(webviewRef.current, "const v=document.querySelector('video');if(v){v.muted=false;}");
-        }
-      }}
-      onMouseLeave={() => {
-        setShowStreamInfo(false);
-        setIsZoomed(false);
-        if (isSmartAudio && domReady) {
-          executeWebviewScript(webviewRef.current, "const v=document.querySelector('video');if(v){v.muted=true;}");
-        }
-      }}
+      onMouseMove={handleMouseMove}
+      onContextMenu={handleContextMenu}
+      onDoubleClick={handleDoubleClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <div className={dropIndicatorClasses} />
 
@@ -367,7 +380,8 @@ export function SortableWebview({
         ref={webviewRef}
         src={url}
         className="h-full w-full bg-black"
-        webpreferences="backgroundThrottling=true"
+        partition={`persist:stream-${index}`}
+        webpreferences="backgroundThrottling=true,enablePreferredSizeMode=false,nodeIntegration=false,contextIsolation=true"
       />
 
       {domReady && !inView && !isFullViewMode && !isFullExpand && !error && (
@@ -450,4 +464,24 @@ export function SortableWebview({
       )}
     </div>
   );
-}
+};
+
+// Memoize component to prevent unnecessary re-renders
+export const SortableWebview = React.memo(SortableWebviewComponent, (prevProps, nextProps) => {
+  // Custom comparison for better performance
+  return (
+    prevProps.url === nextProps.url &&
+    prevProps.index === nextProps.index &&
+    prevProps.isFullViewMode === nextProps.isFullViewMode &&
+    prevProps.isDragging === nextProps.isDragging &&
+    prevProps.isDraggable === nextProps.isDraggable &&
+    prevProps.isZenMode === nextProps.isZenMode &&
+    prevProps.isSmartAudio === nextProps.isSmartAudio &&
+    prevProps.isGlobalMute === nextProps.isGlobalMute &&
+    prevProps.viewMode === nextProps.viewMode &&
+    prevProps.width === nextProps.width &&
+    prevProps.height === nextProps.height
+  );
+});
+
+SortableWebview.displayName = 'SortableWebview';
