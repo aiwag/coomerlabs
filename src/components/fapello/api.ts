@@ -1,6 +1,6 @@
 // Fapello API Services
 import axios from 'axios';
-import { Profile, Image, CreatorProfile } from './types';
+import type { Profile, Image, CreatorProfile } from './types';
 
 // Extract creator ID from profile
 export const extractCreatorId = (profile: Profile): string => {

@@ -101,11 +101,13 @@ export const webviewInjectionScript = `
     
     cleanUI();
     makeVideoFullscreen();
-    // Reduced frequency from 1000ms to 2000ms
-    setInterval(() => {
-        throttledCleanUI();
-        makeVideoFullscreen();
-    }, 2000);
+    // Reduced frequency from 1000ms to 2000ms. Staggered start to prevent CPU spikes.
+    setTimeout(() => {
+      setInterval(() => {
+          throttledCleanUI();
+          makeVideoFullscreen();
+      }, 2000);
+    }, Math.random() * 2000);
 
     // Throttled mutation observer to prevent excessive triggers
     let observerTimeout = null;
@@ -197,7 +199,7 @@ export const webviewInjectionScript = `
       let lastActivityEmit = 0;
 
       const checkMotion = () => {
-        if (video.paused || video.ended) return;
+        if (video.paused || video.ended || document.hidden) return;
 
         try {
           ctx.drawImage(video, 0, 0, 24, 24);
@@ -206,19 +208,18 @@ export const webviewInjectionScript = `
           
           if (prevData) {
             let diff = 0;
-            // Optimized: Check every 8th pixel (sample) instead of all pixels
-            for (let i = 0; i < data.length; i += 32) {
-               // Compare luminance/green channel roughly
+            // Extremely aggressive sampling: check every 128th byte (32nd pixel)
+            for (let i = 0; i < data.length; i += 128) {
                diff += Math.abs(data[i+1] - prevData[i+1]); 
             }
             
-            // Normalize score (0-100) with adjusted calculation
-            const score = Math.min(100, Math.floor(diff / (24 * 3) * 5));
+            // Normalize score
+            const score = Math.min(100, Math.floor(diff / (24 * 1) * 8));
             
-            if (score > 10) { // Threshold
+            if (score > 12) { // Higher threshold
                const now = Date.now();
-               // Increased throttle from 200ms to 500ms
-               if (now - lastActivityEmit > 500) {
+               // Throttle emission to 800ms
+               if (now - lastActivityEmit > 800) {
                  if (window.electron?.ipcRenderer) {
                     window.electron.ipcRenderer.sendToHost('activity-update', score);
                  }
@@ -226,21 +227,23 @@ export const webviewInjectionScript = `
                }
             }
           }
-          prevData = new Uint8ClampedArray(data); // Clone to prevent reference issues
+          prevData = new Uint8ClampedArray(data); 
         } catch (e) {}
       };
 
-      // Reduced from 200ms to 500ms - Check 2 times per second instead of 5
-      setInterval(checkMotion, 500);
+      // Check every 1000ms - 1 time per second is plenty for the grid indicators
+      setInterval(checkMotion, 1000);
     };
 
-    // Try to init detector periodically until video exists
-    const detectorInterval = setInterval(() => {
-        if (document.querySelector('video')) {
-            initMotionDetector();
-            clearInterval(detectorInterval);
-        }
-    }, 1000);
+    // Try to init detector periodically until video exists. Staggered start.
+    setTimeout(() => {
+      const detectorInterval = setInterval(() => {
+          if (document.querySelector('video')) {
+              initMotionDetector();
+              clearInterval(detectorInterval);
+          }
+      }, 1000);
+    }, Math.random() * 1000);
 
   } catch (e) { console.error('Injection Error:', e); }
 })();

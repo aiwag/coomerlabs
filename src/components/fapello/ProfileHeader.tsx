@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from './hooks';
-import { CreatorProfile } from './types';
+import type { CreatorProfile } from './types';
 
 interface ProfileHeaderProps {
   profile: CreatorProfile;

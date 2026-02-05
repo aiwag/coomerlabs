@@ -3,7 +3,7 @@ import axios from 'axios';
 import { Creator, Profile } from './types';
 
 const API_BASE = 'https://coomer.su/api';
-const KEMONO_API_BASE = 'https://kemono.su/api';
+const KEMONO_API_BASE = 'https://kemono.cr/api';
 
 // Fetch creators list
 export const fetchCreators = async ({
@@ -79,13 +79,13 @@ export const fetchPosts = async ({
 
 // Get avatar URL
 export const getAvatarUrl = (service: string, user: string): string => {
-  const baseUrl = service === 'patreon' || service === 'fanbox' ? 'https://kemono.su' : 'https://coomer.su';
+  const baseUrl = service === 'patreon' || service === 'fanbox' ? 'https://kemono.cr' : 'https://coomer.su';
   return `${baseUrl}/icons/${service}/${user}`;
 };
 
 // Get post file URL
 export const getPostUrl = (service: string, postId: string, filename: string): string => {
-  const baseUrl = ['patreon', 'fanbox'].includes(service) ? 'https://kemono.su' : 'https://coomer.su';
+  const baseUrl = ['patreon', 'fanbox'].includes(service) ? 'https://kemono.cr' : 'https://coomer.su';
   const hash = postId.slice(0, 2);
   return `${baseUrl}/data/${service}/user/${postId}/${hash}/${filename}`;
 };

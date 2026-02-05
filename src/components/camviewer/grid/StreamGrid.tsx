@@ -8,6 +8,7 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, rectSwappingStrategy } from "@dnd-kit/sortable";
 import { useGridStore } from "@/state/gridStore";
+import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore, LayoutMode } from "@/state/settingsStore";
 import { SortableWebview } from "./SortableWebview";
 import { WaterfallLayout } from "./WaterfallLayout";
@@ -36,7 +37,23 @@ function DraggingItem({ url }: { url: string }) {
 }
 
 export function StreamGrid() {
-  const { streamUrls, handleDragEnd, isGlobalMute, setGlobalMute, rotateStreams, fullViewMode, setFullViewMode } = useGridStore();
+  const {
+    streamUrls,
+    handleDragEnd,
+    isGlobalMute,
+    setGlobalMute,
+    rotateStreams,
+    fullViewMode,
+    setFullViewMode
+  } = useGridStore(useShallow((state) => ({
+    streamUrls: state.streamUrls,
+    handleDragEnd: state.handleDragEnd,
+    isGlobalMute: state.isGlobalMute,
+    setGlobalMute: state.setGlobalMute,
+    rotateStreams: state.rotateStreams,
+    fullViewMode: state.fullViewMode,
+    setFullViewMode: state.setFullViewMode,
+  })));
   const { layoutMode, setLayoutMode } = useSettingsStore();
   const [activeId, setActiveId] = useState<string | null>(null);
   const gridRef = React.useRef<HTMLDivElement>(null);
@@ -51,6 +68,14 @@ export function StreamGrid() {
       if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
 
       const key = e.key.toLowerCase();
+
+      if (key === 'r') {
+        e.preventDefault();
+        // This is a bit tricky as we need to trigger refresh on all webviews
+        // We can do this by toggling a key or sending a custom IPC/event
+        window.dispatchEvent(new CustomEvent('refresh-all-streams'));
+        showHUD("Refreshing All Streams", "info", "layout");
+      }
 
       // Escape to exit full view
       if (e.key === 'Escape') {
@@ -90,6 +115,19 @@ export function StreamGrid() {
           const username = getUsernameFromUrl(streamUrls[index]);
           showHUD(`Focus: ${username}`, "info", "enter");
         }
+      }
+
+      // Stream Switching with Arrows
+      if (e.key === 'ArrowLeft') {
+        const prevIndex = fullViewMode === null ? 0 : (fullViewMode - 1 + streamUrls.length) % streamUrls.length;
+        setFullViewMode(prevIndex);
+        showHUD(`Next Stream`, "info", "layout");
+      }
+
+      if (e.key === 'ArrowRight') {
+        const nextIndex = fullViewMode === null ? 0 : (fullViewMode + 1) % streamUrls.length;
+        setFullViewMode(nextIndex);
+        showHUD(`Next Stream`, "info", "layout");
       }
     };
 
@@ -140,25 +178,32 @@ export function StreamGrid() {
   useEffect(() => {
     if (!gridRef.current) return;
 
-    let resizeTimeout: NodeJS.Timeout | null = null;
-    const ro = new ResizeObserver(entries => {
-      // Throttle resize updates to max once every 150ms
-      if (resizeTimeout) return;
+    let rafId: number | null = null;
+    let lastUpdate = 0;
+    const THROTTLE = 32; // ~30fps is enough for resize
 
-      resizeTimeout = setTimeout(() => {
+    const ro = new ResizeObserver(entries => {
+      const now = Date.now();
+      if (now - lastUpdate < THROTTLE) return;
+
+      if (rafId) cancelAnimationFrame(rafId);
+
+      rafId = requestAnimationFrame(() => {
         for (let entry of entries) {
           const { width, height } = entry.contentRect;
           if (width > 0 && height > 0) {
             setContainerSize({ w: width, h: height });
+            lastUpdate = Date.now();
           }
         }
-        resizeTimeout = null;
-      }, 150);
+        rafId = null;
+      });
     });
+
     ro.observe(gridRef.current);
     return () => {
       ro.disconnect();
-      if (resizeTimeout) clearTimeout(resizeTimeout);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, []);
 

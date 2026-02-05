@@ -222,38 +222,145 @@ export class JavtubeService {
         },
       });
 
-      if (!pageResponse.ok) return null;
+      if (!pageResponse.ok) {
+        console.error(`[JavtubeService] Failed to fetch video page: ${pageResponse.status}`);
+        return null;
+      }
+
+      // Update base URL based on the response URL to handle redirects (e.g. to jp.javtiful.com)
+      const finalUrl = pageResponse.url;
+      let currentBaseUrl = this.baseUrl;
+      try {
+        const urlObj = new URL(finalUrl);
+        currentBaseUrl = `${urlObj.protocol}//${urlObj.host}`;
+        console.log(`[JavtubeService] Updated base URL to: ${currentBaseUrl}`);
+      } catch (e) {
+        console.warn("[JavtubeService] Failed to parse final URL, keeping default");
+      }
+
+      // Extract cookies
+      const setCookieHeader = pageResponse.headers.get("set-cookie");
+      let cookieString = "";
+      if (setCookieHeader) {
+        if (typeof setCookieHeader === 'string') {
+          // Basic comma split (flawed for dates but works for simple session cookies usually found here)
+          // Better: use a regex or library if available, but for now stick to the working logic from standalone
+          cookieString = setCookieHeader.split(",").map((c: string) => c.split(";")[0]).join("; ");
+        } else if (Array.isArray(setCookieHeader)) {
+          // @ts-ignore
+          cookieString = setCookieHeader.map((c: string) => c.split(";")[0]).join("; ");
+        }
+      }
 
       const html = await pageResponse.text();
       const dom = new JSDOM(html);
       const document = dom.window.document;
 
-      // Strategy 1: video source elements
-      const videoElements = document.querySelectorAll("video source");
-      for (const source of videoElements) {
-        const src = source.getAttribute("src");
-        if (src && (src.includes("mp4") || src.includes("cdn") || src.includes("stream"))) {
-          return src;
+      // ---------------------------------------------------------
+      // STRATEGY 0: AJAX API
+      // ---------------------------------------------------------
+      try {
+        // 1. Extract CSRF Token
+        let token = document.getElementById("token_full")?.getAttribute("data-csrf-token");
+        if (!token) {
+          const tokenInput = document.querySelector('input[name*="token"]');
+          token = tokenInput?.getAttribute("value") || tokenInput?.getAttribute("data-csrf-token");
+        }
+
+        if (token) {
+          console.log(`[JavtubeService] Found CSRF Token: ${token}, attempting API fetch to ${currentBaseUrl}...`);
+
+          const formData = new FormData();
+          formData.append("video_id", videoId);
+          formData.append("pid_c", "");
+          formData.append("token", token);
+
+          const apiResponse = await fetch(`${currentBaseUrl}/ajax/get_cdn`, {
+            method: "POST",
+            headers: {
+              ...this.commonHeaders,
+              "Cookie": cookieString,
+              "Referer": `${currentBaseUrl}/video/${videoId}`,
+              "Origin": currentBaseUrl,
+              "X-Requested-With": "XMLHttpRequest" // Often needed for AJAX
+            },
+            body: formData
+          });
+
+          if (apiResponse.ok) {
+            const apiData = await apiResponse.json();
+            console.log("[JavtubeService] API response:", apiData);
+
+            // The API returns { playlists: "http..." } or similar
+            if (apiData.playlists) {
+              return apiData.playlists;
+            }
+            if (apiData.video_url) {
+              return apiData.video_url;
+            }
+          } else {
+            console.warn(`[JavtubeService] API fetch failed: ${apiResponse.status}`);
+          }
+        }
+      } catch (e) {
+        console.error("[JavtubeService] API Strategy failed:", e);
+      }
+
+      // ---------------------------------------------------------
+      // FALLBACK STRATEGIES (Existing Logic)
+      // ---------------------------------------------------------
+
+      // Strategy 1: Check video elements (both <video src> and <source src>)
+      const videoElements = document.querySelectorAll("video, video source");
+      for (const el of videoElements) {
+        const src = el.getAttribute("src");
+        if (src && (src.includes(".mp4") || src.includes(".m3u8") || src.includes("token=") || src.includes("/stream/"))) {
+          if (src.startsWith("http") || src.startsWith("//")) {
+            return src.startsWith("//") ? `https:${src}` : src;
+          }
+          return `${this.baseUrl}${src.startsWith("/") ? "" : "/"}${src}`;
         }
       }
 
-      // Strategy 2: download or direct mp4 links
+      // Strategy 2: Check download buttons
       const downloadLinks = document.querySelectorAll('a[href*="download"], a[href*=".mp4"]');
       for (const link of downloadLinks) {
         const href = link.getAttribute("href");
-        if (href && href.startsWith("http")) {
-          return href;
+        if (href && (href.includes("http") || href.startsWith("/"))) {
+          if (href.startsWith("http")) return href;
+          return `${this.baseUrl}${href}`;
         }
       }
 
-      // Strategy 3: Try to find script variables (some sites hide URLs there)
+      // Strategy 3: Script variables (Common patterns)
       const scripts = document.querySelectorAll("script");
       for (const script of scripts) {
         const content = script.textContent || "";
-        const match = content.match(/file\s*:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/);
-        if (match) return match[1];
+        const urlMatch = content.match(/(?:file|source|src|video_url|stream_url)\s*[:=]\s*["']((?:https?:\/|\/)[^"']+\.(?:mp4|m3u8)[^"']*)["']/i);
+        if (urlMatch) {
+          let url = urlMatch[1];
+          if (url.startsWith("/")) url = `${this.baseUrl}${url}`;
+          return url;
+        }
       }
 
+      // Strategy 4: Brute force regex
+      const bruteForceMatch = html.match(/https?:\/\/[^"'\s]+\.(?:mp4|m3u8)[^"'\s]*/i);
+      if (bruteForceMatch) {
+        return bruteForceMatch[0];
+      }
+
+      // Strategy 5: Check for iframes (Embeds)
+      const iframes = document.querySelectorAll("iframe");
+      for (const iframe of iframes) {
+        const src = iframe.getAttribute("src");
+        if (src && (src.includes("embed") || src.includes("player"))) {
+          // Just logging for now, scraping nested iframes is complex
+          console.log("[JavtubeService] Found potential embed iframe:", src);
+        }
+      }
+
+      console.warn("[JavtubeService] All strategies failed.");
       return null;
     } catch (err) {
       console.error("[JavtubeService] getVideoUrl error:", err);

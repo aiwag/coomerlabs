@@ -6,6 +6,7 @@ import {
   Camera,
   PictureInPicture,
   Maximize2,
+  Minimize2,
   Monitor,
   RefreshCw,
   Pause,
@@ -13,10 +14,16 @@ import {
   Settings,
   Copy,
   Trash2,
+  ExternalLink,
+  User,
+  GripVertical
 } from "lucide-react";
 import { useGridStore } from "@/state/gridStore";
+import { useShallow } from "zustand/react/shallow";
+import { useProfileModalStore } from "@/state/profileModalStore";
+import { getUsernameFromUrl } from "@/utils/formatters";
 
-export function StreamControls({
+export const StreamControls = React.memo(({
   index,
   onReload,
   isPaused,
@@ -26,30 +33,41 @@ export function StreamControls({
   onReload?: () => void;
   isPaused?: boolean;
   onTogglePause?: () => void;
-}) {
+}) => {
+  const openProfile = useProfileModalStore((state) => state.openProfile);
   const {
-    mutedStreams,
-    favorites,
-    playingStreams,
+    isMuted,
+    isFavorite,
+    isInFullView,
+    isFullscreen,
+    url,
     toggleMute,
     toggleFavorite,
     setFullViewMode,
     setFullscreenStream,
-    streamUrls,
-    fullViewMode,
-    fullscreenStream,
     removeStream,
-  } = useGridStore();
+    streamUrls,
+  } = useGridStore(useShallow((state) => {
+    const streamUrl = state.streamUrls[index];
+    return {
+      isMuted: state.mutedStreams.has(streamUrl),
+      isFavorite: state.favorites.has(streamUrl),
+      isInFullView: state.fullViewMode === index,
+      isFullscreen: state.fullscreenStream?.url === streamUrl,
+      url: streamUrl,
+      streamUrls: state.streamUrls,
+      toggleMute: state.toggleMute,
+      toggleFavorite: state.toggleFavorite,
+      setFullViewMode: state.setFullViewMode,
+      setFullscreenStream: state.setFullscreenStream,
+      removeStream: state.removeStream,
+    };
+  }));
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [volume, setVolume] = useState(100);
 
-  const url = streamUrls[index];
-  const isMuted = mutedStreams.has(url);
-  const isFavorite = favorites.has(url);
-  const isInFullView = fullViewMode === index;
-  const isFullscreen = fullscreenStream?.url === url;
-  const isPlaying = playingStreams.has(index);
+  const username = getUsernameFromUrl(url) || "Stream";
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseInt(e.target.value);
@@ -61,18 +79,20 @@ export function StreamControls({
 
   const handleCopyUrl = async () => {
     try {
-      await navigator.clipboard.writeText(streamUrls[index]);
+      await navigator.clipboard.writeText(url);
     } catch (err) {
       console.error("Failed to copy URL:", err);
     }
+  };
+
+  const handlePopout = () => {
+    window.open(url, '_blank', 'width=800,height=600');
   };
 
   const handleFullscreen = () => {
     if (isFullscreen) {
       setFullscreenStream(null);
     } else {
-      const url = streamUrls[index];
-      const username = url.match(/chaturbate\.com\/([^/]+)/)?.[1] ?? "unknown";
       setFullscreenStream({ url, username });
     }
   };
@@ -84,56 +104,74 @@ export function StreamControls({
     title,
     onClick,
     className = "",
+    onMouseEnter,
+    onMouseLeave,
   }: any) => (
     <button
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.();
+      }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       className={`rounded-full p-1.5 text-white transition-all hover:scale-110 active:scale-95 ${active
-          ? "bg-cyan-500/80 hover:bg-cyan-500 shadow-lg shadow-cyan-500/50"
-          : danger
-            ? "bg-red-600/70 hover:bg-red-600 shadow-lg shadow-red-600/50"
-            : "bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10"
+        ? "bg-cyan-500/80 hover:bg-cyan-500 shadow-lg shadow-cyan-500/50"
+        : danger
+          ? "bg-red-600/70 hover:bg-red-600 shadow-lg shadow-red-600/50"
+          : "bg-black/40 hover:bg-black/60 border border-white/5"
         } ${className}`}
       title={title}
-      style={{
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-      }}
     >
-      <Icon size={14} />
+      <Icon size={12} />
     </button>
   );
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-20 flex items-center justify-between p-2 opacity-0 transition-all duration-300 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0"
-         style={{
-             background: 'linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.4) 100%)',
-             backdropFilter: 'blur(20px) saturate(180%)',
-             WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-             borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-         }}>
+    <div className={`absolute inset-x-0 top-0 z-50 flex items-center justify-between px-2 py-1.5 transition-opacity duration-300 ${isInFullView ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+      style={{
+        background: 'linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 100%)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+      }}>
+
+      {/* Left Area: Name + Drag + Fav */}
+      <div className="flex items-center gap-1.5 overflow-hidden">
+        <div className="flex h-6 items-center gap-1 rounded bg-white/10 px-1.5 text-[10px] font-bold uppercase tracking-wider text-white/90">
+          <GripVertical size={10} className="text-white/40" />
+          <span className="max-w-[80px] truncate">{username}</span>
+        </div>
+
+        <ControlButton
+          icon={Star}
+          active={isFavorite}
+          title="Favorite"
+          onClick={() => toggleFavorite(url)}
+          className={isFavorite ? "text-yellow-400" : ""}
+        />
+
+        <ControlButton
+          icon={User}
+          title="View Profile"
+          onClick={() => openProfile(username)}
+          className="bg-purple-600/50 hover:bg-purple-600"
+        />
+      </div>
+
+      {/* Right Area: Controls */}
       <div className="flex items-center gap-1">
-        <div className="relative">
+        <div className="relative flex items-center">
           <ControlButton
             icon={isMuted ? VolumeX : Volume2}
             title={isMuted ? "Unmute" : "Mute"}
-            onClick={() => {
-              toggleMute(url);
-              if (isMuted) setVolume(100);
-            }}
+            onClick={() => toggleMute(url)}
             onMouseEnter={() => setShowVolumeSlider(true)}
             onMouseLeave={() => setShowVolumeSlider(false)}
           />
           {showVolumeSlider && (
             <div
-              className="absolute bottom-full left-1/2 mb-2 w-24 -translate-x-1/2 rounded-lg p-2 shadow-2xl"
+              className="absolute right-full top-1/2 mr-2 w-20 -translate-y-1/2 rounded-full bg-black/80 px-2 py-1 backdrop-blur-md"
               onMouseEnter={() => setShowVolumeSlider(true)}
               onMouseLeave={() => setShowVolumeSlider(false)}
-              style={{
-                background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.8) 0%, rgba(20, 20, 20, 0.7) 100%)',
-                backdropFilter: 'blur(30px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(30px) saturate(180%)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-              }}
             >
               <input
                 type="range"
@@ -143,9 +181,6 @@ export function StreamControls({
                 onChange={handleVolumeChange}
                 className="h-1 w-full cursor-pointer appearance-none rounded-lg bg-white/20 accent-cyan-500"
               />
-              <div className="mt-1 text-center text-xs text-white/60">
-                {volume}%
-              </div>
             </div>
           )}
         </div>
@@ -158,16 +193,6 @@ export function StreamControls({
           />
         )}
 
-        <ControlButton
-          icon={Star}
-          active={isFavorite}
-          title="Favorite"
-          onClick={() => toggleFavorite(url)}
-          className={isFavorite ? "text-yellow-400" : ""}
-        />
-      </div>
-
-      <div className="flex items-center gap-1">
         {onReload && (
           <ControlButton
             icon={RefreshCw}
@@ -177,34 +202,31 @@ export function StreamControls({
         )}
 
         <ControlButton icon={Copy} title="Copy URL" onClick={handleCopyUrl} />
+        <ControlButton icon={ExternalLink} title="Pop-out" onClick={handlePopout} className="bg-blue-600/50 hover:bg-blue-600" />
 
-        <ControlButton icon={Camera} title="Snapshot" />
-
-        <ControlButton icon={PictureInPicture} title="Picture-in-Picture" />
+        <div className="mx-0.5 h-4 w-px bg-white/10" />
 
         <ControlButton
-          icon={Maximize2}
+          icon={isInFullView ? Minimize2 : Maximize2}
           active={isInFullView}
-          title="Focus View"
-          onClick={() => setFullViewMode(index)}
+          title={isInFullView ? "Exit Focus" : "Focus View"}
+          onClick={() => setFullViewMode(isInFullView ? null : index)}
         />
 
         <ControlButton
           icon={Monitor}
           active={isFullscreen}
-          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+          title="True Fullscreen"
           onClick={handleFullscreen}
         />
-
-        <ControlButton icon={Settings} title="Stream Settings" />
 
         <ControlButton
           icon={Trash2}
           danger
-          title="Remove Stream"
+          title="Remove"
           onClick={() => removeStream(index)}
         />
       </div>
     </div>
   );
-}
+});

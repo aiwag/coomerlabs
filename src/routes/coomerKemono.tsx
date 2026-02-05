@@ -104,7 +104,7 @@ const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000;
 const COOMER_API_BASE_URL = 'https://kemono-api.mbaharip.com/coomer';
 const KEMONO_API_BASE_URL = 'https://kemono-api.mbaharip.com/kemono';
 const COOMER_POSTS_API_BASE_URL = 'https://coomer.st/api/v1';
-const KEMONO_POSTS_API_BASE_URL = 'https://kemono.su/api/v1';
+const KEMONO_POSTS_API_BASE_URL = 'https://kemono.cr/api/v1';
 const ITEMS_PER_PAGE = 30;
 const POSTS_PER_PAGE = 50;
 
@@ -112,15 +112,16 @@ const POSTS_PER_PAGE = 50;
 declare global {
   interface Window {
     require: any;
-    electronAPI?: {
-      showSaveDialog: (options: any) => Promise<any>;
-      showOpenDialog: (options: any) => Promise<any>;
-      openPath: (path: string) => Promise<void>;
-      createDirectory: (path: string) => Promise<void>;
-      downloadFile: (url: string, destination: string, onProgress?: (progress: number) => void) => Promise<void>;
-      getAppPath: (name: string) => string;
-      getPath: (name: string) => string;
-    };
+  }
+
+  interface ElectronAPI {
+    showSaveDialog: (options: any) => Promise<any>;
+    showOpenDialog: (options: any) => Promise<any>;
+    openPath: (path: string) => Promise<void>;
+    createDirectory: (path: string) => Promise<void>;
+    downloadFile: (url: string, destination: string, onProgress?: (progress: number) => void) => Promise<void>;
+    getAppPath: (name: string) => string;
+    getPath: (name: string) => string;
   }
 }
 
@@ -593,7 +594,7 @@ class DownloadService {
 
         const url = COOMER_SERVICES.includes(service)
           ? `https://coomer.st${post.file?.path || ''}`
-          : `https://kemono.su${post.file?.path || ''}`;
+          : `https://kemono.cr${post.file?.path || ''}`;
 
         const fileName = `${post.id}.${post.file?.name?.split('.').pop() || 'jpg'}`;
         const filePath = `${dir}/${fileName}`;
@@ -794,7 +795,7 @@ const CompactCreatorCard = React.memo(({
     if (COOMER_SERVICES.includes(creator.service)) {
       return `https://coomer.st/icons/${creator.service}/${creator.id}`;
     } else {
-      return `https://kemono.su/icons/${creator.service}/${creator.id}`;
+      return `https://kemono.cr/icons/${creator.service}/${creator.id}`;
     }
   };
 
@@ -1035,11 +1036,11 @@ const CompactPostGrid = React.memo(({
   useEffect(() => {
     const imageUrls = posts.slice(0, 20).map(post => {
       if (post.file) {
-        const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.su';
+        const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.cr';
         return `${baseUrl}${post.file.path}`;
       }
       if (post.attachments && post.attachments.length > 0) {
-        const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.su';
+        const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.cr';
         return `${baseUrl}${post.attachments[0].path}`;
       }
       return '';
@@ -1049,7 +1050,7 @@ const CompactPostGrid = React.memo(({
   }, [posts, service]);
 
   const getPostMedia = (post: Post) => {
-    const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.su';
+    const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.cr';
 
     if (post.file) {
       return {
@@ -1182,7 +1183,7 @@ const HoverPreview = ({
     if (COOMER_SERVICES.includes(service)) {
       return `https://coomer.st${path}`;
     } else {
-      return `https://kemono.su${path}`;
+      return `https://kemono.cr${path}`;
     }
   };
 
@@ -1362,7 +1363,7 @@ const MovieMode = ({
   };
 
   const getPostMedia = (post: Post) => {
-    const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.su';
+    const baseUrl = COOMER_SERVICES.includes(service) ? 'https://coomer.st' : 'https://kemono.cr';
 
     if (post.file) {
       return {
@@ -1582,7 +1583,7 @@ const GalleryViewer = ({
     if (COOMER_SERVICES.includes(service)) {
       return `https://coomer.st${path}`;
     } else {
-      return `https://kemono.su${path}`;
+      return `https://kemono.cr${path}`;
     }
   };
 
@@ -2086,10 +2087,11 @@ const CompactProfileViewer = ({
       setLoading(true);
       try {
         const isCoomer = COOMER_SERVICES.includes(creator.service);
+        const baseUrl = isCoomer ? COOMER_POSTS_API_BASE_URL : KEMONO_POSTS_API_BASE_URL;
 
         const profileResponse = await axios.get<Profile>(
-          `${COOMER_POSTS_API_BASE_URL}/${creator.service}/user/${creator.id}/profile`,
-          { headers: isCoomer ? { 'Accept': 'text/css' } : {} }
+          `${baseUrl}/${creator.service}/user/${creator.id}/profile`,
+          { headers: { 'Accept': 'text/css' } }
         );
         setProfile(profileResponse.data);
 
@@ -2099,8 +2101,8 @@ const CompactProfileViewer = ({
           setIsSynced(true);
         } else {
           const postsResponse = await axios.get<Post[]>(
-            `${COOMER_POSTS_API_BASE_URL}/${creator.service}/user/${creator.id}/posts?o=0`,
-            { headers: isCoomer ? { 'Accept': 'text/css' } : {} }
+            `${baseUrl}/${creator.service}/user/${creator.id}/posts?o=0`,
+            { headers: { 'Accept': 'text/css' } }
           );
 
           const transformedPosts: Post[] = postsResponse.data.map((post: any) => ({
@@ -2145,11 +2147,12 @@ const CompactProfileViewer = ({
     setLoadingMore(true);
     try {
       const isCoomer = COOMER_SERVICES.includes(creator.service);
+      const baseUrl = isCoomer ? COOMER_POSTS_API_BASE_URL : KEMONO_POSTS_API_BASE_URL;
       const offset = (currentPage + 1) * POSTS_PER_PAGE;
 
       const response = await axios.get<Post[]>(
-        `${COOMER_POSTS_API_BASE_URL}/${creator.service}/user/${creator.id}/posts?o=${offset}`,
-        { headers: isCoomer ? { 'Accept': 'text/css' } : {} }
+        `${baseUrl}/${creator.service}/user/${creator.id}/posts?o=${offset}`,
+        { headers: { 'Accept': 'text/css' } }
       );
 
       const transformedPosts: Post[] = response.data.map((post: any) => ({
@@ -2332,7 +2335,7 @@ const CompactProfileViewer = ({
                     src={
                       COOMER_SERVICES.includes(creator.service)
                         ? `https://coomer.st/icons/${creator.service}/${creator.id}`
-                        : `https://kemono.su/icons/${creator.service}/${creator.id}`
+                        : `https://kemono.cr/icons/${creator.service}/${creator.id}`
                     }
                     alt={creator.name}
                     className="w-full h-full object-cover"
@@ -2719,8 +2722,12 @@ function RouteComponent() {
 
       if (selectedService === 'all') {
         const [coomerResponse, kemonoResponse] = await Promise.all([
-          axios.get<CreatorApiResponse>(`${COOMER_API_BASE_URL}?page=${page}&itemsPerPage=${Math.ceil(ITEMS_PER_PAGE / 2)}`),
-          axios.get<CreatorApiResponse>(`${KEMONO_API_BASE_URL}?page=${page}&itemsPerPage=${Math.ceil(ITEMS_PER_PAGE / 2)}`)
+          axios.get<CreatorApiResponse>(`${COOMER_API_BASE_URL}?page=${page}&itemsPerPage=${Math.ceil(ITEMS_PER_PAGE / 2)}`, {
+            headers: { 'Accept': 'text/css' }
+          }),
+          axios.get<CreatorApiResponse>(`${KEMONO_API_BASE_URL}?page=${page}&itemsPerPage=${Math.ceil(ITEMS_PER_PAGE / 2)}`, {
+            headers: { 'Accept': 'text/css' }
+          })
         ]);
 
         const combinedData = [...coomerResponse.data.data, ...kemonoResponse.data.data];
@@ -2744,7 +2751,9 @@ function RouteComponent() {
       } else if (selectedService === 'coomer' || selectedService === 'kemono') {
         apiUrl = selectedService === 'coomer' ? COOMER_API_BASE_URL : KEMONO_API_BASE_URL;
 
-        const response = await axios.get<CreatorApiResponse>(`${apiUrl}?page=${page}&itemsPerPage=${ITEMS_PER_PAGE}`);
+        const response = await axios.get<CreatorApiResponse>(`${apiUrl}?page=${page}&itemsPerPage=${ITEMS_PER_PAGE}`, {
+          headers: { 'Accept': 'text/css' }
+        });
         const { data, pagination } = response.data;
 
         setTotalPages(pagination.totalPages);
@@ -2762,7 +2771,9 @@ function RouteComponent() {
         const isCoomer = COOMER_SERVICES.includes(selectedService);
         apiUrl = isCoomer ? COOMER_API_BASE_URL : KEMONO_API_BASE_URL;
 
-        const response = await axios.get<CreatorApiResponse>(`${apiUrl}/${selectedService}?page=${page}&itemsPerPage=${ITEMS_PER_PAGE}`);
+        const response = await axios.get<CreatorApiResponse>(`${apiUrl}/${selectedService}?page=${page}&itemsPerPage=${ITEMS_PER_PAGE}`, {
+          headers: { 'Accept': 'text/css' }
+        });
         const { data, pagination } = response.data;
 
         setTotalPages(pagination.totalPages);
@@ -2847,10 +2858,12 @@ function RouteComponent() {
       if (selectedService === 'all') {
         const [coomerResponse, kemonoResponse] = await Promise.all([
           axios.get<CreatorApiResponse>(`${COOMER_API_BASE_URL}?search=${encodeURIComponent(term)}`, {
-            signal: abortController.signal
+            signal: abortController.signal,
+            headers: { 'Accept': 'text/css' }
           }),
           axios.get<CreatorApiResponse>(`${KEMONO_API_BASE_URL}?search=${encodeURIComponent(term)}`, {
-            signal: abortController.signal
+            signal: abortController.signal,
+            headers: { 'Accept': 'text/css' }
           })
         ]);
 
@@ -2858,14 +2871,16 @@ function RouteComponent() {
       } else if (selectedService === 'coomer' || selectedService === 'kemono') {
         apiUrl = selectedService === 'coomer' ? COOMER_API_BASE_URL : KEMONO_API_BASE_URL;
         const response = await axios.get<CreatorApiResponse>(`${apiUrl}?search=${encodeURIComponent(term)}`, {
-          signal: abortController.signal
+          signal: abortController.signal,
+          headers: { 'Accept': 'text/css' }
         });
         results = response.data.data;
       } else {
         const isCoomer = COOMER_SERVICES.includes(selectedService);
         apiUrl = isCoomer ? COOMER_API_BASE_URL : KEMONO_API_BASE_URL;
         const response = await axios.get<CreatorApiResponse>(`${apiUrl}/${selectedService}?search=${encodeURIComponent(term)}`, {
-          signal: abortController.signal
+          signal: abortController.signal,
+          headers: { 'Accept': 'text/css' }
         });
         results = response.data.data;
       }
@@ -2999,7 +3014,7 @@ function RouteComponent() {
       if (COOMER_SERVICES.includes(creator.service)) {
         return `https://coomer.st/icons/${creator.service}/${creator.id}`;
       } else {
-        return `https://kemono.su/icons/${creator.service}/${creator.id}`;
+        return `https://kemono.cr/icons/${creator.service}/${creator.id}`;
       }
     });
 

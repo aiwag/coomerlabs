@@ -1,6 +1,6 @@
-// Fapello Route - Clean Modular Implementation
+// Fapello Route - Clean Modular Implementation - Optimized
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, memo } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 
@@ -18,7 +18,57 @@ import { useSettings, useDebounce } from '../components/fapello/hooks';
 import * as api from '../components/fapello/api';
 
 // Types
-import { Profile, Image, CreatorProfile } from '../components/fapello/types';
+import type { Profile, Image, CreatorProfile } from '../components/fapello/types';
+
+// Loading spinner component
+const LoadingSpinner = memo(({ message = 'Loading...' }: { message?: string }) => (
+  <div className='flex flex-col justify-center items-center h-64 gap-4'>
+    <div className="relative">
+      <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-700 border-t-blue-500"></div>
+      <div className="absolute inset-0 animate-pulse rounded-full h-12 w-12 border-4 border-transparent border-t-blue-400/30"></div>
+    </div>
+    <p className="text-gray-400 text-sm">{message}</p>
+  </div>
+));
+LoadingSpinner.displayName = 'LoadingSpinner';
+
+// Error state component
+const ErrorState = memo(({ message, onRetry }: { message: string; onRetry?: () => void }) => (
+  <div className="text-center py-12">
+    <div className="inline-flex flex-col items-center gap-4">
+      <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
+        <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <p className="text-red-400">{message}</p>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all hover:scale-105"
+        >
+          Try Again
+        </button>
+      )}
+    </div>
+  </div>
+));
+ErrorState.displayName = 'ErrorState';
+
+// Empty state component
+const EmptyState = memo(({ message }: { message: string }) => (
+  <div className="text-center py-16">
+    <div className="inline-flex flex-col items-center gap-4">
+      <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
+        <svg className="w-8 h-8 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <p className="text-gray-500">{message}</p>
+    </div>
+  </div>
+));
+EmptyState.displayName = 'EmptyState';
 
 const FapelloRoute = () => {
   const [creatorId, setCreatorId] = useState<string | null>(null);
@@ -47,6 +97,7 @@ const FapelloRoute = () => {
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Fetch creator profile and images
@@ -60,6 +111,7 @@ const FapelloRoute = () => {
     enabled: !!creatorId,
     retry: 2,
     retryDelay: 1000,
+    staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const {
@@ -76,6 +128,7 @@ const FapelloRoute = () => {
     enabled: !!creatorId,
     retry: 2,
     retryDelay: 1000,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
   // Event handlers
@@ -103,14 +156,28 @@ const FapelloRoute = () => {
     setCurrentFilter(filter);
   }, []);
 
-  // Memoized profiles
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchValue(value);
+  }, []);
+
+  const handleSearchClear = useCallback(() => {
+    setSearchValue('');
+  }, []);
+
+  const handleSettingsClick = useCallback(() => {
+    setIsSettingsOpen(true);
+  }, []);
+
+  const handleSettingsClose = useCallback(() => {
+    setIsSettingsOpen(false);
+  }, []);
+
+  // Memoized profiles with filtering
   const displayedProfiles = useMemo(() => {
     let profiles = profilesData?.pages.flatMap(page => page.profiles) || [];
 
     if (searchValue && searchValue !== debouncedSearchValue) {
       profiles = profiles.filter(p => p.name.toLowerCase().includes(searchValue.toLowerCase()));
-    } else if (debouncedSearchValue) {
-      // Search results from server
     }
 
     if (currentFilter !== 'All') {
@@ -124,7 +191,11 @@ const FapelloRoute = () => {
     return profiles;
   }, [profilesData, searchValue, debouncedSearchValue, currentFilter]);
 
-  const creatorImages = creatorData?.pages.flatMap(page => page.images) || [];
+  // Memoized creator images
+  const creatorImages = useMemo(() => {
+    return creatorData?.pages.flatMap(page => page.images) || [];
+  }, [creatorData]);
+
   const creatorName = creatorProfile?.name || '';
 
   // Custom scrollbar styles
@@ -145,6 +216,15 @@ const FapelloRoute = () => {
     return () => { document.head.removeChild(style); };
   }, []);
 
+  // Memoized render item functions
+  const renderProfileCard = useCallback((profile: Profile, index: number) => (
+    <ProfileCard key={profile.id} profile={profile} index={index} onClick={() => handleProfileClick(profile)} />
+  ), [handleProfileClick]);
+
+  const renderImageCard = useCallback((image: Image, index: number) => (
+    <ImageCard key={image.id} image={image} index={index} onImageClick={handleImageClick} />
+  ), [handleImageClick]);
+
   return (
     <div className="h-screen flex flex-col bg-transparent overflow-hidden">
       <Header
@@ -153,11 +233,11 @@ const FapelloRoute = () => {
         onBackClick={handleBackToTrending}
         showSearch={!creatorId}
         searchValue={searchValue}
-        onSearchChange={setSearchValue}
-        onSearchClear={() => setSearchValue('')}
+        onSearchChange={handleSearchChange}
+        onSearchClear={handleSearchClear}
         showFilter={!creatorId}
         onFilter={handleFilter}
-        onSettingsClick={() => setIsSettingsOpen(true)}
+        onSettingsClick={handleSettingsClick}
       />
 
       <div className="flex-1 overflow-y-auto scroll-smooth">
@@ -165,26 +245,18 @@ const FapelloRoute = () => {
           {!creatorId ? (
             // Trending View
             isLoadingTrending ? (
-              <div className='flex justify-center items-center h-64'>
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
+              <LoadingSpinner message="Loading trending profiles..." />
             ) : trendingError ? (
-              <div className="text-center py-12">
-                <p className="text-red-500 mb-4">Failed to load trending profiles</p>
-                <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                  Try Again
-                </button>
-              </div>
+              <ErrorState
+                message="Failed to load trending profiles"
+                onRetry={() => window.location.reload()}
+              />
             ) : displayedProfiles.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-400">No profiles found</p>
-              </div>
+              <EmptyState message="No profiles found" />
             ) : (
               <WaterfallGallery
                 items={displayedProfiles}
-                renderItem={(profile, index) => (
-                  <ProfileCard key={profile.id} profile={profile} index={index} onClick={() => handleProfileClick(profile)} />
-                )}
+                renderItem={renderProfileCard}
                 columnCount={settings.columnCount || 4}
                 hasNextPage={!!hasNextTrendingPage}
                 fetchNextPage={fetchNextTrendingPage}
@@ -193,41 +265,29 @@ const FapelloRoute = () => {
           ) : (
             // Profile View
             isLoadingProfile ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
+              <LoadingSpinner message="Loading profile..." />
             ) : profileError ? (
-              <div className="text-center py-12">
-                <p className="text-red-500 mb-4">Failed to load profile</p>
-                <button onClick={handleBackToTrending} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                  Back to Trending
-                </button>
-              </div>
+              <ErrorState
+                message="Failed to load profile"
+                onRetry={handleBackToTrending}
+              />
             ) : creatorProfile ? (
               <>
                 <ProfileHeader profile={creatorProfile} onClose={handleBackToTrending} />
 
                 {isLoadingImages ? (
-                  <div className="flex justify-center items-center h-64">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  </div>
+                  <LoadingSpinner message="Loading images..." />
                 ) : imagesError ? (
-                  <div className="text-center py-12">
-                    <p className="text-red-500 mb-4">Failed to load images</p>
-                    <button onClick={() => window.location.reload()} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                      Try Again
-                    </button>
-                  </div>
+                  <ErrorState
+                    message="Failed to load images"
+                    onRetry={() => window.location.reload()}
+                  />
                 ) : creatorImages.length === 0 ? (
-                  <div className="text-center py-12">
-                    <p className="text-gray-400">No images found for this creator</p>
-                  </div>
+                  <EmptyState message="No images found for this creator" />
                 ) : (
                   <WaterfallGallery
                     items={creatorImages}
-                    renderItem={(image, index) => (
-                      <ImageCard key={image.id} image={image} index={index} onImageClick={handleImageClick} />
-                    )}
+                    renderItem={renderImageCard}
                     columnCount={settings.columnCount || 4}
                     hasNextPage={!!hasNextCreatorPage}
                     fetchNextPage={fetchNextCreatorPage}
@@ -248,7 +308,7 @@ const FapelloRoute = () => {
 
       <SettingsPanel
         isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={handleSettingsClose}
       />
     </div>
   );

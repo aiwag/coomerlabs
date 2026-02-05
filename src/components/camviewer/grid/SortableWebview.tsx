@@ -14,6 +14,7 @@ import {
   User,
 } from "lucide-react";
 import { useGridStore } from "@/state/gridStore";
+import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore } from "@/state/settingsStore";
 import { useProfileModalStore } from "@/state/profileModalStore";
 import { StreamControls } from "./StreamControls";
@@ -75,13 +76,27 @@ const SortableWebviewComponent = ({
   isGlobalMute = false,
   colSpan = 1,
 }: SortableWebviewProps) => {
-  const { setFullViewMode } = useGridStore();
+  const {
+    setFullViewMode,
+    removeStream,
+    setPlaying,
+    toggleMute,
+    isMuted,
+    setFullscreenStream,
+    isFullscreen
+  } = useGridStore(useShallow((state) => ({
+    setFullViewMode: state.setFullViewMode,
+    removeStream: state.removeStream,
+    setPlaying: state.setPlaying,
+    toggleMute: state.toggleMute,
+    isMuted: state.mutedStreams.has(url),
+    setFullscreenStream: state.setFullscreenStream,
+    isFullscreen: state.fullscreenStream?.url === url,
+  })));
   const openProfile = useProfileModalStore((state) => state.openProfile);
   const { attributes, listeners, setNodeRef, transform, transition, isOver } =
     useSortable({ id, disabled: !isDraggable });
   const webviewRef = useRef<Electron.WebviewTag>(null);
-  const { removeStream, setPlaying, mutedStreams, toggleMute } = useGridStore();
-  const isMuted = mutedStreams.has(url);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const { toggleFullscreenView } = useSettingsStore();
 
@@ -230,6 +245,14 @@ const SortableWebviewComponent = ({
     webviewRef.current?.reload();
   }, [url]);
 
+  useEffect(() => {
+    const handleRefreshAll = () => {
+      handleReload();
+    };
+    window.addEventListener('refresh-all-streams', handleRefreshAll);
+    return () => window.removeEventListener('refresh-all-streams', handleRefreshAll);
+  }, [handleReload]);
+
   const username = useMemo(() => getUsernameFromUrl(url), [url]);
   const thumbUrl = useMemo(() => generateThumbUrl(username), [username]);
   const isFullExpand = viewMode === "full-expand";
@@ -266,9 +289,17 @@ const SortableWebviewComponent = ({
   }, []);
 
   const handleDoubleClick = useCallback(() => {
-    if (isFullViewMode) {
-      setFullViewMode(null);
+    if (isFullscreen) {
+      setFullscreenStream(null);
     } else {
+      setFullscreenStream({ url, username: username || "Stream" });
+    }
+  }, [isFullscreen, url, username, setFullscreenStream]);
+
+  const handleClick = useCallback(() => {
+    // If we are in full view but click a DIFFERENT stream, switch focusing to that one
+    const isAnyFullView = useGridStore.getState().fullViewMode !== null;
+    if (isAnyFullView && !isFullViewMode) {
       setFullViewMode(index);
     }
   }, [isFullViewMode, index, setFullViewMode]);
@@ -318,59 +349,14 @@ const SortableWebviewComponent = ({
       className={containerClasses}
       onMouseMove={handleMouseMove}
       onContextMenu={handleContextMenu}
+      onClick={handleClick}
       onDoubleClick={handleDoubleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       <div className={dropIndicatorClasses} />
 
-      {/* Hide Controls in Zen Mode */}
-      {isDraggable && !isZenMode && (
-        <div
-          {...attributes}
-          {...listeners}
-          className={`absolute top-2 right-2 z-40 flex cursor-grab items-center gap-1.5 rounded-lg bg-black/60 px-2 py-1 text-xs font-semibold text-white opacity-0 backdrop-blur-sm transition-all select-none ${isFullExpand ? "top-2" : ""
-            } group-hover:opacity-100 active:cursor-grabbing`}
-        >
-          <GripVertical size={12} />
-          <span className="max-w-24 truncate">{username}</span>
-        </div>
-      )}
-
-      {/* Trash Button - Always visible top left unless Zen Mode */}
-      {!isZenMode && (
-        <>
-          <button
-            onClick={() => removeStream(index)}
-            className="absolute top-2 left-2 z-40 rounded-full bg-red-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-red-600"
-            title="Remove Stream"
-          >
-            <Trash2 size={12} />
-          </button>
-
-          <button
-            onClick={() => window.open(url, '_blank', 'width=800,height=600')}
-            className="absolute top-2 left-9 z-40 rounded-full bg-blue-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-blue-600"
-            title="Pop-out Window"
-          >
-            <ExternalLink size={12} />
-          </button>
-
-          {username && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                openProfile(username);
-              }}
-              className="absolute top-2 left-16 z-40 rounded-full bg-purple-600/80 p-1.5 text-white opacity-0 shadow-lg transition-all group-hover:opacity-100 hover:bg-purple-600"
-              title="View Profile & Archives"
-              type="button"
-            >
-              <User size={12} />
-            </button>
-          )}
-        </>
-      )}
+      <div className={dropIndicatorClasses} />
 
       {!domReady && !error && (
         <StreamSkeleton />
@@ -404,12 +390,6 @@ const SortableWebviewComponent = ({
           </button>
         </div>
       )}
-
-      <StreamInfoOverlay
-        username={username || "Unknown"}
-        isPlaying={externalIsPlaying ?? !isPaused}
-        show={showStreamInfo && domReady}
-      />
 
       <StreamControls
         index={index}

@@ -78,9 +78,15 @@ export const JavTubeView: React.FC<JavTubeViewProps> = ({
               ? { ...prev, videoUrl: result.data.videoUrl }
               : prev
           );
+        } else {
+          console.error("Failed to get video URL:", result.error || "Unknown error");
+          alert("Failed to extract video playback URL. Content may be restricted or unavailable.");
+          handleClose();
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("URL fetch error:", err);
+        alert(`Connection failed: ${err.message}`);
+        handleClose();
       } finally {
         setLoadingVideoUrl(null);
       }

@@ -1,5 +1,5 @@
-// Fapello ImageCard Component
-import React, { useState, useCallback } from 'react';
+// Fapello ImageCard Component - Optimized
+import React, { useState, useCallback, memo, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Heart,
@@ -8,13 +8,12 @@ import {
   MessageCircle,
   Play,
   X,
-  Loader2,
   ZoomIn,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useInView } from 'react-intersection-observer';
 import { useSettings } from './hooks';
-import { Image } from './types';
+import type { Image } from './types';
 
 interface ImageCardProps {
   image: Image;
@@ -22,108 +21,197 @@ interface ImageCardProps {
   onImageClick: (image: Image, index: number) => void;
 }
 
-export const ImageCard = ({ image, index, onImageClick }: ImageCardProps) => {
+// Loading skeleton component
+const ImageCardSkeleton = ({ aspectRatio = '3/4' }: { aspectRatio?: string }) => (
+  <div className="relative overflow-hidden rounded-xl bg-gray-800" style={{ aspectRatio }}>
+    <div className="absolute inset-0 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 animate-shimmer" />
+    <div className="absolute inset-0 flex items-center justify-center">
+      <div className="w-8 h-8 rounded-full bg-gray-700 animate-pulse" />
+    </div>
+  </div>
+);
+
+export const ImageCard = memo(({ image, index, onImageClick }: ImageCardProps) => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const { ref, inView } = useInView({ triggerOnce: true, threshold: 0.1 });
+  const [isInView, setIsInView] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const { ref, inView } = useInView({
+    triggerOnce: true,
+    threshold: 0.01,
+    rootMargin: '100px',
+    onChange: (visible) => {
+      if (visible) setIsInView(true);
+    }
+  });
   const { settings } = useSettings();
+
+  const aspectRatio = image.width && image.height
+    ? `${image.width}/${image.height}`
+    : '3/4';
 
   const handleLike = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsLiked(!isLiked);
+    setIsLiked(v => !v);
     toast(isLiked ? 'Removed from favorites' : 'Added to favorites');
   }, [isLiked]);
 
   const handleBookmark = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    setIsBookmarked(!isBookmarked);
+    setIsBookmarked(v => !v);
     toast(isBookmarked ? 'Removed from bookmarks' : 'Bookmarked');
   }, [isBookmarked]);
 
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true);
+  }, []);
+
+  const handleImageError = useCallback(() => {
+    setImageError(true);
+    setImageLoaded(true);
+  }, []);
+
+  const handleClick = useCallback(() => {
+    onImageClick(image, index);
+  }, [image, index, onImageClick]);
+
+  // Combine refs
+  const setRefs = useCallback((node: HTMLDivElement | null) => {
+    ref(node);
+  }, [ref]);
+
+  if (!isInView) {
+    return <ImageCardSkeleton aspectRatio={aspectRatio} />;
+  }
+
+  const imageUrl = settings.highQuality
+    ? (image.fullImageUrl || image.imageUrl)
+    : image.imageUrl;
+
   return (
     <motion.div
-      ref={ref}
+      ref={setRefs}
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : 20 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
-      className={`group relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer bg-gray-800 w-full`}
-      style={{ aspectRatio: image.width && image.height ? `${image.width}/${image.height}` : '3/4' }}
-      onClick={() => onImageClick(image, index)}
-      whileHover={{ y: -3 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: Math.min(index * 0.02, 0.2) }}
+      className="group relative overflow-hidden rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer bg-gray-800/50"
+      style={{ aspectRatio }}
+      onClick={handleClick}
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
     >
       <div className="relative w-full h-full">
+        {/* Loading skeleton */}
         {!imageLoaded && !imageError && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
-          </div>
+          <ImageCardSkeleton aspectRatio={aspectRatio} />
         )}
 
+        {/* Error state */}
         {imageError ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
-            <div className="text-center p-2">
-              <X className="h-6 w-6 mx-auto text-gray-500 mb-1" />
-              <p className="text-xs text-gray-400">Failed to load</p>
-            </div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-800/50 backdrop-blur-sm">
+            <X className="h-8 w-8 text-gray-500 mb-2" />
+            <p className="text-xs text-gray-400">Failed to load</p>
           </div>
         ) : (
           <img
-            src={settings.highQuality ? (image.fullImageUrl || image.imageUrl) : image.imageUrl}
+            ref={imgRef}
+            src={imageUrl}
             alt={`Image ${image.id}`}
-            className={`w-full h-full absolute object-cover transition-all duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0'} group-hover:scale-105`}
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
+            loading="lazy"
+            decoding="async"
+            className={`w-full h-full absolute object-cover transition-all duration-700 ease-out ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'} group-hover:scale-110`}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
           />
         )}
 
+        {/* Video indicator */}
         {image.isVideo && (
-          <div className="absolute top-2 left-2 bg-black/50 rounded-full p-1.5">
-            <Play className="h-3 w-3 text-white" />
-          </div>
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm rounded-full p-1.5 shadow-lg"
+          >
+            <Play className="h-3 w-3 text-white fill-white" />
+          </motion.div>
         )}
 
+        {/* Duration badge */}
         {image.duration && (
-          <div className="absolute bottom-2 left-2 bg-black/50 rounded px-1.5 py-0.5">
-            <span className="text-white text-xs">
+          <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm rounded px-2 py-0.5 shadow-lg">
+            <span className="text-white text-xs font-medium">
               {Math.floor(image.duration / 60)}:{(image.duration % 60).toString().padStart(2, '0')}
             </span>
           </div>
         )}
 
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-300 flex items-center justify-center">
-          <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
-            <div className="flex flex-col items-center space-y-2">
-              <div className="bg-white/90 rounded-full p-2">
-                <ZoomIn className="w-4 h-4 text-gray-800" />
-              </div>
-              <div className="flex items-center space-x-3 text-white text-xs">
-                <div className="flex items-center space-x-0.5">
-                  <Heart className="w-3 h-3" />
-                  <span>{image.likes?.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center space-x-0.5">
-                  <Eye className="w-3 h-3" />
-                  <span>{image.views?.toLocaleString()}</span>
-                </div>
-                <div className="flex items-center space-x-0.5">
-                  <MessageCircle className="w-3 h-3" />
-                  <span>{image.comments}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        {/* Gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {/* Center zoom indicator */}
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            whileHover={{ scale: 1, opacity: 1 }}
+            className="bg-white/95 backdrop-blur-sm rounded-full p-3 shadow-xl"
+          >
+            <ZoomIn className="w-5 h-5 text-gray-800" />
+          </motion.div>
         </div>
 
-        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={handleLike} className="p-1.5 rounded-full bg-black/50 hover:bg-black/70">
+        {/* Stats overlay */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          whileHover={{ opacity: 1, y: 0 }}
+          className="absolute bottom-8 left-2 right-2 flex justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        >
+          <div className="flex items-center gap-3 text-white text-xs">
+            <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full">
+              <Heart className="w-3 h-3" />
+              <span className="font-medium">{image.likes?.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full">
+              <Eye className="w-3 h-3" />
+              <span className="font-medium">{image.views?.toLocaleString()}</span>
+            </div>
+            {image.comments && (
+              <div className="flex items-center gap-1 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-full">
+                <MessageCircle className="w-3 h-3" />
+                <span className="font-medium">{image.comments}</span>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Action buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          whileHover={{ opacity: 1, y: 0 }}
+          className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        >
+          <button
+            onClick={handleLike}
+            className="p-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm transition-all hover:scale-110 shadow-lg"
+            aria-label="Like"
+          >
             <Heart className={`h-3 w-3 ${isLiked ? 'fill-red-500 text-red-500' : 'text-white'}`} />
           </button>
-          <button onClick={handleBookmark} className="p-1.5 rounded-full bg-black/50 hover:bg-black/70">
+          <button
+            onClick={handleBookmark}
+            className="p-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm transition-all hover:scale-110 shadow-lg"
+            aria-label="Bookmark"
+          >
             <Bookmark className={`h-3 w-3 ${isBookmarked ? 'fill-blue-500 text-blue-500' : 'text-white'}`} />
           </button>
-        </div>
+        </motion.div>
+
+        {/* Shimmer effect on hover */}
+        <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
       </div>
     </motion.div>
   );
-};
+});
+
+ImageCard.displayName = 'ImageCard';

@@ -1,5 +1,66 @@
-// Fapello Glassmorphic Liquid Glass Styles
+// Fapello Glassmorphic Liquid Glass Styles - Enhanced
 export const glassStyles = `
+  /* Shimmer Animation for Skeleton Loaders */
+  @keyframes shimmer {
+    0% {
+      background-position: -1000px 0;
+    }
+    100% {
+      background-position: 1000px 0;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite linear;
+    background: linear-gradient(
+      90deg,
+      rgba(55, 65, 81, 1) 0%,
+      rgba(75, 85, 99, 1) 20%,
+      rgba(55, 65, 81, 1) 40%,
+      rgba(55, 65, 81, 1) 100%
+    );
+    background-size: 1000px 100%;
+  }
+
+  /* Glass Card - Enhanced */
+  .glass-card {
+    background: linear-gradient(
+      135deg,
+      rgba(31, 41, 55, 0.7) 0%,
+      rgba(17, 24, 39, 0.6) 50%,
+      rgba(31, 41, 55, 0.7) 100%
+    );
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.1),
+      inset 0 -1px 0 0 rgba(255, 255, 255, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.15);
+  }
+
+  /* Glass Header - Enhanced */
+  .glass-header {
+    background: linear-gradient(
+      180deg,
+      rgba(17, 24, 39, 0.95) 0%,
+      rgba(17, 24, 39, 0.85) 100%
+    );
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.2),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.08);
+  }
+
   /* Liquid Glass Base Styles */
   .liquid-glass {
     background: linear-gradient(
