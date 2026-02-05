@@ -6,6 +6,8 @@ export const JavTubeUncensored = () => (
     sortType="uncensored"
     title="Uncensored"
     subtitle="Uncut Collection"
+    showHeader={false}
+    showSearch={false}
     gradientFrom="blue"
     gradientTo="cyan"
   />

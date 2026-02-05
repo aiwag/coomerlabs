@@ -17,11 +17,13 @@ const useSettingsStore = create<SettingsState>()(
         autoPlay: false,
         showThumbnails: true,
         highQuality: true,
+        alwaysHD: false,
         compactView: false,
         infiniteScroll: true,
         slideshowSpeed: 3000,
         showControls: true,
         columnCount: 4,
+        followedProfiles: [],
       },
       updateSetting: (key, value) =>
         set((state) => ({
@@ -37,7 +39,22 @@ const useSettingsStore = create<SettingsState>()(
 // Settings hook
 export const useSettings = () => {
   const { settings, updateSetting } = useSettingsStore();
-  return { settings, updateSetting };
+
+  // Helper functions for followed profiles
+  const toggleFollowProfile = (profileId: string) => {
+    const followed = settings.followedProfiles || [];
+    if (followed.includes(profileId)) {
+      updateSetting('followedProfiles', followed.filter((id: string) => id !== profileId));
+    } else {
+      updateSetting('followedProfiles', [...followed, profileId]);
+    }
+  };
+
+  const isProfileFollowed = (profileId: string) => {
+    return (settings.followedProfiles || []).includes(profileId);
+  };
+
+  return { settings, updateSetting, toggleFollowProfile, isProfileFollowed };
 };
 
 // Theme hook

@@ -5,9 +5,10 @@ export const JavTubeBeingWatched = () => (
   <JavTubeView
     sortType="being_watched"
     title="Being Watched"
-    subtitle="Live Activity"
-    gradientFrom="red"
-    gradientTo="pink"
+    showHeader={false}
+    showSearch={false}
+    gradientFrom="pink"
+    gradientTo="red"
   />
 );
 

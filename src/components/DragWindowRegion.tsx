@@ -5,18 +5,68 @@ import {
 } from "@/helpers/window_helpers";
 import { isMacOS } from "@/utils/platform";
 import React, { type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import {
+  Camera,
+  Video,
+  Image as ImageIcon,
+  Users,
+  Play,
+  Star,
+  Home,
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DragWindowRegionProps {
   title?: ReactNode;
 }
 
+const apps = [
+  { to: "/", title: "Home", icon: <Home size={14} /> },
+  { to: "/camviewer", title: "CamViewer", icon: <Camera size={14} /> },
+  { to: "/redgifs", title: "RedGifs Explorer", icon: <Video size={14} /> },
+  { to: "/fapello", title: "Fapello Collections", icon: <ImageIcon size={14} /> },
+  { to: "/wallheaven", title: "Wallheaven Labs", icon: <ImageIcon size={14} /> },
+  { to: "/coomerKemono", title: "Creator Archive", icon: <Users size={14} /> },
+  { to: "/javtube", title: "JavTube v2", icon: <Play size={14} /> },
+  { to: "/actresses", title: "Star Database", icon: <Users size={14} /> },
+];
+
 export default function DragWindowRegion({ title }: DragWindowRegionProps) {
   return (
-    <div className="flex w-screen items-stretch justify-between">
-      <div className="draglayer w-full">
-        {title && !isMacOS() && (
-          <div className="flex flex-1 p-2 text-xs whitespace-nowrap text-gray-400 select-none">
-            {title}
+    <div className="flex w-screen items-stretch justify-between bg-black/40 backdrop-blur-md border-b border-white/5 h-8">
+      <div className="draglayer w-full flex items-center px-2">
+        {!isMacOS() && (
+          <div className="flex items-center gap-1 no-drag">
+            <TooltipProvider delayDuration={0}>
+              {apps.map((app) => (
+                <Tooltip key={app.to}>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to={app.to}
+                      className="p-1.5 text-white/40 hover:text-cyan-400 hover:bg-white/5 rounded transition-colors"
+                    >
+                      {app.icon}
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs bg-black/90 text-white border-white/10">
+                    <p>{app.title}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </TooltipProvider>
+
+            {title && (
+              <>
+                <div className="h-3 w-px bg-white/10 mx-2" />
+                <span className="text-xs text-white/30 font-medium select-none">{title}</span>
+              </>
+            )}
           </div>
         )}
         {isMacOS() && (

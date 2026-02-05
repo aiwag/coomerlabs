@@ -6,8 +6,10 @@ export const JavTubeTopRated = () => (
     sortType="top_rated"
     title="Top Rated"
     subtitle="Highest Scores"
-    gradientFrom="purple"
-    gradientTo="blue"
+    showHeader={false}
+    showSearch={false}
+    gradientFrom="yellow"
+    gradientTo="orange"
   />
 );
 

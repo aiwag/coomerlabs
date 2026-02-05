@@ -1,10 +1,10 @@
 import { create } from 'zustand';
 import { getMostViewedRooms, searchRooms, getTopRatedRooms, getTrendingRooms, Streamer, CarouselGender } from '@/services/chaturbateApiService';
 
-export type BrowseMode = 'mostViewed' | 'topRated' | 'trending' | 'search';
+export type BrowseMode = 'mostViewed' | 'topRated' | 'trending' | 'search' | 'active';
 export type SortByType = 'num_users' | 'num_followers' | 'display_age' | 'start_dt_utc';
 
-interface Filters { minViewers: number; region: string; showNew: boolean; showVerified: boolean; }
+interface Filters { minViewers: number; region: string; showNew: boolean; showVerified: boolean; gender: CarouselGender; }
 
 interface BrowserState {
   streamers: Streamer[];
@@ -20,7 +20,7 @@ interface BrowserState {
   filterPanelOpen: boolean;
   filters: Filters;
   sortBy: SortByType;
-  
+
   fetchStreamers: (isLoadMore?: boolean) => Promise<void>;
   setBrowseMode: (mode: BrowseMode) => void;
   setSearchTerm: (term: string) => void;
@@ -32,11 +32,21 @@ interface BrowserState {
   clearFilters: () => void;
 }
 
-const initialFilters: Filters = { minViewers: 0, region: '', showNew: false, showVerified: false };
+const initialFilters: Filters = { minViewers: 0, region: '', showNew: false, showVerified: false, gender: '' };
 
 const applyFiltersAndSort = (streamers: Streamer[], filters: Filters, sortBy: SortByType): Streamer[] => {
-  const filtered = streamers.filter(s => s.num_users >= filters.minViewers && (!filters.region || s.country.toLowerCase() === filters.region.toLowerCase()) && (!filters.showNew || s.is_new) && (!filters.showVerified || s.is_age_verified));
-  return filtered.sort((a, b) => { if (sortBy === 'display_age') return (a.display_age ?? 99) - (b.display_age ?? 99); if (sortBy === 'start_dt_utc') return new Date(b.start_dt_utc).getTime() - new Date(a.start_dt_utc).getTime(); return (b[sortBy] ?? 0) - (a[sortBy] ?? 0); });
+  const filtered = streamers.filter(s =>
+    s.num_users >= filters.minViewers &&
+    (!filters.region || s.country.toLowerCase() === filters.region.toLowerCase()) &&
+    (!filters.showNew || s.is_new) &&
+    (!filters.showVerified || s.is_age_verified) &&
+    (!filters.gender || s.gender === filters.gender)
+  );
+  return filtered.sort((a, b) => {
+    if (sortBy === 'display_age') return (a.display_age ?? 99) - (b.display_age ?? 99);
+    if (sortBy === 'start_dt_utc') return new Date(b.start_dt_utc).getTime() - new Date(a.start_dt_utc).getTime();
+    return (b[sortBy] ?? 0) - (a[sortBy] ?? 0);
+  });
 };
 
 export const useBrowserStore = create<BrowserState>((set, get) => ({
@@ -57,33 +67,33 @@ export const useBrowserStore = create<BrowserState>((set, get) => ({
   fetchStreamers: async (isLoadMore = false) => {
     const state = get();
     if (state.isLoading) return;
-    
+
     state.abortController?.abort();
     const newAbortController = new AbortController();
     set({ isLoading: true, error: null, abortController: newAbortController });
 
     const pageToFetch = isLoadMore ? state.currentPage + 1 : 1;
-    const limit = 90;
+    const limit = 40;
 
     try {
       let response;
       const signal = newAbortController.signal;
-      
+
       const isCarousel = state.browseMode === 'topRated' || state.browseMode === 'trending';
       if (isCarousel && isLoadMore) { set({ isLoading: false, hasMore: false }); return; }
 
       switch (state.browseMode) {
         case 'search':
           if (!state.activeSearchQuery) { set({ isLoading: false, streamers: [], hasMore: false }); return; }
-          response = await searchRooms(state.activeSearchQuery, pageToFetch, limit, signal);
+          response = await searchRooms(state.activeSearchQuery, pageToFetch, limit, signal, state.filters.gender);
           break;
-        case 'topRated': response = await getTopRatedRooms(signal); break;
-        case 'trending': response = await getTrendingRooms(signal); break;
-        default: response = await getMostViewedRooms(pageToFetch, limit, signal); break;
+        case 'topRated': response = await getTopRatedRooms(signal, state.filters.gender); break;
+        case 'trending': response = await getTrendingRooms(signal, state.filters.gender); break;
+        default: response = await getMostViewedRooms(pageToFetch, limit, signal, state.filters.gender); break;
       }
-      
+
       const newStreamers = isLoadMore ? [...state.streamers, ...response.rooms] : response.rooms;
-      
+
       set(s => ({
         streamers: newStreamers,
         filteredStreamers: applyFiltersAndSort(newStreamers, s.filters, s.sortBy),
@@ -100,12 +110,15 @@ export const useBrowserStore = create<BrowserState>((set, get) => ({
   setBrowseMode: (mode) => { set({ browseMode: mode, streamers: [], currentPage: 1, hasMore: true, error: null }); get().fetchStreamers(); },
   setSearchTerm: (term) => set({ searchTerm: term }),
   executeSearch: (term) => { if (!term) { if (get().browseMode === 'search') get().setBrowseMode('mostViewed'); return; } set({ browseMode: 'search', activeSearchQuery: term, streamers: [], currentPage: 1, hasMore: true, error: null }); get().fetchStreamers(); },
-  
-  // This is the CRITICAL cleanup function
+
   cleanup: () => { get().abortController?.abort(); set({ streamers: [], filteredStreamers: [], currentPage: 1, error: null }); },
-  
+
   toggleFilterPanel: () => set(state => ({ filterPanelOpen: !state.filterPanelOpen })),
-  setFilters: (newFilters) => { const filters = { ...get().filters, ...newFilters }; set(s => ({ filters, filteredStreamers: applyFiltersAndSort(s.streamers, filters, s.sortBy) })) },
+  setFilters: (newFilters) => {
+    const filters = { ...get().filters, ...newFilters };
+    set(s => ({ filters, filteredStreamers: applyFiltersAndSort(s.streamers, filters, s.sortBy) }));
+    if (newFilters.gender !== undefined) get().fetchStreamers();
+  },
   setSortBy: (sort) => { set(s => ({ sortBy: sort, filteredStreamers: applyFiltersAndSort(s.streamers, s.filters, sort) })) },
   clearFilters: () => { set(s => ({ filters: initialFilters, filteredStreamers: applyFiltersAndSort(s.streamers, initialFilters, s.sortBy) })) },
 }));

@@ -5,7 +5,7 @@ export const JavTubeIndex = () => (
   <JavTubeView
     sortType="main"
     title=""
-    showSearch={true}
+    showSearch={false}
     showHeader={false}
   />
 );

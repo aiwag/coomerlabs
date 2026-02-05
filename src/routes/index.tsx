@@ -55,6 +55,19 @@ const labs = [
     glow: "glow-cyan"
   },
   {
+    id: "camarchive",
+    to: "/camarchive",
+    title: "Cam Archive",
+    description: "Viewed cam history with video archives from Chaturbate and more.",
+    icon: <Clock className="w-6 h-6" />,
+    color: "from-violet-500 to-purple-400",
+    stats: "Auto-Saved",
+    status: "History",
+    features: ["Auto-Track", "Video Previews", "Quick Access"],
+    performance: "Instant",
+    glow: "glow-violet"
+  },
+  {
     id: "redgifs",
     to: "/redgifs",
     title: "RedGifs Explorer",
@@ -195,52 +208,9 @@ export function IndexPage() {
         ) : null}
       </AnimatePresence>
 
-      {/* Hero Section */}
-      <section className="relative pt-16 pb-12 px-6 overflow-hidden">
-        <div className="max-w-7xl mx-auto relative z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="flex flex-col items-center text-center"
-          >
-
-
-            <motion.h1
-              className="text-5xl md:text-7xl font-black tracking-tighter mb-6 bg-gradient-to-b from-white via-white to-white/60 bg-clip-text text-transparent leading-none"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2, duration: 0.8 }}
-            >
-              COOMER<span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">LABS</span>
-            </motion.h1>
-
-
-          </motion.div>
-        </div>
-      </section>
-
-
-
       {/* Labs Grid */}
-      <section className="px-6 pb-16">
+      <section className="px-6 pb-16 pt-8">
         <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0, duration: 0.8 }}
-            className="flex items-center justify-between mb-8"
-          >
-            <div>
-              <h2 className="text-2xl font-bold text-white mb-2">Available Labs</h2>
-              <p className="text-white/40 text-sm">Click to explore our optimized platform modules</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-              <span className="text-xs text-white/60 font-medium">All Systems Operational</span>
-            </div>
-          </motion.div>
-
           <motion.div
             variants={containerVariants}
             initial="hidden"
@@ -260,76 +230,43 @@ export function IndexPage() {
                   to={lab.to}
                   className="block h-full"
                 >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${lab.color} opacity-0 group-hover:opacity-10 rounded-3xl transition-all duration-500 blur-xl`} />
+                  <div className="relative h-full flex flex-col p-6 rounded-3xl bg-white/5 backdrop-blur-xl border border-white/10 overflow-hidden transition-all duration-300 hover:bg-white/10 hover:border-white/20 hover:scale-[1.02] hover:shadow-2xl shadow-black/50 group">
 
-                  <div className={`relative bg-gradient-to-br from-white/5 to-white/2 backdrop-blur-xl border border-white/10 rounded-3xl p-6 h-full hover:border-white/20 transition-all duration-500 overflow-hidden ${lab.glow && 'group-hover:' + lab.glow}`}>
-                    {/* Background Pattern */}
-                    <div className="absolute inset-0 opacity-5">
-                      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%220%200%2040%2040%22%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%3E%3Cg%20fill%3D%22%23ffffff%22%20fill-opacity%3D%220.1%22%3E%3Cpath%20d%3D%22M0%2040L40%200H20L0%2020M40%2040V20L20%2040%22/%3E%3C/g%3E%3C/svg%3E')]" />
-                    </div>
-
-                    {/* Status Badge */}
-                    <div className="absolute top-4 right-4">
-                      <div className={`px-2 py-1 rounded-full text-xs font-black uppercase tracking-wider ${lab.status === 'Live' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                        lab.status === 'Updated' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                          lab.status === 'Stable' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
-                            lab.status === 'Premium' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-                              lab.status === 'Online' ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' :
-                                'bg-red-500/20 text-red-400 border border-red-500/30'
-                        }`}>
-                        {lab.status === 'Live' && <div className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1 inline-block animate-pulse" />}
-                        {lab.status}
+                    {/* Top Row: Icon & Status */}
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`p-3 rounded-2xl bg-gradient-to-br ${lab.color} text-white shadow-lg`}>
+                        {lab.icon}
                       </div>
-                    </div>
-
-                    <div className="relative z-10">
-                      {/* Header */}
-                      <div className="flex items-start justify-between mb-6">
-                        <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${lab.color} flex items-center justify-center text-white shadow-lg shadow-black/20 group-hover:scale-110 transition-transform duration-500 group-hover:rotate-6`}>
-                          {lab.icon}
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs font-medium text-white/60">{lab.stats}</div>
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      <div className="mb-6">
-                        <h3 className="text-xl font-black mb-2 text-white group-hover:text-cyan-400 transition-colors">
-                          {lab.title}
-                        </h3>
-                        <p className="text-white/40 text-sm font-medium leading-relaxed">
-                          {lab.description}
-                        </p>
-                      </div>
-
-                      {/* Performance Badge */}
-                      {lab.performance && (
-                        <div className="mb-4">
-                          <div className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20">
-                            <BarChart3 className="w-3 h-3 text-green-400" />
-                            <span className="text-xs font-bold text-green-400">{lab.performance}</span>
-                          </div>
+                      {lab.status === 'Live' && (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-green-500/20 border border-green-500/30">
+                          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                          <span className="text-[10px] font-bold text-green-400 uppercase tracking-widest">Live</span>
                         </div>
                       )}
+                    </div>
 
-                      {/* Features */}
-                      <div className="flex flex-wrap gap-1.5 mb-6">
-                        {lab.features.map(f => (
-                          <span key={f} className="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded-lg bg-white/5 border border-white/10 group-hover:border-white/20 transition-colors text-white/60">
-                            {f}
-                          </span>
-                        ))}
+                    {/* Middle: Text */}
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-2 tracking-tight group-hover:text-cyan-400 transition-colors">
+                        {lab.title}
+                      </h3>
+                      <p className="text-sm text-white/50 leading-relaxed line-clamp-2">
+                        {lab.description}
+                      </p>
+                    </div>
+
+                    {/* Bottom: Stats & Action */}
+                    <div className="mt-6 flex items-center justify-between pt-4 border-t border-white/5">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] uppercase tracking-wider text-white/30 font-medium">Status</span>
+                        <span className="text-xs font-medium text-white/70">{lab.stats}</span>
                       </div>
 
-                      {/* Footer */}
-                      <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider">
-                        <span className="text-white/40 group-hover:text-cyan-400 transition-colors">Launch Module</span>
-                        <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-gradient-to-r group-hover:from-cyan-500 group-hover:to-blue-500 group-hover:border-transparent transition-all">
-                          <ArrowRight className="w-4 h-4 text-white/60 group-hover:text-white transition-colors" />
-                        </div>
+                      <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 group-hover:bg-cyan-500 group-hover:text-white transition-all duration-300">
+                        <ArrowRight size={14} />
                       </div>
                     </div>
+
                   </div>
                 </Link>
               </motion.div>
@@ -337,85 +274,6 @@ export function IndexPage() {
           </motion.div>
         </div>
       </section>
-
-      {/* Enhanced Footer */}
-      <footer className="relative border-t border-white/10 py-12 px-6 bg-gradient-to-t from-slate-950/50 to-transparent">
-        <div className="max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.2, duration: 0.8 }}
-            className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8"
-          >
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-black text-xl shadow-lg">
-                  CL
-                </div>
-                <div>
-                  <div className="font-black text-xl text-white">CoomerLabs</div>
-                  <div className="text-xs text-white/40 uppercase tracking-widest">Performance-First Media Platform</div>
-                </div>
-              </div>
-              <p className="text-sm text-white/40 leading-relaxed max-w-md">
-                Next-generation media management ecosystem built with cutting-edge performance optimizations and modern web technologies.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-black text-white text-sm uppercase tracking-wider mb-4">Platform</h4>
-              <div className="space-y-2">
-                {['Dashboard', 'Analytics', 'Performance', 'Security'].map(item => (
-                  <a key={item} href="#" className="block text-xs text-white/40 hover:text-cyan-400 transition-colors">
-                    {item}
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-black text-white text-sm uppercase tracking-wider mb-4">Resources</h4>
-              <div className="space-y-2">
-                {['Documentation', 'API Reference', 'GitHub', 'Support'].map(item => (
-                  <a key={item} href="#" className="block text-xs text-white/40 hover:text-cyan-400 transition-colors">
-                    {item}
-                  </a>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.4, duration: 0.8 }}
-            className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4"
-          >
-            <div className="flex items-center gap-4">
-              <div className="text-xs text-white/40">
-                © 2025 CoomerLabs. Built with ❤️ and performance obsession.
-              </div>
-            </div>
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                <span className="text-xs text-white/60 font-medium">All Systems Operational</span>
-              </div>
-              <div className="flex gap-4">
-                <a href="#" className="text-white/40 hover:text-cyan-400 transition-colors">
-                  <Terminal className="w-4 h-4" />
-                </a>
-                <a href="#" className="text-white/40 hover:text-cyan-400 transition-colors">
-                  <Globe className="w-4 h-4" />
-                </a>
-                <a href="#" className="text-white/40 hover:text-cyan-400 transition-colors">
-                  <Shield className="w-4 h-4" />
-                </a>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </footer>
     </div>
   );
 }

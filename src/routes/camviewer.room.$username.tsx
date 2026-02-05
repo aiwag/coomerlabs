@@ -6,9 +6,17 @@ import { useNavigate } from "@tanstack/react-router";
 import { fetchArchiveProfile } from "@/services/archivebateService";
 import { ArchiveVideoCard } from "@/components/camviewer/ArchiveVideoCard";
 import { SortableWebview } from "@/components/camviewer/grid/SortableWebview";
+import { addViewedProfile } from "@/components/camarchive/api";
 
 export function RoomProfilePage() {
   const { username } = Route.useParams();
+
+  // Add to camarchive history
+  useEffect(() => {
+    if (username) {
+      addViewedProfile(username);
+    }
+  }, [username]);
   const navigate = useNavigate();
   const [selectedVideo, setSelectedVideo] = useState<ArchiveVideo | null>(null);
 

@@ -40,7 +40,8 @@ export const SettingsPanel = ({ isOpen, onClose }: SettingsPanelProps) => {
               {[
                 { key: 'autoPlay', label: 'Auto-play videos' },
                 { key: 'showThumbnails', label: 'Show thumbnails' },
-                { key: 'highQuality', label: 'High quality images' },
+                { key: 'highQuality', label: 'High quality images in modal' },
+                { key: 'alwaysHD', label: 'Always load HD thumbnails' },
                 { key: 'compactView', label: 'Compact view' },
                 { key: 'infiniteScroll', label: 'Infinite scroll' },
                 { key: 'showControls', label: 'Show controls' }

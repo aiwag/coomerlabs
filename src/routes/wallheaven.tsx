@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { useInView } from 'react-intersection-observer';
 import { Toaster, toast } from 'react-hot-toast';
@@ -26,6 +26,19 @@ import {
   Heart,
   Bookmark,
 } from 'lucide-react';
+
+// ... (Types/API omitted for brevity in replace block, but need to be careful not to overwrite them if not included in start/end lines)
+// Since I am replacing the TOP import specifically, I should just target line 3 for the import fix first to be safe,
+// but the instruction says "Compact layout". I'll try to do it in one go if I can span it, but the file is large.
+// Actually, I will target specific blocks.
+
+// BLOCK 1: Fix imports
+// BLOCK 2: Skeleton
+// BLOCK 3: RouteComponent
+
+// Let's do imports first.
+
+
 
 // --- TYPES ---
 interface Wallpaper {
@@ -168,9 +181,8 @@ const ScrollToTopButton = () => {
   return (
     <button
       onClick={scrollToTop}
-      className={`fixed bottom-8 right-8 z-40 p-3 rounded-full shadow-lg transition-all duration-300 liquid-button ${
-        isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-16 pointer-events-none'
-      }`}
+      className={`fixed bottom-8 right-8 z-40 p-3 rounded-full shadow-lg transition-all duration-300 liquid-button ${isVisible ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform translate-y-16 pointer-events-none'
+        }`}
     >
       <ArrowUp size={24} />
     </button>
@@ -347,19 +359,19 @@ const FilterPanel = ({
   );
 };
 
-// Enhanced Skeleton Loader with glassmorphic design
+// Minimal Skeleton Loader
 const ImageGridSkeleton = () => (
   <Masonry
     breakpointCols={{
-      default: 6,
+      default: 8,
+      1920: 8,
       1536: 6,
       1280: 4,
       1024: 3,
       768: 2,
-      640: 2,
     }}
-    className="flex gap-4"
-    columnClassName="flex flex-col gap-4"
+    className="flex gap-2"
+    columnClassName="flex flex-col gap-2"
   >
     {Array.from({ length: 24 }).map((_, index) => (
       <div key={index} className="group">
@@ -373,8 +385,8 @@ const ImageGridSkeleton = () => (
   </Masonry>
 );
 
-// Enhanced Image Card Component with glassmorphic design & hover preview
-const ImageCard = ({
+// Light, fast Image Card with minimal effects
+const ImageCard = React.memo(({
   wallpaper,
   onClick,
   onHover,
@@ -386,16 +398,7 @@ const ImageCard = ({
   const uploaderName = wallpaper.uploader?.username ?? 'Anonymous';
   const thumbSrc = wallpaper.thumbs?.small ?? wallpaper.thumbs?.original ?? wallpaper.path;
   const [imageError, setImageError] = useState(false);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
-  const [imageHeight, setImageHeight] = useState<number | null>(null);
-
-  const purityColors = {
-    sfw: 'bg-green-500',
-    sketchy: 'bg-yellow-500',
-    nsfw: 'bg-red-500',
-  };
 
   // Calculate aspect ratio for masonry
   const aspectRatio = wallpaper.dimension_x && wallpaper.dimension_y
@@ -404,8 +407,12 @@ const ImageCard = ({
 
   return (
     <div
-      className="group relative block w-full glass-card overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:z-10"
-      style={{ paddingBottom: `${aspectRatio * 100}%` }}
+      className="group relative block w-full bg-gray-900/50 overflow-hidden cursor-pointer hover:z-10"
+      style={{
+        paddingBottom: `${aspectRatio * 100}%`,
+        contentVisibility: 'auto',
+        containIntrinsicSize: `100% ${aspectRatio * 300}px`
+      }}
       onClick={onClick}
       onMouseEnter={() => {
         onHover(wallpaper);
@@ -418,95 +425,52 @@ const ImageCard = ({
     >
       {/* Hover Preview - Fixed Position */}
       {showPreview && (
-        <div className="fixed bottom-4 right-4 z-50 w-80 glass-card p-2 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
+        <div className="fixed bottom-4 right-4 z-50 w-64 bg-black/90 border border-white/10 p-2 shadow-2xl rounded-lg pointer-events-none">
           <img
             src={wallpaper.path}
             alt={`Preview ${wallpaper.id}`}
-            className="w-full rounded-lg"
+            className="w-full rounded"
           />
-          <div className="mt-2 px-2">
-            <p className="text-sm font-bold text-white">{wallpaper.resolution}</p>
-            <p className="text-xs text-white/60">by {uploaderName}</p>
-            <div className="flex items-center gap-2 mt-1 text-xs text-white/50">
-              <span>❤️ {wallpaper.favorites.toLocaleString()}</span>
-              <span>👁️ {wallpaper.views.toLocaleString()}</span>
+          <div className="mt-2 px-1">
+            <p className="text-xs font-bold text-white">{wallpaper.resolution}</p>
+            <div className="flex justify-between text-[10px] text-white/50 mt-1">
+              <span>{uploaderName}</span>
+              <span>{wallpaper.file_size ? (wallpaper.file_size / 1024 / 1024).toFixed(2) + ' MB' : ''}</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Purity Indicator */}
-      <div className={`absolute top-2 left-2 w-2 h-2 rounded-full z-10 ${purityColors[wallpaper.purity as keyof typeof purityColors]} shadow-sm`} />
-
       {!imageError ? (
         <img
           src={thumbSrc}
           alt={`Wallpaper by ${uploaderName}`}
-          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
+          className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200 group-hover:opacity-80"
           loading="lazy"
+          decoding="async"
           onError={() => setImageError(true)}
         />
       ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-          <span className="text-white/40">Failed to load</span>
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+          <span className="text-[10px] text-white/30">Error</span>
         </div>
       )}
 
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-      {/* Info Panel */}
-      <div className="absolute bottom-0 left-0 right-0 p-3 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-        <div className="text-white">
-          <p className="text-sm font-semibold truncate">{wallpaper.resolution}</p>
-          <div className="flex items-center justify-between text-xs mt-1">
-            <span className="flex items-center gap-1">
-              <Heart size={10} className={isLiked ? 'fill-red-500 text-red-500' : ''} />
-              {wallpaper.favorites.toLocaleString()}
-            </span>
-            <span className="flex items-center">👁️ {wallpaper.views.toLocaleString()}</span>
-          </div>
-          <p className="text-xs mt-1 truncate">by {uploaderName}</p>
+      {/* Simplified Info Overlay - Only on Hover */}
+      <div className="absolute bottom-0 left-0 right-0 p-1 bg-black/70 translate-y-full group-hover:translate-y-0 transition-transform duration-150">
+        <div className="flex justify-between items-center text-[10px] text-white font-mono">
+          <span>{wallpaper.resolution}</span>
+          <span>{Number(wallpaper.file_size / 1024).toFixed(0)}KB</span>
         </div>
       </div>
 
-      {/* Quick Actions */}
-      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsLiked(!isLiked);
-          }}
-          className={`p-1.5 rounded-full transition-colors border ${
-            isLiked ? 'bg-red-500/80 border-red-500/50' : 'bg-black/60 hover:bg-black/80 border-white/10'
-          } backdrop-blur-md`}
-        >
-          <Heart size={12} fill={isLiked ? 'white' : 'none'} className={isLiked ? 'text-white' : 'text-white/80'} />
-        </button>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsBookmarked(!isBookmarked);
-          }}
-          className={`p-1.5 rounded-full transition-colors border ${
-            isBookmarked ? 'bg-blue-500/80 border-blue-500/50' : 'bg-black/60 hover:bg-black/80 border-white/10'
-          } backdrop-blur-md`}
-        >
-          <Bookmark size={12} fill={isBookmarked ? 'white' : 'none'} className={isBookmarked ? 'text-white' : 'text-white/80'} />
-        </button>
-        <button
-          className="p-1.5 rounded-full text-white transition-colors bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10"
-          onClick={(e) => {
-            e.stopPropagation();
-            window.open(wallpaper.path, '_blank');
-          }}
-        >
-          <Download size={14} />
-        </button>
-      </div>
+      {/* Purity Dot */}
+      <div className={`absolute top-1 left-1 w-1.5 h-1.5 rounded-full ${wallpaper.purity === 'sfw' ? 'bg-green-500' :
+        wallpaper.purity === 'sketchy' ? 'bg-yellow-500' : 'bg-red-500'
+        }`} />
     </div>
   );
-};
+}, (prev, next) => prev.wallpaper.id === next.wallpaper.id);
 
 // Enhanced Image Modal Component with glassmorphic design
 const ImageModal = ({
@@ -574,16 +538,14 @@ const ImageModal = ({
 
   return (
     <div
-      className={`fixed inset-0 bg-black z-50 flex items-center justify-center p-4 transition-all duration-300 ${
-        isFullscreen ? 'p-0' : 'bg-opacity-95 backdrop-blur-xl'
-      }`}
+      className={`fixed inset-0 bg-black z-50 flex items-center justify-center p-4 transition-all duration-300 ${isFullscreen ? 'p-0' : 'bg-opacity-95 backdrop-blur-xl'
+        }`}
       onClick={onClose}
     >
       <div
         ref={modalRef}
-        className={`relative glass-card flex flex-col md:flex-row overflow-hidden transition-all duration-300 ${
-          isFullscreen ? 'w-full h-full rounded-none max-w-none max-h-none' : 'max-w-7xl max-h-[95vh] shadow-2xl'
-        }`}
+        className={`relative glass-card flex flex-col md:flex-row overflow-hidden transition-all duration-300 ${isFullscreen ? 'w-full h-full rounded-none max-w-none max-h-none' : 'max-w-7xl max-h-[95vh] shadow-2xl'
+          }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Controls */}
@@ -640,18 +602,16 @@ const ImageModal = ({
           <img
             src={wallpaper.path}
             alt={`Wallpaper ${wallpaper.id}`}
-            className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`max-w-full max-h-full object-contain transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
             onLoad={handleImageLoad}
           />
         </div>
 
         {/* Info Sidebar */}
         <div
-          className={`w-full md:w-80 lg:w-96 p-6 overflow-y-auto flex-shrink-0 transition-all duration-300 custom-scrollbar ${
-            isFullscreen ? 'hidden' : 'block'
-          }`}
+          className={`w-full md:w-80 lg:w-96 p-6 overflow-y-auto flex-shrink-0 transition-all duration-300 custom-scrollbar ${isFullscreen ? 'hidden' : 'block'
+            }`}
         >
           <h2 className="text-2xl font-bold mb-6 text-white border-b border-white/10 pb-3">
             Image Details
@@ -850,9 +810,8 @@ const SlideshowModal = ({
         <img
           src={wallpapers[currentIndex].path}
           alt={`Slideshow image ${currentIndex + 1}`}
-          className={`max-w-full max-h-screen object-contain transition-opacity duration-300 ${
-            imageLoaded ? 'opacity-100' : 'opacity-0'
-          }`}
+          className={`max-w-full max-h-screen object-contain transition-opacity duration-300 ${imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
           onLoad={handleImageLoad}
         />
       </div>
@@ -880,7 +839,7 @@ function RouteComponent() {
   const slideshowIntervalRef = useRef<number | null>(null);
 
   // New: Grid & View Controls
-  const [gridColumns, setGridColumns] = useState(6); // Resizable grid
+  const [gridColumns, setGridColumns] = useState(8); // Default to 8 for density
   const [cinemaMode, setCinemaMode] = useState(false); // Cinema mode
   const [hoveredWallpaper, setHoveredWallpaper] = useState<Wallpaper | null>(null);
 
@@ -1017,82 +976,66 @@ function RouteComponent() {
   }, []);
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-black">
-      <header className={`flex-shrink-0 sticky top-0 z-40 glass-header transition-all duration-500 ${cinemaMode ? 'opacity-0 hover:opacity-100' : ''}`}>
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex justify-between items-center mb-3">
-            <h1 className="text-3xl font-bold tracking-tight text-white">Wallhaven Explorer</h1>
-            <div className="flex items-center gap-3">
-              {/* Cinema Mode Toggle */}
-              <button
-                onClick={() => setCinemaMode(!cinemaMode)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                  cinemaMode ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' : 'liquid-button'
-                }`}
-                title="Toggle Cinema Mode (C)"
-              >
-                <Monitor size={18} />
-                <span className="font-bold text-sm">{cinemaMode ? 'Exit' : 'Cinema'}</span>
-              </button>
-            </div>
+    <div className="h-screen w-screen flex flex-col bg-black overflow-hidden">
+      {/* Super Compact Header */}
+      <header className={`flex-shrink-0 sticky top-0 z-40 bg-black/80 backdrop-blur-md border-b border-white/5 transition-all duration-300 ${cinemaMode ? 'opacity-0 hover:opacity-100 -mt-12 scale-y-0 hover:mt-0 hover:scale-y-100' : ''}`}>
+        <div className="w-full px-2 py-2 flex items-center justify-between gap-4">
+          {/* Title & Cinema */}
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <h1 className="text-lg font-bold tracking-tight text-white hidden md:block">Wallhaven</h1>
+            <button
+              onClick={() => setCinemaMode(!cinemaMode)}
+              className="p-1.5 text-white/70 hover:text-white transition-colors"
+              title="Toggle Cinema Mode (C)"
+            >
+              <Monitor size={16} />
+            </button>
           </div>
 
-          {/* Controls Row */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              {/* Search Input */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                <input
-                  type="text"
-                  value={filters.searchQuery}
-                  onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      refetch();
-                    }
-                  }}
-                  placeholder="Search wallpapers..."
-                  className="liquid-input pl-10 pr-10 py-2 w-64 text-sm text-white placeholder-white/40"
-                />
-                {filters.searchQuery && (
-                  <button
-                    onClick={() => setFilters({ ...filters, searchQuery: '' })}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-
-              {/* Grid Size Control */}
-              <div className="flex items-center gap-2 px-3 py-2 glass-card">
-                <Grid size={16} className="text-white/60" />
-                <span className="text-xs font-bold text-white/60">GRID</span>
-                <input
-                  type="range"
-                  min="2"
-                  max="12"
-                  value={gridColumns}
-                  onChange={(e) => setGridColumns(parseInt(e.target.value))}
-                  className="w-24 accent-cyan-500"
-                />
-                <span className="text-xs font-mono text-cyan-400">{gridColumns}</span>
-              </div>
-
-              {/* Slideshow Button */}
-              {activeImageIndex !== null && (
+          {/* Controls */}
+          <div className="flex items-center gap-2 flex-grow justify-end">
+            {/* Search */}
+            <div className="relative max-w-xs w-full">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/40" />
+              <input
+                type="text"
+                value={filters.searchQuery}
+                onChange={(e) => setFilters({ ...filters, searchQuery: e.target.value })}
+                onKeyDown={(e) => { if (e.key === 'Enter') refetch(); }}
+                placeholder="Search..."
+                className="bg-white/5 border border-white/10 rounded-md pl-8 pr-8 py-1.5 w-full text-xs text-white focus:outline-none focus:border-cyan-500/50"
+              />
+              {filters.searchQuery && (
                 <button
-                  onClick={startSlideshow}
-                  className="flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-colors liquid-button"
+                  onClick={() => setFilters({ ...filters, searchQuery: '' })}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
                 >
-                  <Play size={18} />
-                  <span className="font-bold">Slideshow</span>
+                  <X size={12} />
                 </button>
               )}
             </div>
 
-            {/* Filters */}
+            {/* Grid Size */}
+            <div className="flex items-center gap-1 bg-white/5 px-2 py-1 rounded-md border border-white/10">
+              <Grid size={12} className="text-white/40" />
+              <input
+                type="range"
+                min="2"
+                max="12"
+                value={gridColumns}
+                onChange={(e) => setGridColumns(parseInt(e.target.value))}
+                className="w-16 accent-cyan-500 h-1"
+              />
+            </div>
+
+            {/* Slideshow */}
+            {activeImageIndex !== null && (
+              <button onClick={startSlideshow} className="p-1.5 bg-cyan-600 hover:bg-cyan-500 rounded text-white transition-colors" title="Slideshow">
+                <Play size={14} />
+              </button>
+            )}
+
+            {/* Filter Panel Toggle */}
             <FilterPanel
               filters={filters}
               setFilters={setFilters}
@@ -1103,25 +1046,9 @@ function RouteComponent() {
         </div>
       </header>
 
-      <main id="scroll-container" className="flex-1 overflow-y-auto custom-scrollbar" style={{ height: 'calc(100vh - 73px)' }}>
-        <div className="container mx-auto px-4 py-4">
-          {/* Active filters display */}
-          <div className="mb-4 flex flex-wrap gap-2">
-            {Object.entries(filters.categories).filter(([_, v]) => v).map(([key]) => (
-              <span key={key} className="px-3 py-1 bg-cyan-500/20 text-cyan-400 text-sm rounded-full capitalize border border-cyan-500/30">
-                {key}
-              </span>
-            ))}
-            {Object.entries(filters.purity).filter(([_, v]) => v).map(([key]) => (
-              <span key={key} className={`px-3 py-1 text-sm rounded-full capitalize border ${
-                key === 'sfw' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
-                key === 'sketchy' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
-                'bg-red-500/20 text-red-400 border-red-500/30'
-              }`}>
-                {key}
-              </span>
-            ))}
-          </div>
+      <main id="scroll-container" className="flex-1 overflow-y-auto custom-scrollbar relative bg-black">
+        <div className="w-full px-2 py-2">
+          {/* Removed duplicate filter chips for compactness */}
 
           {status === 'pending' ? (
             <ImageGridSkeleton />
@@ -1133,25 +1060,20 @@ function RouteComponent() {
                 dataLength={allWallpapers.length}
                 next={fetchNextPage}
                 hasMore={!!hasNextPage}
-                loader={<ImageGridSkeleton />}
-                scrollableTarget="scroll-container "
-                endMessage={
-                  <p className="text-center text-white/40 my-8 py-4">
-                    🎉 You've seen all the amazing wallpapers!
-                  </p>
-                }
+                loader={<div className="h-20" />}
+                scrollableTarget="scroll-container"
               >
                 <Masonry
                   breakpointCols={{
                     default: gridColumns,
-                    1536: gridColumns,
-                    1280: Math.max(4, gridColumns - 2),
-                    1024: Math.max(3, gridColumns - 3),
-                    768: Math.max(2, gridColumns - 4),
-                    640: 2,
+                    1920: gridColumns,
+                    1536: Math.max(4, gridColumns - 1),
+                    1280: Math.max(3, gridColumns - 2),
+                    1024: Math.max(2, gridColumns - 3),
+                    768: 2,
                   }}
-                  className="flex gap-4"
-                  columnClassName="flex flex-col gap-4"
+                  className="flex gap-2"
+                  columnClassName="flex flex-col gap-2"
                 >
                   {allWallpapers.map((wallpaper, index) => (
                     <ImageCard
@@ -1164,17 +1086,16 @@ function RouteComponent() {
                 </Masonry>
               </InfiniteScroll>
 
-              {/* Infinite scroll trigger for fallback */}
-              <div ref={ref} className="h-1" />
+              {/* Fallback trigger */}
+              <div ref={ref} className="h-10 w-full" />
             </>
           )}
         </div>
       </main>
 
-      {/* Scroll to Top Button */}
       <ScrollToTopButton />
 
-      {/* Image Modal */}
+      {/* Modals */}
       {activeImageIndex !== null && !isSlideshowActive && (
         <ImageModal
           wallpaper={allWallpapers[activeImageIndex]}
@@ -1187,7 +1108,6 @@ function RouteComponent() {
         />
       )}
 
-      {/* Slideshow Modal */}
       {isSlideshowActive && activeImageIndex !== null && (
         <SlideshowModal
           wallpapers={allWallpapers}

@@ -1,4 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { LayoutGrid } from "lucide-react";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useGridStore } from "@/state/gridStore";
 import { useSettingsStore } from "@/state/settingsStore";
@@ -31,9 +32,9 @@ export function CamViewerPage() {
   const { isOpen: isProfileOpen, username: profileUsername, closeProfile } = useProfileModalStore();
 
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
-  const [activeTab, setActiveTab] = useState<"streams" | "rooms" | "browse">("streams");
+  const [activeTab, setActiveTab] = useState<"rooms" | "browse">("browse");
 
-  const handleTabChange = (tab: "streams" | "rooms" | "browse") => {
+  const handleTabChange = (tab: "rooms" | "browse") => {
     setActiveTab(tab);
     if (tab === 'browse' && !sidebarExpanded) {
       setSidebarExpanded(true);
@@ -56,6 +57,14 @@ export function CamViewerPage() {
         <div className="flex w-full items-center justify-between px-4 py-2">
           {/* Drag Region - Left side (only this area is draggable) */}
           <div className="draglayer flex flex-1 items-center gap-3">
+            <Link
+              to="/"
+              className="no-drag flex items-center gap-2 rounded-md bg-white/5 px-2 py-1 text-xs font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white pointer-events-auto"
+            >
+              <LayoutGrid size={14} />
+              <span>Back to Apps</span>
+            </Link>
+            <span className="h-4 w-px bg-white/10" />
             <span className="text-xs font-medium text-neutral-400">
               {streamUrls.length} stream{streamUrls.length !== 1 ? "s" : ""}
             </span>
@@ -118,7 +127,7 @@ export function CamViewerPage() {
               exit={{ x: sidebarExpanded ? -192 : -56 }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
               className="relative z-20 flex flex-col glass-sidebar"
-              style={{ width: activeTab === 'browse' ? '24rem' : (sidebarExpanded ? "12rem" : "3.5rem") }}
+              style={{ width: sidebarExpanded ? (activeTab === 'browse' ? "32rem" : "12rem") : "3.5rem" }}
             >
               <StreamListSidebar
                 collapsed={!sidebarExpanded}

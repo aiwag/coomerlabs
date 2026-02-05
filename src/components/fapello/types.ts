@@ -59,17 +59,20 @@ export interface Profile {
   premium?: boolean;
   rating?: number;
   categories?: string[];
+  followed?: boolean;
 }
 
 export interface Settings {
   autoPlay: boolean;
   showThumbnails: boolean;
   highQuality: boolean;
+  alwaysHD: boolean;
   compactView: boolean;
   infiniteScroll: boolean;
   slideshowSpeed: number;
   showControls: boolean;
   columnCount: number;
+  followedProfiles: string[];
 }
 
 export interface ImageModalProps {

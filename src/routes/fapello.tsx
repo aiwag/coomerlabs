@@ -186,10 +186,13 @@ const FapelloRoute = () => {
         case 'Premium': profiles = profiles.filter(p => p.premium); break;
         case 'New': profiles = profiles.filter(p => p.postCount && p.postCount < 100); break;
         case 'Trending': profiles = profiles.filter(p => p.postCount && p.postCount > 200); break;
+        case 'Followed':
+          profiles = profiles.filter(p => settings.followedProfiles && settings.followedProfiles.includes(p.id));
+          break;
       }
     }
     return profiles;
-  }, [profilesData, searchValue, debouncedSearchValue, currentFilter]);
+  }, [profilesData, searchValue, debouncedSearchValue, currentFilter, settings.followedProfiles]);
 
   // Memoized creator images
   const creatorImages = useMemo(() => {

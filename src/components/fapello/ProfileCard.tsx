@@ -1,5 +1,5 @@
 // Fapello ProfileCard Component - Optimized
-import React, { useState, useCallback, memo, useRef } from 'react';
+import React, { useState, useCallback, memo, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Heart,
@@ -9,6 +9,8 @@ import {
   Check,
   X,
   Image as ImageIcon,
+  UserPlus,
+  UserMinus,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useInView } from 'react-intersection-observer';
@@ -42,17 +44,22 @@ export const ProfileCard = memo(({ profile, index, onClick }: ProfileCardProps) 
   const [imageError, setImageError] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
-  const [isInView, setIsInView] = useState(false);
+  const [loadingHQ, setLoadingHQ] = useState(false);
+  const [isFollowed, setIsFollowed] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+
   const { ref, inView } = useInView({
     triggerOnce: true,
     threshold: 0.01,
-    rootMargin: '50px',
-    onChange: (visible) => {
-      if (visible) setIsInView(true);
-    }
+    rootMargin: '200px',
   });
-  const { settings } = useSettings();
+
+  const { settings, toggleFollowProfile, isProfileFollowed } = useSettings();
+
+  // Sync follow state with settings
+  useEffect(() => {
+    setIsFollowed(isProfileFollowed(profile.id));
+  }, [profile.id, isProfileFollowed]);
 
   const handleLike = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -66,60 +73,70 @@ export const ProfileCard = memo(({ profile, index, onClick }: ProfileCardProps) 
     toast(isBookmarked ? 'Removed from bookmarks' : 'Bookmarked');
   }, [isBookmarked]);
 
+  const handleFollow = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleFollowProfile(profile.id);
+    setIsFollowed(v => !v);
+    toast(isFollowed ? 'Unfollowed' : 'Followed');
+  }, [profile.id, toggleFollowProfile, isFollowed]);
+
   const handleImageLoad = useCallback(() => {
     setImageLoaded(true);
+    setLoadingHQ(false);
   }, []);
 
   const handleImageError = useCallback(() => {
     setImageError(true);
     setImageLoaded(true);
+    setLoadingHQ(false);
   }, []);
 
-  // Combine refs
-  const setRefs = useCallback((node: HTMLDivElement | null) => {
-    ref(node);
-  }, [ref]);
-
-  if (!isInView) {
-    return <ProfileCardSkeleton compact={settings.compactView} />;
-  }
+  // Handle click - load HQ if available
+  const handleClick = useCallback(() => {
+    onClick();
+  }, [onClick]);
 
   return (
     <motion.div
-      ref={setRefs}
+      ref={ref}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.3) }}
       className="group relative overflow-hidden rounded-2xl glass-card transition-all duration-300 cursor-pointer"
       style={{ height: settings.compactView ? '128px' : '192px' }}
-      onClick={onClick}
-      whileHover={{ y: -4, scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      onClick={inView ? onClick : undefined}
+      whileHover={inView ? { y: -4, scale: 1.02 } : undefined}
+      whileTap={inView ? { scale: 0.98 } : undefined}
     >
       <div className="relative w-full h-full">
-        {!imageLoaded && !imageError && (
-          <ProfileCardSkeleton compact={settings.compactView} />
+        {/* Loading skeleton - show as overlay when loading */}
+        {(!imageLoaded && !imageError) && (
+          <div className="absolute inset-0 z-10">
+            <ProfileCardSkeleton compact={settings.compactView} />
+          </div>
         )}
 
-        {imageError ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-800/50 backdrop-blur-sm">
+        {/* Error state */}
+        {imageError && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-800/50 backdrop-blur-sm">
             <div className="text-center p-2">
               <X className="h-6 w-6 mx-auto text-gray-500 mb-1" />
               <p className="text-xs text-gray-400">Failed to load</p>
             </div>
           </div>
-        ) : (
-          <img
-            ref={imgRef}
-            src={profile.imageUrl}
-            alt={profile.name}
-            loading="lazy"
-            decoding="async"
-            className={`w-full h-full absolute object-cover transition-all duration-700 ease-out ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'} group-hover:scale-110`}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-          />
         )}
+
+        {/* Profile image - always render */}
+        <img
+          ref={imgRef}
+          src={inView ? profile.imageUrl : undefined}
+          alt={profile.name}
+          loading="lazy"
+          decoding="async"
+          className={`w-full h-full absolute object-cover transition-all duration-700 ease-out ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'} group-hover:scale-110`}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+        />
 
         {/* Gradient overlay with shimmer effect */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -130,6 +147,21 @@ export const ProfileCard = memo(({ profile, index, onClick }: ProfileCardProps) 
           whileHover={{ opacity: 1, y: 0 }}
           className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
         >
+          <button
+            onClick={handleFollow}
+            className={`p-1.5 rounded-full backdrop-blur-sm transition-all hover:scale-110 ${
+              isFollowed
+                ? 'bg-blue-500/80 hover:bg-blue-600/80'
+                : 'bg-black/60 hover:bg-black/80'
+            }`}
+            aria-label={isFollowed ? 'Unfollow' : 'Follow'}
+          >
+            {isFollowed ? (
+              <UserMinus className="h-3 w-3 text-white" />
+            ) : (
+              <UserPlus className="h-3 w-3 text-white" />
+            )}
+          </button>
           <button
             onClick={handleLike}
             className="p-1.5 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm transition-all hover:scale-110"

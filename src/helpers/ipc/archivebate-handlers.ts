@@ -23,9 +23,10 @@ export interface ArchiveProfileResponse {
 // Store for cookies and CSRF token
 let storedCsrfToken: string | null = null;
 let storedCookies: Map<string, string> = new Map();
-let storedHtmlHash: string | null = null;
-let storedChecksum: string | null = null;
-let storedWireId: string | null = null;
+let storedFingerprint: any = null;
+let storedServerMemo: any = null;
+let storedComponentName: string | null = null;
+let storedUsername: string | null = null;
 
 /**
  * Extract CSRF token from HTML meta tag
@@ -59,26 +60,21 @@ function extractCookies(setCookieHeaders: string[]): Map<string, string> {
  */
 function buildCookieHeader(): string {
   const cookies: string[] = [];
-
-  if (storedCookies.has('XSRF-TOKEN')) {
-    cookies.push(`XSRF-TOKEN=${encodeURIComponent(storedCookies.get('XSRF-TOKEN')!)}`);
-  }
-  if (storedCookies.has('archivebate_session')) {
-    cookies.push(`archivebate_session=${storedCookies.get('archivebate_session')}`);
-  }
-
+  storedCookies.forEach((value, key) => {
+    cookies.push(`${key}=${value}`);
+  });
   return cookies.join('; ');
 }
 
 /**
  * Generate Livewire fingerprint
  */
-function generateFingerprint(): string {
+function generateFingerprint(componentName: string, path: string): string {
   return btoa(JSON.stringify({
     id: "",
-    name: "profile.model-videos",
+    name: componentName,
     locale: "en",
-    path: "profile",
+    path: path,
     method: "GET",
     v: "acj"
   }));
@@ -90,6 +86,15 @@ function generateFingerprint(): string {
 async function initializeSession(username: string): Promise<boolean> {
   try {
     console.log('[ArchiveBate] Initializing session for:', username);
+
+    // Reset stored state
+    storedCookies.clear();
+    storedCsrfToken = null;
+    storedFingerprint = null;
+    storedServerMemo = null;
+    storedComponentName = null;
+    storedUsername = username;
+
     const url = `https://archivebate.com/profile/${username}`;
     const response = await fetch(url, {
       headers: {
@@ -118,17 +123,18 @@ async function initializeSession(username: string): Promise<boolean> {
     const dom = new JSDOM(html);
     const document = dom.window.document;
 
-    // Find elements with wire:initial-data attribute
-    const livewireElements = document.querySelectorAll('[wire\\:initial-data]');
-    console.log('[ArchiveBate] Found Livewire elements:', livewireElements.length);
+    // Use a more generic query to find any element with wire:initial-data
+    const allElements = document.querySelectorAll('*');
+    let found = false;
 
-    livewireElements.forEach((element, index) => {
+    allElements.forEach((element) => {
+      if (found) return;
+
+      const initialDataAttr = Array.from(element.attributes).find(attr => attr.name === 'wire:initial-data');
+      if (!initialDataAttr) return;
+
       try {
-        const initialData = element.getAttribute('wire:initial-data');
-        if (!initialData) return;
-
-        // Decode HTML entities
-        const decoded = initialData
+        const decoded = initialDataAttr.value
           .replace(/&quot;/g, '"')
           .replace(/&amp;/g, '&')
           .replace(/&lt;/g, '<')
@@ -143,47 +149,39 @@ async function initializeSession(username: string): Promise<boolean> {
           .replace(/&#x7D;/g, "}");
 
         const data = JSON.parse(decoded);
+        const name = data.fingerprint?.name || '';
 
-        // Check if this is the profile.model-videos component
-        if (data.fingerprint?.name === 'profile.model-videos' || initialData.includes('profile.model-videos')) {
-          console.log('[ArchiveBate] Found profile.model-videos component!');
+        // Match components related to model profiles/videos
+        if (name === 'profile.model-videos' || name.includes('videos')) {
+          console.log('[ArchiveBate] Found video component fingerprint:', name);
 
-          if (data.fingerprint?.id) {
-            storedWireId = data.fingerprint.id;
-            console.log('[ArchiveBate] wire:id:', storedWireId);
-          }
+          storedComponentName = name;
+          storedFingerprint = data.fingerprint;
+          storedServerMemo = data.serverMemo;
 
-          if (data.serverMemo?.htmlHash) {
-            storedHtmlHash = data.serverMemo.htmlHash;
-            console.log('[ArchiveBate] htmlHash:', storedHtmlHash);
-          }
+          found = true;
+          console.log('[ArchiveBate] Video component state captured');
+        } else if (name.includes('profile') && !storedComponentName) {
+          // Fallback to profile component if videos one isn't found yet
+          console.log('[ArchiveBate] Found profile component fingerprint (as fallback):', name);
 
-          if (data.serverMemo?.checksum) {
-            storedChecksum = data.serverMemo.checksum;
-            console.log('[ArchiveBate] checksum:', storedChecksum);
-          }
+          storedComponentName = name;
+          storedFingerprint = data.fingerprint;
+          storedServerMemo = data.serverMemo;
+          console.log('[ArchiveBate] Profile state captured as base');
         }
       } catch (e) {
-        console.error('[ArchiveBate] Error parsing Livewire data:', e);
+        // Skip on error
       }
     });
 
-    // Also try wire:id as fallback
-    if (!storedWireId) {
-      const wireIdElement = document.querySelector('section[wire:id]');
-      if (wireIdElement) {
-        storedWireId = wireIdElement.getAttribute('wire:id') || null;
-        console.log('[ArchiveBate] Fallback wire:id:', storedWireId);
-      }
-    }
-
-    console.log('[ArchiveBate] Final extracted values:', {
-      htmlHash: storedHtmlHash,
-      checksum: storedChecksum,
-      wireId: storedWireId
+    console.log('[ArchiveBate] Initialization status:', {
+      hasFingerprint: !!storedFingerprint,
+      hasServerMemo: !!storedServerMemo,
+      componentName: storedComponentName
     });
 
-    return !!storedCsrfToken;
+    return !!(storedCsrfToken && storedFingerprint && storedServerMemo);
   } catch (error) {
     console.error('[ArchiveBate] Error initializing session:', error);
     return false;
@@ -199,9 +197,9 @@ async function fetchArchiveProfile(
 ): Promise<ArchiveProfileResponse> {
   console.log('[ArchiveBate] fetchArchiveProfile:', { username, page });
 
-  // Initialize session on first page or if we don't have a token
-  if (page === 1 && !storedCsrfToken) {
-    console.log('[ArchiveBate] No CSRF token, initializing session...');
+  // Initialize session if needed (username mismatch or first page with no token)
+  if (page === 1 && (!storedCsrfToken || storedUsername !== username || !storedFingerprint || !storedServerMemo)) {
+    console.log(`[ArchiveBate] No valid session for ${username}, initializing...`);
     const initialized = await initializeSession(username);
     if (!initialized) {
       console.error('[ArchiveBate] Failed to initialize session');
@@ -218,43 +216,20 @@ async function fetchArchiveProfile(
   try {
     const csrfToken = storedCsrfToken || '';
     const cookieHeader = buildCookieHeader();
+    const componentName = storedComponentName || "profile.model-videos";
 
     console.log('[ArchiveBate] Making Livewire API request...');
-    console.log('[ArchiveBate] CSRF token length:', csrfToken.length);
-    console.log('[ArchiveBate] Cookie header length:', cookieHeader.length);
-    console.log('[ArchiveBate] htmlHash:', storedHtmlHash);
-    console.log('[ArchiveBate] checksum:', storedChecksum);
-    console.log('[ArchiveBate] wire:id:', storedWireId);
+    console.log('[ArchiveBate] Component Name:', componentName);
 
-    // Build Livewire request payload matching the actual API
+    // Construct payload using full captured state
     const payload = {
-      fingerprint: {
-        id: storedWireId || "",
-        name: "profile.model-videos",
-        locale: "en",
-        path: `profile/${username}`,
-        method: "GET",
-        v: "acj"
-      },
-      serverMemo: {
-        children: [],
-        errors: [],
-        htmlHash: storedHtmlHash || "",
-        data: {
-          currentPage: page,
-          username: username,
-          popular: false,
-          page: page,
-          paginators: { page: page }
-        },
-        dataMeta: [],
-        checksum: storedChecksum || ""
-      },
+      fingerprint: { ...storedFingerprint },
+      serverMemo: { ...storedServerMemo },
       updates: [
         {
           type: "callMethod",
           payload: {
-            id: "fd94g",
+            id: Math.random().toString(36).substring(2, 6), // Generate a random request ID
             method: "load_profile_videos",
             params: []
           }
@@ -262,9 +237,19 @@ async function fetchArchiveProfile(
       ]
     };
 
-    console.log('[ArchiveBate] Request payload:', JSON.stringify(payload, null, 2));
+    // If requesting a specific page, update paginators in serverMemo.data
+    if (page > 1) {
+      payload.serverMemo.data.page = page;
+      payload.serverMemo.data.currentPage = page;
+      if (payload.serverMemo.data.paginators) {
+        payload.serverMemo.data.paginators.page = page;
+      }
+    }
 
-    const response = await fetch('https://archivebate.com/livewire/message/profile.model-videos', {
+    console.log('[ArchiveBate] Request payload serverMemo data:', JSON.stringify(payload.serverMemo.data, null, 2));
+    console.log('[ArchiveBate] Request payload fingerprint:', JSON.stringify(payload.fingerprint, null, 2));
+
+    const response = await fetch(`https://archivebate.com/livewire/message/${componentName}`, {
       method: 'POST',
       headers: {
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0',
@@ -277,10 +262,6 @@ async function fetchArchiveProfile(
         'Origin': 'https://archivebate.com',
         'Referer': `https://archivebate.com/profile/${username}`,
         'Connection': 'keep-alive',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-origin',
-        'Priority': 'u=0',
       },
       body: JSON.stringify(payload),
     });

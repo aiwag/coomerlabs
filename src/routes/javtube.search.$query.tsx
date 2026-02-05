@@ -9,6 +9,8 @@ export const JavTubeSearch = () => {
       title={`Search: ${query}`}
       subtitle="Search Results"
       initialQuery={query}
+      showHeader={false}
+      showSearch={false}
       gradientFrom="blue"
       gradientTo="purple"
     />

@@ -66,4 +66,16 @@ declare interface Window {
   electronWindow: ElectronWindow;
   electronAPI: ElectronAPI;
   javtube: JavtubeContext;
+  archivebate: {
+    getProfile: (username: string, page?: number) => Promise<{
+      success: boolean;
+      data?: ArchiveProfileResponse;
+      error?: string;
+    }>;
+    getEmbedUrl: (pageUrl: string) => Promise<{
+      success: boolean;
+      data?: { embedUrl: string };
+      error?: string;
+    }>;
+  };
 }

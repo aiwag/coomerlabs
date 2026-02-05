@@ -6,8 +6,10 @@ export const JavTubeMostViewed = () => (
     sortType="most_viewed"
     title="Most Viewed"
     subtitle="Trending Now"
-    gradientFrom="green"
-    gradientTo="emerald"
+    showHeader={false}
+    showSearch={false}
+    gradientFrom="purple"
+    gradientTo="pink"
   />
 );
 

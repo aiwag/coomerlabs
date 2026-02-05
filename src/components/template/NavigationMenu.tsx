@@ -5,15 +5,13 @@ import InitialIcons from "@/components/template/InitialIcons";
 import { motion, AnimatePresence, PanInfo } from "framer-motion";
 import {
   Home, Camera, Video, Image, Users, Menu, X, ChevronUp, ChevronDown,
-  Settings, Minimize2, Maximize2
+  Settings, Minimize2, Maximize2, Clock
 } from "lucide-react";
-import { GlobalSearch } from "@/components/template/GlobalSearch";
-import { NotificationPanel } from "@/components/template/NotificationPanel";
-import { AccountDropdown } from "@/components/template/AccountDropdown";
 
 const menuItems = [
   { to: "/", label: "home", icon: <Home size={18} /> },
   { to: "/camviewer", label: "camviewer", icon: <Camera size={18} /> },
+  { to: "/camarchive", label: "camarchive", icon: <Clock size={18} /> },
   { to: "/redgifs", label: "redgifs", icon: <Video size={18} /> },
   { to: "/fapello", label: "fapello", icon: <Image size={18} /> },
   { to: "/wallheaven", label: "wallheaven", icon: <Image size={18} /> },
@@ -236,16 +234,12 @@ export default function NavigationMenu() {
                     ))}
                   </div>
 
-                  {/* Center Section - Global Search Component (hidden in mini mode) */}
-                  {!isMiniMode && <div className="max-w-xs w-full px-4"><GlobalSearch /></div>}
+                  {/* Center Section - Global Search Component (Removed) */}
+                  {!isMiniMode && <div className="max-w-xs w-full px-4" />}
 
                   {/* Right Section */}
                   <div className="flex items-center space-x-2">
                     <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
-                      {!isMiniMode && <NotificationPanel />}
-                      {!isMiniMode && <AccountDropdown />}
-
-                      <div className="w-[1px] h-4 bg-white/10 mx-1" />
 
                       {/* Mini Mode Toggle */}
                       <motion.button

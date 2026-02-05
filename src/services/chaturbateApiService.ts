@@ -44,18 +44,18 @@ const getPaginatedList = async (endpoint: string, page: number, limit: number, s
 
 // --- Helper for NON-paginated carousel endpoints ---
 const getCarouselList = async (endpoint: string, signal: AbortSignal, params = ''): Promise<ListApiResponse> => {
-    const url = `${API_BASE_URL}${endpoint}${params}`;
-    const response: CarouselApiResponse = await robustFetch(url, signal);
-    return {
-      rooms: response.rooms.map(normalizeRoomToStreamer),
-      total_count: response.rooms.length,
-      limit: response.rooms.length, // The limit is the total number of items
-    };
+  const url = `${API_BASE_URL}${endpoint}${params}`;
+  const response: CarouselApiResponse = await robustFetch(url, signal);
+  return {
+    rooms: response.rooms.map(normalizeRoomToStreamer),
+    total_count: response.rooms.length,
+    limit: response.rooms.length, // The limit is the total number of items
+  };
 };
 
 // --- EXPORTED API FUNCTIONS ---
-export const getMostViewedRooms = (page: number, limit: number, signal: AbortSignal) => getPaginatedList('roomlist/room-list/', page, limit, signal);
-export const searchRooms = (keywords: string, page: number, limit: number, signal: AbortSignal) => getPaginatedList('roomlist/room-list/', page, limit, signal, `&keywords=${encodeURIComponent(keywords)}`);
+export const getMostViewedRooms = (page: number, limit: number, signal: AbortSignal, gender: CarouselGender = "") => getPaginatedList('roomlist/room-list/', page, limit, signal, gender ? `&genders=${gender}` : '');
+export const searchRooms = (keywords: string, page: number, limit: number, signal: AbortSignal, gender: CarouselGender = "") => getPaginatedList('roomlist/room-list/', page, limit, signal, `&keywords=${encodeURIComponent(keywords)}${gender ? `&genders=${gender}` : ''}`);
 
 // These are now correctly treated as single-fetch lists
 export const getTopRatedRooms = (signal: AbortSignal, gender: CarouselGender = "") => getCarouselList(`discover/carousels/top-rated/`, signal, gender ? `?genders=${gender}` : '');

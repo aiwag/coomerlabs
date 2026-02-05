@@ -5,9 +5,10 @@ export const JavTubeTopFavorites = () => (
   <JavTubeView
     sortType="top_favorites"
     title="Top Favorites"
-    subtitle="Most Loved Videos"
-    gradientFrom="red"
-    gradientTo="orange"
+    showHeader={false}
+    showSearch={false}
+    gradientFrom="blue"
+    gradientTo="purple"
   />
 );
 

@@ -20,6 +20,23 @@ import { toast } from 'react-hot-toast';
 import { useSettings } from './hooks';
 import type { Image, ImageModalProps } from './types';
 
+// VisuallyHidden component for accessibility
+const VisuallyHidden = ({ children }: { children: React.ReactNode }) => (
+  <span style={{
+    position: 'absolute',
+    width: '1px',
+    height: '1px',
+    padding: 0,
+    margin: '-1px',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+  }}>
+    {children}
+  </span>
+);
+
 export const ImageModal = memo(({
   images,
   currentIndex,
@@ -205,6 +222,12 @@ export const ImageModal = memo(({
               />
             </Dialog.Overlay>
             <Dialog.Content className="fixed inset-0 z-50 flex items-center justify-center focus:outline-none">
+              <VisuallyHidden>
+                <Dialog.Title>Image Viewer</Dialog.Title>
+                <Dialog.Description>
+                  Viewing image {index + 1} of {images.length}
+                </Dialog.Description>
+              </VisuallyHidden>
               <div
                 className="relative w-full h-full flex items-center justify-center"
                 onMouseMove={handleMouseMove}
@@ -295,7 +318,7 @@ export const ImageModal = memo(({
                     </div>
                   ) : (
                     <img
-                      src={settings.highQuality ? (currentImage.fullImageUrl || currentImage.imageUrl) : currentImage.imageUrl}
+                      src={currentImage.fullImageUrl || currentImage.imageUrl}
                       alt={`Image ${currentImage.id}`}
                       loading="eager"
                       className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
