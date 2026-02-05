@@ -6,7 +6,17 @@ import { EnhancedVideoPlayer } from "./EnhancedVideoPlayer";
 import { SearchBar } from "./SearchBar";
 import { useAdvancedSearch, VideoData } from "../hooks/useAdvancedSearch";
 
-type SortType = "main" | "top_favorites" | "uncensored" | "most_viewed" | "top_rated" | "being_watched" | "search";
+type SortType =
+  | "main"
+  | "top_favorites"
+  | "uncensored"
+  | "censored"
+  | "trending"
+  | "most_viewed"
+  | "top_rated"
+  | "being_watched"
+  | "search"
+  | "all";
 
 interface JavTubeViewProps {
   sortType: SortType;
@@ -61,16 +71,11 @@ export const JavTubeView: React.FC<JavTubeViewProps> = ({
     if (!video.videoUrl) {
       setLoadingVideoUrl(video.id);
       try {
-        const response = await fetch("http://127.0.0.1:8080/api/video-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ videoId: video.id }),
-        });
-        const data = await response.json();
-        if (data.videoUrl) {
+        const result = await window.javtube.getVideoUrl(video.id);
+        if (result.success && result.data.videoUrl) {
           setSelectedVideo((prev) =>
             prev && prev.id === video.id
-              ? { ...prev, videoUrl: data.videoUrl }
+              ? { ...prev, videoUrl: result.data.videoUrl }
               : prev
           );
         }

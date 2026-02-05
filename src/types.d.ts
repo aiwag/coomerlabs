@@ -54,8 +54,16 @@ interface ElectronAPI {
   };
 }
 
+interface JavtubeContext {
+  getVideos: (page: number, sortType: string, searchQuery: string) => Promise<{ success: boolean; data: any[]; error?: string }>;
+  getActresses: (page: number) => Promise<{ success: boolean; data: any[]; error?: string }>;
+  getActressVideos: (id: string, page: number) => Promise<{ success: boolean; data: any; error?: string }>;
+  getVideoUrl: (videoId: string) => Promise<{ success: boolean; data: { videoUrl: string }; error?: string }>;
+}
+
 declare interface Window {
   themeMode: ThemeModeContext;
   electronWindow: ElectronWindow;
   electronAPI: ElectronAPI;
+  javtube: JavtubeContext;
 }

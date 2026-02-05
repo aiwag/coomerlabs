@@ -121,9 +121,9 @@ const itemVariants = {
 
 export function IndexPage() {
   return (
-    <div className="min-h-screen bg-transparent text-white pb-20 overflow-y-auto custom-scrollbar">
+    <div className="bg-transparent text-white pb-12">
       {/* Hero Section */}
-      <section className="relative pt-32 pb-16 px-6 overflow-hidden">
+      <section className="relative pt-12 pb-8 px-6 overflow-hidden">
         <div className="max-w-6xl mx-auto relative z-10">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -131,25 +131,24 @@ export function IndexPage() {
             transition={{ duration: 0.8, ease: "easeOut" }}
             className="flex flex-col items-center text-center"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-md">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-4 backdrop-blur-md">
               <Zap className="w-4 h-4 text-cyan-400 fill-cyan-400/20" />
               <span className="text-[10px] uppercase tracking-widest font-black text-cyan-400">Next-Gen Interface Experience</span>
             </div>
 
-            <h1 className="text-6xl md:text-8xl font-black tracking-tighter mb-6 bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent leading-none">
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent leading-none">
               COOMER<span className="text-cyan-400">LABS</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-white/50 max-w-2xl font-medium leading-relaxed mb-10">
+            <p className="text-base md:text-lg text-white/50 max-w-2xl font-medium leading-relaxed mb-6">
               A premium, high-performance ecosystem for specialized content discovery and monitoring.
-              Beautifully crafted with <span className="text-white">glassmorphic precision</span>.
             </p>
 
-            <div className="flex flex-wrap justify-center gap-4">
-              <button className="px-8 py-4 rounded-2xl bg-white text-black font-black text-sm uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5">
+            <div className="flex flex-wrap justify-center gap-3">
+              <button className="px-6 py-3 rounded-xl bg-white text-black font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-white/5">
                 Explore Dashboard
               </button>
-              <button className="px-8 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-sm uppercase tracking-widest hover:bg-white/10 transition-all backdrop-blur-md">
+              <button className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all backdrop-blur-md">
                 View Changelog
               </button>
             </div>
@@ -161,8 +160,8 @@ export function IndexPage() {
       </section>
 
       {/* Stats Quick View */}
-      <section className="px-6 mb-20">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-4">
+      <section className="px-6 mb-8">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
             {
               label: "Active Nodes",
@@ -188,7 +187,7 @@ export function IndexPage() {
             <motion.div
               key={i}
               whileHover={{ y: -2 }}
-              className="glass-card p-6 rounded-3xl border border-white/5 text-center group transition-all"
+              className="glass-card p-4 rounded-2xl border border-white/5 text-center group transition-all"
             >
               <div className="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4 group-hover:bg-cyan-500/20 group-hover:text-cyan-400 transition-colors">
                 {stat.icon}
@@ -205,8 +204,8 @@ export function IndexPage() {
       {/* Main Apps Grid */}
       <section className="px-6 relative">
         <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-10">
-            <h2 className="text-3xl font-black tracking-tight">Available Labs</h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-black tracking-tight">Available Labs</h2>
             <div className="h-px flex-1 bg-gradient-to-r from-white/10 to-transparent mx-8" />
             <div className="flex gap-2">
               <div className="w-3 h-3 rounded-full bg-cyan-500" />
@@ -225,14 +224,14 @@ export function IndexPage() {
               <motion.div key={lab.id} variants={itemVariants}>
                 <Link
                   to={lab.to}
-                  className="group block relative h-full glass-card rounded-[32px] border border-white/10 overflow-hidden hover:border-white/20 transition-all duration-500 shadow-2xl"
+                  className="group block relative h-full glass-card rounded-[24px] border border-white/10 overflow-hidden hover:border-white/20 transition-all duration-500 shadow-2xl"
                 >
                   <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-10 transition-opacity duration-500 -z-10" />
 
-                  <div className="p-8 flex flex-col h-full">
+                  <div className="p-6 flex flex-col h-full">
                     {/* Header */}
-                    <div className="flex items-start justify-between mb-8">
-                      <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${lab.color} flex items-center justify-center text-white shadow-lg shadow-black/20 group-hover:scale-110 transition-transform duration-500`}>
+                    <div className="flex items-start justify-between mb-6">
+                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${lab.color} flex items-center justify-center text-white shadow-lg shadow-black/20 group-hover:scale-110 transition-transform duration-500`}>
                         {lab.icon}
                       </div>
                       <div className="flex flex-col items-end">
@@ -243,16 +242,16 @@ export function IndexPage() {
 
                     {/* Content */}
                     <div className="flex-1">
-                      <h3 className="text-2xl font-black mb-3 group-hover:translate-x-1 transition-transform">{lab.title}</h3>
-                      <p className="text-white/50 text-sm font-medium leading-relaxed mb-6">
+                      <h3 className="text-xl font-black mb-2 group-hover:translate-x-1 transition-transform">{lab.title}</h3>
+                      <p className="text-white/50 text-xs font-medium leading-relaxed mb-4">
                         {lab.description}
                       </p>
                     </div>
 
                     {/* Features */}
-                    <div className="flex flex-wrap gap-2 mb-8">
+                    <div className="flex flex-wrap gap-1.5 mb-6">
                       {lab.features.map(f => (
-                        <span key={f} className="text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-lg bg-white/5 border border-white/5 group-hover:border-white/10 transition-colors">
+                        <span key={f} className="text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-lg bg-white/5 border border-white/5 group-hover:border-white/10 transition-colors">
                           {f}
                         </span>
                       ))}
@@ -274,7 +273,7 @@ export function IndexPage() {
       </section>
 
       {/* Footer Branding */}
-      <footer className="mt-32 border-t border-white/5 py-12 px-6">
+      <footer className="mt-12 border-t border-white/5 py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
           <div className="flex items-center gap-4">
             <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-black font-black">CL</div>

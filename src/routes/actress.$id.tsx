@@ -51,9 +51,9 @@ const ActressDetail = () => {
     } = useInfiniteQuery({
         queryKey: ["actress-videos", id],
         queryFn: async ({ pageParam = 1 }) => {
-            const response = await fetch(`http://127.0.0.1:8080/api/actress-videos?id=${id}&page=${pageParam}`);
-            if (!response.ok) throw new Error("Failed to fetch actress data");
-            return response.json();
+            const result = await window.javtube.getActressVideos(id, pageParam as number);
+            if (!result.success) throw new Error(result.error || "Failed to fetch actress data");
+            return result.data;
         },
         initialPageParam: 1,
         getNextPageParam: (lastPage, allPages) => {
@@ -82,16 +82,11 @@ const ActressDetail = () => {
         if (!video.videoUrl) {
             setLoadingVideoUrl(video.id);
             try {
-                const response = await fetch("http://127.0.0.1:8080/api/video-url", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ videoId: video.id }),
-                });
-                const data = await response.json();
-                if (data.videoUrl) {
+                const result = await window.javtube.getVideoUrl(video.id);
+                if (result.success && result.data.videoUrl) {
                     setSelectedVideo((prev) =>
                         prev && prev.id === video.id
-                            ? { ...prev, videoUrl: data.videoUrl }
+                            ? { ...prev, videoUrl: result.data.videoUrl }
                             : prev
                     );
                 }

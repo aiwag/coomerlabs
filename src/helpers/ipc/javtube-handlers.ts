@@ -1,7 +1,17 @@
 import { ipcMain } from "electron";
 import { javtubeService } from "../../services/javtubeService";
 
-type SortType = "main" | "top_favorites" | "uncensored" | "most_viewed" | "top_rated" | "being_watched" | "search";
+type SortType =
+  | "main"
+  | "top_favorites"
+  | "uncensored"
+  | "censored"
+  | "trending"
+  | "most_viewed"
+  | "top_rated"
+  | "being_watched"
+  | "search"
+  | "all";
 
 export function registerJavtubeHandlers() {
   ipcMain.handle("javtube:getVideos", async (_, page: number, sortType: SortType = "main", searchQuery: string = "") => {

@@ -34,9 +34,9 @@ export const Actresses = () => {
     } = useInfiniteQuery({
         queryKey: ["javtube-actresses"],
         queryFn: async ({ pageParam = 1 }) => {
-            const response = await fetch(`http://127.0.0.1:8080/api/actresses?page=${pageParam}`);
-            if (!response.ok) throw new Error("Failed to fetch actresses");
-            return response.json();
+            const result = await window.javtube.getActresses(pageParam as number);
+            if (!result.success) throw new Error(result.error || "Failed to fetch actresses");
+            return result.data;
         },
         initialPageParam: 1,
         getNextPageParam: (lastPage, allPages) => {

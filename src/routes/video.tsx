@@ -13,12 +13,13 @@ export const SingleVideoPage = () => {
         setLoading(true);
         setError(null);
 
-        const response = await fetch("http://localhost:8080/api/videos/101132");
-        if (!response.ok) {
+        // Usage of the integrated service
+        const result = await window.javtube.getVideos(1, "search", "101132");
+        if (!result.success || !result.data || result.data.length === 0) {
           throw new Error("Video not found");
         }
-        const data = await response.json();
-        const videoData = Array.isArray(data) ? data[0] : data;
+
+        const videoData = result.data[0];
         setVideo(videoData);
       } catch (err: any) {
         setError(`Failed to load video: ${err.message}`);
@@ -63,7 +64,7 @@ export const SingleVideoPage = () => {
           videoUrl={video.videoUrl || ""}
           poster={video.thumbnail}
           onClose={() => (window.location.href = "/javtube")}
-          onTimeUpdate={() => {}}
+          onTimeUpdate={() => { }}
         />
       </div>
     );
@@ -76,7 +77,7 @@ export const SingleVideoPage = () => {
         videoUrl={video.videoUrl || ""}
         poster={video.thumbnail}
         onClose={() => (window.location.href = "/javtube")}
-        onTimeUpdate={() => {}}
+        onTimeUpdate={() => { }}
       />
     </div>
   );
@@ -86,13 +87,11 @@ export const Route = createFileRoute("/video")({
   component: SingleVideoPage,
   loader: async ({ params }) => {
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/videos/${params.videoId}`,
-      );
-      if (!response.ok) {
+      const result = await window.javtube.getVideos(1, "search", params.videoId);
+      if (!result.success || !result.data || result.data.length === 0) {
         throw new Error("Video not found");
       }
-      return await response.json();
+      return result.data[0];
     } catch (err) {
       console.error("Failed to fetch video:", err);
       return null;

@@ -31,7 +31,17 @@ export interface VideoData {
 
 const ADVANCED_SEARCH_DEBOUNCE = 300;
 
-type SortType = "main" | "top_favorites" | "uncensored" | "most_viewed" | "top_rated" | "being_watched" | "search";
+type SortType =
+  | "main"
+  | "top_favorites"
+  | "uncensored"
+  | "censored"
+  | "trending"
+  | "most_viewed"
+  | "top_rated"
+  | "being_watched"
+  | "search"
+  | "all";
 
 interface UseAdvancedSearchOptions {
   sortType?: SortType;
@@ -64,13 +74,17 @@ export const useAdvancedSearch = (options: UseAdvancedSearchOptions = {}) => {
   } = useInfiniteQuery({
     queryKey: ["javtube-videos", sortType, debouncedQuery],
     queryFn: async ({ pageParam = 1 }) => {
-      const params = new URLSearchParams({ page: String(pageParam) });
-      if (sortType !== "main") params.append("sort", sortType);
-      if (sortType === "search" && debouncedQuery) params.append("q", debouncedQuery);
+      const result = await window.javtube.getVideos(
+        pageParam as number,
+        sortType,
+        sortType === "search" ? debouncedQuery : ""
+      );
 
-      const response = await fetch(`http://127.0.0.1:8080/api/videos?${params}`);
-      if (!response.ok) throw new Error("Failed to fetch videos");
-      return response.json();
+      if (!result.success) {
+        throw new Error(result.error || "Failed to fetch videos");
+      }
+
+      return result.data;
     },
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
