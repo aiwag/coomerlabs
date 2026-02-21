@@ -2,14 +2,11 @@
 import React from "react";
 import { useLocation } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import BaseLayout from "@/layouts/BaseLayout";
 import {
   Outlet,
   createRootRoute,
-  ErrorComponent,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
@@ -34,15 +31,11 @@ function Root() {
       {isCamViewer ? (
         <>
           <Outlet />
-          <TanStackRouterDevtools />
-          <ReactQueryDevtools initialIsOpen={false} />
           <Toaster position="top-right" />
         </>
       ) : (
         <BaseLayout>
           <Outlet />
-          <TanStackRouterDevtools />
-          <ReactQueryDevtools initialIsOpen={false} />
           <Toaster position="top-right" />
         </BaseLayout>
       )}
