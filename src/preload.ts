@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
       ipcRenderer.invoke('db:searchCreators', query, service),
     getCreatorsByService: (service: string, page: number, pageSize: number) =>
       ipcRenderer.invoke('db:getCreatorsByService', service, page, pageSize),
+    getAllCreators: (page: number, pageSize: number) =>
+      ipcRenderer.invoke('db:getAllCreators', page, pageSize),
     upsertCreators: (creators: any[]) =>
       ipcRenderer.invoke('db:upsertCreators', creators),
 

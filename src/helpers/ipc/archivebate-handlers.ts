@@ -20,13 +20,36 @@ export interface ArchiveProfileResponse {
   hasMore: boolean;
 }
 
+const BROWSER_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+  'Accept-Language': 'en-US,en;q=0.9',
+  'Cache-Control': 'no-cache',
+  'Pragma': 'no-cache',
+  'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Linux"',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'Upgrade-Insecure-Requests': '1'
+};
+
 // Store for cookies and CSRF token
-let storedCsrfToken: string | null = null;
-let storedCookies: Map<string, string> = new Map();
-let storedFingerprint: any = null;
-let storedServerMemo: any = null;
-let storedComponentName: string | null = null;
-let storedUsername: string | null = null;
+interface SessionState {
+  csrfToken: string;
+  cookies: Map<string, string>;
+  fingerprint: any;
+  serverMemo: any;
+  componentName: string;
+}
+
+const sessionStates = new Map<string, SessionState>();
+const initializationQueue = new Map<string, Promise<any>>();
+
+// Global fallback cookies for first hits
+const globalCookies: Map<string, string> = new Map();
 
 /**
  * Extract CSRF token from HTML meta tag
@@ -56,14 +79,14 @@ function extractCookies(setCookieHeaders: string[]): Map<string, string> {
 }
 
 /**
- * Build Cookie header from stored cookies
+ * Build Cookie header from a cookie map
  */
-function buildCookieHeader(): string {
-  const cookies: string[] = [];
-  storedCookies.forEach((value, key) => {
-    cookies.push(`${key}=${value}`);
+function buildCookieHeader(cookies: Map<string, string>): string {
+  const cookieArr: string[] = [];
+  cookies.forEach((value, key) => {
+    cookieArr.push(`${key}=${value}`);
   });
-  return cookies.join('; ');
+  return cookieArr.join('; ');
 }
 
 /**
@@ -82,110 +105,135 @@ function generateFingerprint(componentName: string, path: string): string {
 
 /**
  * Initialize session by fetching profile page and extracting CSRF token & cookies
+ * Also returns initial videos if available
  */
-async function initializeSession(username: string): Promise<boolean> {
-  try {
-    console.log('[ArchiveBate] Initializing session for:', username);
-
-    // Reset stored state
-    storedCookies.clear();
-    storedCsrfToken = null;
-    storedFingerprint = null;
-    storedServerMemo = null;
-    storedComponentName = null;
-    storedUsername = username;
-
-    const url = `https://archivebate.com/profile/${username}`;
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-    });
-
-    console.log('[ArchiveBate] Profile page response status:', response.status);
-
-    if (!response.ok) return false;
-
-    // Extract cookies from response
-    const setCookieHeaders = Array.from(response.headers.getSetCookie?.() || []);
-    console.log('[ArchiveBate] Cookies received:', setCookieHeaders.length);
-    storedCookies = extractCookies(setCookieHeaders);
-
-    // Extract CSRF token from HTML
-    const html = await response.text();
-    storedCsrfToken = extractCsrfToken(html);
-
-    console.log('[ArchiveBate] CSRF token found:', !!storedCsrfToken);
-
-    // Extract Livewire component data from the HTML
-    const dom = new JSDOM(html);
-    const document = dom.window.document;
-
-    // Use a more generic query to find any element with wire:initial-data
-    const allElements = document.querySelectorAll('*');
-    let found = false;
-
-    allElements.forEach((element) => {
-      if (found) return;
-
-      const initialDataAttr = Array.from(element.attributes).find(attr => attr.name === 'wire:initial-data');
-      if (!initialDataAttr) return;
-
-      try {
-        const decoded = initialDataAttr.value
-          .replace(/&quot;/g, '"')
-          .replace(/&amp;/g, '&')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&#39;/g, "'")
-          .replace(/&#x27;/g, "'")
-          .replace(/&#x2F;/g, "/")
-          .replace(/&#x3D;/g, "=")
-          .replace(/&#x5B;/g, "[")
-          .replace(/&#x5D;/g, "]")
-          .replace(/&#x7B;/g, "{")
-          .replace(/&#x7D;/g, "}");
-
-        const data = JSON.parse(decoded);
-        const name = data.fingerprint?.name || '';
-
-        // Match components related to model profiles/videos
-        if (name === 'profile.model-videos' || name.includes('videos')) {
-          console.log('[ArchiveBate] Found video component fingerprint:', name);
-
-          storedComponentName = name;
-          storedFingerprint = data.fingerprint;
-          storedServerMemo = data.serverMemo;
-
-          found = true;
-          console.log('[ArchiveBate] Video component state captured');
-        } else if (name.includes('profile') && !storedComponentName) {
-          // Fallback to profile component if videos one isn't found yet
-          console.log('[ArchiveBate] Found profile component fingerprint (as fallback):', name);
-
-          storedComponentName = name;
-          storedFingerprint = data.fingerprint;
-          storedServerMemo = data.serverMemo;
-          console.log('[ArchiveBate] Profile state captured as base');
-        }
-      } catch (e) {
-        // Skip on error
-      }
-    });
-
-    console.log('[ArchiveBate] Initialization status:', {
-      hasFingerprint: !!storedFingerprint,
-      hasServerMemo: !!storedServerMemo,
-      componentName: storedComponentName
-    });
-
-    return !!(storedCsrfToken && storedFingerprint && storedServerMemo);
-  } catch (error) {
-    console.error('[ArchiveBate] Error initializing session:', error);
-    return false;
+async function initializeSession(username: string): Promise<{ success: boolean; initialVideos?: ArchiveVideo[]; totalVideos?: number }> {
+  // Use a queue to prevent simultaneous initializations for the same user
+  if (initializationQueue.has(username)) {
+    return initializationQueue.get(username);
   }
+
+  const promise = (async () => {
+    try {
+      // Small delay between initializations to avoid overwhelming the server
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 500));
+
+      console.log('[ArchiveBate] Initializing session for:', username);
+
+      const url = `https://archivebate.com/profile/${username}`;
+      const response = await fetch(url, {
+        headers: BROWSER_HEADERS,
+      });
+
+      if (!response.ok) {
+        console.error(`[ArchiveBate] Failed to load profile page for ${username}: ${response.status}`);
+        return { success: false };
+      }
+
+      // Extract cookies
+      const setCookieHeaders = Array.from(response.headers.getSetCookie?.() || []);
+      const userCookies = extractCookies(setCookieHeaders);
+
+      // Global cookies fallback
+      globalCookies.forEach((v, k) => {
+        if (!userCookies.has(k)) userCookies.set(k, v);
+      });
+
+      const html = await response.text();
+      let csrfToken = extractCsrfToken(html);
+
+      const dom = new JSDOM(html);
+      const document = dom.window.document;
+
+      // Parse initial videos
+      const initialVideos: ArchiveVideo[] = [];
+      const videoCards = document.querySelectorAll('section.video_item, .video_item, article.video-card, .video-card');
+
+      videoCards.forEach((card, index) => {
+        try {
+          const link = card.querySelector('a[href*="/watch/"]');
+          const video = card.querySelector('video, img[src*="thumb"], img[src*="poster"]');
+          if (!link) return;
+
+          const href = link.getAttribute('href')!;
+          const poster = video?.getAttribute('poster') || video?.getAttribute('src') || video?.getAttribute('data-src') || '';
+
+          const durationEl = card.querySelector('.duration, .time, .video-duration');
+          const infoP = card.querySelector('.info p, .meta, .video-info');
+
+          const durationText = durationEl?.textContent?.trim() || '';
+          const infoText = infoP?.textContent?.trim() || '';
+          const dateMatch = infoText.match(/(\d+ \w+ ago)/);
+          const viewsMatch = infoText.match(/(\d+) views/);
+
+          initialVideos.push({
+            id: `${username}-init-${index}-${Date.now()}`,
+            title: `${username} archive video`,
+            thumbnail: poster,
+            duration: durationText.split('\n').pop()?.trim() || '',
+            views: viewsMatch ? viewsMatch[1] : '',
+            date: dateMatch ? dateMatch[1] : '',
+            pageUrl: href.startsWith('http') ? href : `https://archivebate.com${href}`,
+            embedUrl: '',
+          });
+        } catch (e) { }
+      });
+
+      // Find total videos count
+      let totalVideos = 0;
+      const paginationContainer = document.querySelector('.pagination, .pagination-info, .showing-info');
+      const pagText = paginationContainer?.textContent || document.body.textContent || '';
+      const totalMatch = pagText.match(/of\s+(\d+)/i) ||
+        html.match(/of\s+<span[^>]*>(\d+)<\/span>/i) ||
+        html.match(/"total":\s*(\d+)/) ||
+        html.match(/video_count":\s*(\d+)/);
+
+      if (totalMatch) totalVideos = parseInt(totalMatch[1], 10);
+
+      // Extract Livewire component data efficiently
+      const componentEl = document.querySelector('[wire\\:initial-data]');
+      let foundComponent = false;
+
+      if (componentEl) {
+        try {
+          const rawData = componentEl.getAttribute('wire:initial-data')
+            ?.replace(/&quot;/g, '"')
+            ?.replace(/&amp;/g, '&') || '';
+          const data = JSON.parse(rawData);
+          const name = data.fingerprint?.name || '';
+
+          if (name.includes('videos') || name === 'profile.model-videos') {
+            sessionStates.set(username, {
+              csrfToken: csrfToken || '',
+              cookies: userCookies,
+              componentName: name,
+              fingerprint: data.fingerprint,
+              serverMemo: data.serverMemo
+            });
+            foundComponent = true;
+          }
+        } catch (e) {
+          console.error('[ArchiveBate] JSON parse error for initial-data:', e);
+        }
+      }
+
+      console.log(`[ArchiveBate] ${username} Init: Videos=${initialVideos.length}, Total=${totalVideos}, Livewire=${foundComponent}`);
+
+      return {
+        success: foundComponent || initialVideos.length > 0,
+        initialVideos,
+        totalVideos
+      };
+    } catch (error) {
+      console.error('[ArchiveBate] Error in initializeSession:', error);
+      return { success: false };
+    } finally {
+      initializationQueue.delete(username);
+    }
+  })();
+
+  initializationQueue.set(username, promise);
+  return promise;
 }
 
 /**
@@ -193,203 +241,173 @@ async function initializeSession(username: string): Promise<boolean> {
  */
 async function fetchArchiveProfile(
   username: string,
-  page: number = 1
+  page: number = 1,
+  retryCount: number = 0
 ): Promise<ArchiveProfileResponse> {
-  console.log('[ArchiveBate] fetchArchiveProfile:', { username, page });
+  const currentState = sessionStates.get(username);
 
-  // Initialize session if needed (username mismatch or first page with no token)
-  if (page === 1 && (!storedCsrfToken || storedUsername !== username || !storedFingerprint || !storedServerMemo)) {
-    console.log(`[ArchiveBate] No valid session for ${username}, initializing...`);
-    const initialized = await initializeSession(username);
-    if (!initialized) {
-      console.error('[ArchiveBate] Failed to initialize session');
+  // Page 1 optimization
+  if (page === 1) {
+    const init = await initializeSession(username);
+    if (init.success && init.initialVideos && init.initialVideos.length > 0) {
+      const totalPages = Math.ceil((init.totalVideos || 0) / 20);
       return {
         username,
-        videos: [],
-        currentPage: page,
-        totalPages: 1,
-        hasMore: false,
+        videos: init.initialVideos,
+        currentPage: 1,
+        totalPages: totalPages || 1,
+        hasMore: 1 < totalPages,
       };
     }
   }
 
+  // Load component state if missing
+  if (!currentState) {
+    const init = await initializeSession(username);
+    if (!init.success) throw new Error(`Failed to initialize session for ${username}`);
+  }
+
+  const session = sessionStates.get(username)!;
+
   try {
-    const csrfToken = storedCsrfToken || '';
-    const cookieHeader = buildCookieHeader();
-    const componentName = storedComponentName || "profile.model-videos";
+    const csrfToken = session.csrfToken;
+    const cookieHeader = buildCookieHeader(session.cookies);
+    const componentName = session.componentName;
+    const xsrfToken = session.cookies.get('XSRF-TOKEN');
 
-    console.log('[ArchiveBate] Making Livewire API request...');
-    console.log('[ArchiveBate] Component Name:', componentName);
+    // IMPORTANT: Livewire uses a checksum to verify that the serverMemo matches.
+    // If we modify serverMemo.data, we MUST update the checksum (which we can't).
+    // However, some fields might be editable if the server doesn't check them.
+    // For Page 1, we should stick to the EXACT captured serverMemo to ensure it works.
 
-    // Construct payload using full captured state
-    const payload = {
-      fingerprint: { ...storedFingerprint },
-      serverMemo: { ...storedServerMemo },
-      updates: [
-        {
-          type: "callMethod",
-          payload: {
-            id: Math.random().toString(36).substring(2, 6), // Generate a random request ID
-            method: "load_profile_videos",
-            params: []
-          }
+    const payload: any = {
+      fingerprint: { ...session.fingerprint },
+      serverMemo: { ...session.serverMemo },
+      updates: [{
+        type: "callMethod",
+        payload: {
+          id: Math.random().toString(36).substring(2, 6),
+          method: "load_profile_videos",
+          params: []
         }
-      ]
+      }]
     };
 
-    // If requesting a specific page, update paginators in serverMemo.data
+    // If we are on Page 1, don't modify the serverMemo at all - try to use exactly what came from the server.
     if (page > 1) {
-      payload.serverMemo.data.page = page;
-      payload.serverMemo.data.currentPage = page;
-      if (payload.serverMemo.data.paginators) {
-        payload.serverMemo.data.paginators.page = page;
-      }
+      const pageStr = String(page);
+      if (!payload.serverMemo.data) payload.serverMemo.data = {};
+      payload.serverMemo.data.page = pageStr;
+      payload.serverMemo.data.currentPage = pageStr;
+      if (!payload.serverMemo.data.paginators) payload.serverMemo.data.paginators = {};
+      payload.serverMemo.data.paginators.page = pageStr;
+
+      // Note: Changing page might still trigger a checksum error if the server validates it.
+      // If it fails with 419/500, we might need to simulate a click 'updates' instead.
     }
 
-    console.log('[ArchiveBate] Request payload serverMemo data:', JSON.stringify(payload.serverMemo.data, null, 2));
-    console.log('[ArchiveBate] Request payload fingerprint:', JSON.stringify(payload.fingerprint, null, 2));
+    console.log(`[ArchiveBate] Fetching ${username} Page ${page} (Retry: ${retryCount})...`);
+
+    const headers: any = {
+      'User-Agent': BROWSER_HEADERS['User-Agent'],
+      'Accept': 'application/json, text/plain, */*',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Content-Type': 'application/json',
+      'X-CSRF-TOKEN': csrfToken,
+      'X-Livewire': 'true',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Cookie': cookieHeader,
+      'Origin': 'https://archivebate.com',
+      'Referer': `https://archivebate.com/profile/${username}`,
+      'Sec-Fetch-Dest': 'empty',
+      'Sec-Fetch-Mode': 'cors',
+      'Sec-Fetch-Site': 'same-origin',
+    };
+
+    // Synchronize X-XSRF-TOKEN if cookie exists
+    if (xsrfToken) {
+      headers['X-XSRF-TOKEN'] = decodeURIComponent(xsrfToken);
+    }
 
     const response = await fetch(`https://archivebate.com/livewire/message/${componentName}`, {
       method: 'POST',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0',
-        'Accept': 'text/html, application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': csrfToken,
-        'X-Livewire': 'true',
-        'Cookie': cookieHeader,
-        'Origin': 'https://archivebate.com',
-        'Referer': `https://archivebate.com/profile/${username}`,
-        'Connection': 'keep-alive',
-      },
+      headers,
       body: JSON.stringify(payload),
     });
 
-    console.log('[ArchiveBate] Livewire response status:', response.status);
-
     if (!response.ok) {
-      // Log the response body for debugging
       const errorText = await response.text();
-      console.error('[ArchiveBate] Error response:', errorText.substring(0, 500));
+      console.error(`[ArchiveBate] ${username} Livewire ${response.status}:`, errorText.substring(0, 150));
 
-      // If we get a 419, session might have expired - try reinitializing
-      if (response.status === 419 && page === 1) {
-        console.log('[ArchiveBate] Got 419, reinitializing session...');
-        const reinitialized = await initializeSession(username);
-        if (reinitialized) {
-          // Retry once with new session
-          return fetchArchiveProfile(username, page);
-        }
+      // Handle session expiry or rate limiting with retry
+      if ((response.status === 419 || response.status === 401 || response.status === 500) && retryCount < 2) {
+        console.log(`[ArchiveBate] Retrying ${username} in 1.5s...`);
+        sessionStates.delete(username); // Force fresh init
+        await new Promise(r => setTimeout(r, 1500));
+        return fetchArchiveProfile(username, page, retryCount + 1);
       }
       throw new Error(`Failed to fetch archive page: ${response.status}`);
     }
 
-    // Update cookies from response
+    // Update session cookies
     const setCookieHeaders = Array.from(response.headers.getSetCookie?.() || []);
     const newCookies = extractCookies(setCookieHeaders);
-    newCookies.forEach((value, key) => storedCookies.set(key, value));
+    newCookies.forEach((value, key) => session.cookies.set(key, value));
 
     const jsonResponse = await response.json();
-    console.log('[ArchiveBate] Response keys:', Object.keys(jsonResponse));
-    console.log('[ArchiveBate] Full response:', JSON.stringify(jsonResponse, null, 2));
-
-    // Extract HTML from effects.html
     const html = jsonResponse?.effects?.html || '';
-    console.log('[ArchiveBate] HTML length:', html.length);
-    console.log('[ArchiveBate] HTML preview (first 500 chars):', html.substring(0, 500));
+    if (!html) throw new Error("No HTML in Livewire response");
 
-    const videos: ArchiveVideo[] = [];
-
-    if (!html) {
-      console.error('[ArchiveBate] No HTML in response effects');
-      return {
-        username,
-        videos: [],
-        currentPage: page,
-        totalPages: 1,
-        hasMore: false,
-      };
-    }
-
-    // Parse HTML with JSDOM
     const dom = new JSDOM(html);
     const document = dom.window.document;
 
-    // Look for video_item sections
-    const videoCards = document.querySelectorAll('section.video_item');
-
-    console.log('[ArchiveBate] Found video cards:', videoCards.length);
+    // Parse videos (lenient parsing)
+    const videos: ArchiveVideo[] = [];
+    const videoCards = document.querySelectorAll('section.video_item, .video_item, article.video-card');
 
     videoCards.forEach((card, index) => {
       try {
-        console.log(`[ArchiveBate] Processing video card ${index}:`, card.outerHTML.substring(0, 200));
-
-        // Find the link to the video
         const link = card.querySelector('a[href*="/watch/"]');
-        const video = card.querySelector('video');
-        const durationEl = card.querySelector('.duration');
-        const infoP = card.querySelector('.info p');
+        const video = card.querySelector('video, img[src*="thumb"]');
+        if (!link) return;
 
-        console.log(`[ArchiveBate] Card ${index} - link:`, !!link, 'video:', !!video, 'duration:', !!durationEl, 'info:', !!infoP);
+        const href = link.getAttribute('href')!;
+        const poster = video?.getAttribute('poster') || video?.getAttribute('src') || '';
 
-        if (!link || !video) {
-          console.log(`[ArchiveBate] Skipping card ${index} - missing link or video`);
-          return;
-        }
-
-        const href = link.getAttribute('href');
-        const poster = video.getAttribute('poster');
-
-        console.log(`[ArchiveBate] Card ${index} - href:`, href?.substring(0, 50), 'poster:', poster?.substring(0, 50));
-
-        if (!href || !poster) {
-          console.log(`[ArchiveBate] Skipping card ${index} - missing href or poster`);
-          return;
-        }
-
-        // Extract duration text (remove SVG content)
-        const durationText = durationEl?.textContent?.trim() || '';
-        const duration = durationText.split('\n').pop()?.trim() || '';
-
-        // Extract date and views from info paragraph
-        const infoText = infoP?.textContent?.trim() || '';
-        const dateMatch = infoText.match(/(\d+ \w+ ago)/);
-        const viewsMatch = infoText.match(/(\d+) views/);
-        const date = dateMatch ? dateMatch[1] : '';
-        const views = viewsMatch ? viewsMatch[1] : '';
-
-        console.log(`[ArchiveBate] Parsed video ${index}:`, { duration, views, date });
+        const durationEl = card.querySelector('.duration, .time');
+        const infoP = card.querySelector('.info p, .meta');
 
         videos.push({
           id: `${username}-livewire-${page}-${index}-${Date.now()}`,
-          title: `${username} archive video`, // ArchiveBate doesn't have titles
+          title: `${username} archive video`,
           thumbnail: poster,
-          duration,
-          views,
-          date,
+          duration: durationEl?.textContent?.trim().split('\n').pop()?.trim() || '',
+          views: (infoP?.textContent?.match(/(\d+) views/) || [])[1] || '',
+          date: (infoP?.textContent?.match(/(\d+ \w+ ago)/) || [])[1] || '',
           pageUrl: href.startsWith('http') ? href : `https://archivebate.com${href}`,
-          embedUrl: '', // Will be extracted when clicking
+          embedUrl: '',
         });
-      } catch (err) {
-        console.error('[ArchiveBate] Error parsing video card:', err);
-      }
+      } catch (err) { }
     });
 
-    console.log('[ArchiveBate] Parsed videos:', videos.length);
+    // Pagination
+    let totalVideos = 0;
+    const paginationText = document.body.textContent || '';
+    const totalMatch = paginationText.match(/of\s+(\d+)/i) || html.match(/of\s+<span[^>]*>(\d+)<\/span>/i);
+    if (totalMatch) totalVideos = parseInt(totalMatch[1], 10);
 
-    // For pagination, check if there are more videos by looking at the serverMemo
-    const hasMore = videos.length > 0 && videos.length === 20; // Assuming 20 per page
+    const totalPages = Math.ceil(totalVideos / 20) || page;
+    const hasMore = page < totalPages;
 
     return {
       username,
       videos,
       currentPage: page,
-      totalPages: hasMore ? page + 1 : page,
+      totalPages,
       hasMore,
     };
   } catch (error) {
-    console.error('[ArchiveBate] Error fetching archivebate profile:', error);
+    console.error(`[ArchiveBate] fetchArchiveProfile error for ${username}:`, error);
     return {
       username,
       videos: [],
@@ -403,7 +421,7 @@ async function fetchArchiveProfile(
 /**
  * Get embed URL from video page
  */
-async function getVideoEmbedUrl(pageUrl: string): Promise<string> {
+async function getVideoEmbedUrl(pageUrl: string): Promise<{ embedUrl: string; thumbUrl: string }> {
   try {
     const response = await fetch(pageUrl.startsWith('http') ? pageUrl : `https://archivebate.com${pageUrl}`, {
       headers: {
@@ -417,40 +435,110 @@ async function getVideoEmbedUrl(pageUrl: string): Promise<string> {
     const dom = new JSDOM(html);
     const document = dom.window.document;
 
+    let embedUrl = '';
+    let thumbUrl = '';
+
     // Look for iframe embed
-    const iframe = document.querySelector('iframe[src*="embed"], iframe[src*="video"]');
+    const iframe = document.querySelector('iframe[src*="embed"], iframe[src*="video"], iframe[src*="mixdrop"]');
     if (iframe) {
-      const src = iframe.getAttribute('src');
-      if (src) return src;
+      embedUrl = iframe.getAttribute('src') || '';
     }
 
-    // Look for video element with source
-    const video = document.querySelector('video');
-    if (video) {
-      const source = video.querySelector('source');
-      if (source) {
-        const src = source.getAttribute('src');
-        if (src) return src;
+    // Look for video element with source (fallback)
+    if (!embedUrl) {
+      const video = document.querySelector('video');
+      if (video) {
+        const source = video.querySelector('source');
+        if (source) {
+          embedUrl = source.getAttribute('src') || '';
+        }
+        if (!embedUrl) {
+          embedUrl = video.getAttribute('src') || '';
+        }
       }
-      const src = video.getAttribute('src');
-      if (src) return src;
     }
 
     // Look for any embed code patterns
-    const embedElements = document.querySelectorAll('[data-embed], [data-src], [data-url]');
-    for (const el of embedElements) {
-      const src = el.getAttribute('data-embed') || el.getAttribute('data-src') || el.getAttribute('data-url');
-      if (src && src.includes('http')) {
-        return src;
+    if (!embedUrl) {
+      const embedElements = document.querySelectorAll('[data-embed], [data-src], [data-url]');
+      for (const el of embedElements) {
+        const src = el.getAttribute('data-embed') || el.getAttribute('data-src') || el.getAttribute('data-url');
+        if (src && src.includes('http')) {
+          embedUrl = src;
+          break;
+        }
       }
     }
 
-    return '';
+    // Extract Thumbnail
+    const ogImage = document.querySelector('meta[property="og:image"]');
+    if (ogImage) {
+      thumbUrl = ogImage.getAttribute('content') || '';
+    }
+
+    // Fallbacks for thumbnail
+    if (!thumbUrl) {
+      const thumbInput = document.querySelector('input[name="t"]');
+      if (thumbInput) {
+        thumbUrl = thumbInput.getAttribute('value') || '';
+      }
+    }
+
+    // Mixdrop / M1xdrop unpacker
+    if (embedUrl && (embedUrl.includes('mixdrop') || embedUrl.includes('m1xdrop'))) {
+      try {
+        const targetUrl = embedUrl.startsWith('//') ? `https:${embedUrl}` : embedUrl;
+        const urlObj = new URL(targetUrl);
+        const mdResponse = await fetch(targetUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0',
+            'Referer': `${urlObj.protocol}//${urlObj.host}/`
+          }
+        });
+        const mdHtml = await mdResponse.text();
+
+        const funcMatch = mdHtml.match(/(eval\(function\(p,a,c,k,e,d\).+?\}\('(.*?)',(\d+),(\d+),'([^']+)'\.split\('\|'\).*?\)\))/);
+        if (funcMatch) {
+          const p = funcMatch[2];
+          const a = parseInt(funcMatch[3]);
+          const cCount = parseInt(funcMatch[4]);
+          const k = funcMatch[5].split('|');
+
+          const e = (c: number): string => {
+            return (c < a ? '' : e(Math.floor(c / a))) + ((c % a) > 35 ? String.fromCharCode((c % a) + 29) : (c % a).toString(36));
+          };
+
+          let unpacked = p;
+          let cnt = cCount;
+          while (cnt-- > 0) {
+            if (k[cnt]) {
+              unpacked = unpacked.replace(new RegExp('\\b' + e(cnt) + '\\b', 'g'), k[cnt]);
+            }
+          }
+
+          // Prioritize wurl and vurl over other metadata fields like furl
+          const wurlMatch = unpacked.match(/wurl\s*=\s*"([^"]+)"/) ||
+            unpacked.match(/vurl\s*=\s*"([^"]+)"/) ||
+            unpacked.match(/(?:furl|src|file)\s*=\s*"([^"]+)"/);
+
+          if (wurlMatch && wurlMatch[1] && wurlMatch[1].trim()) {
+            const parsedUrl = wurlMatch[1];
+            embedUrl = parsedUrl.startsWith('//') ? `https:${parsedUrl}` : parsedUrl;
+            console.log('[ArchiveBate] Mixdrop direct MP4 URL found:', embedUrl);
+          }
+        }
+      } catch (err) {
+        console.error('[ArchiveBate] Failed to extract from Mixdrop:', err);
+      }
+    }
+
+    return { embedUrl, thumbUrl };
   } catch (error) {
     console.error('Error fetching embed URL:', error);
-    return '';
+    return { embedUrl: '', thumbUrl: '' };
   }
 }
+
 
 export function registerArchivebateHandlers() {
   ipcMain.handle("archivebate:getProfile", async (_event, username: string, page: number = 1) => {
@@ -468,8 +556,8 @@ export function registerArchivebateHandlers() {
   ipcMain.handle("archivebate:getEmbedUrl", async (_event, pageUrl: string) => {
     console.log('[ArchiveBate IPC] getEmbedUrl called:', pageUrl);
     try {
-      const embedUrl = await getVideoEmbedUrl(pageUrl);
-      return { success: true, data: { embedUrl } };
+      const result = await getVideoEmbedUrl(pageUrl);
+      return { success: true, data: result };
     } catch (error) {
       console.error('[ArchiveBate IPC] Embed URL error:', error);
       return { success: false, error: error instanceof Error ? error.message : "Unknown error" };

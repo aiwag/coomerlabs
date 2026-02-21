@@ -32,6 +32,7 @@ const apps = [
   { to: "/redgifs", title: "RedGifs Explorer", icon: <Video size={14} /> },
   { to: "/fapello", title: "Fapello Collections", icon: <ImageIcon size={14} /> },
   { to: "/wallheaven", title: "Wallheaven Labs", icon: <ImageIcon size={14} /> },
+  { to: "/creators", title: "Coomer Creators", icon: <Users size={14} /> },
   { to: "/coomerKemono", title: "Creator Archive", icon: <Users size={14} /> },
   { to: "/javtube", title: "JavTube v2", icon: <Play size={14} /> },
   { to: "/actresses", title: "Star Database", icon: <Users size={14} /> },

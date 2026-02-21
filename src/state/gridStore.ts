@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { arrayMove } from '@dnd-kit/sortable';
 import { dbService } from '@/services/databaseService';
+import { addViewedProfile } from '@/components/camarchive/api';
+import { getUsernameFromUrl } from '@/utils/formatters';
 
 interface GridState {
   streamUrls: string[];
@@ -69,6 +71,12 @@ export const useGridStore = create<GridState>((set, get) => ({
       favorites: new Set(savedFavs as string[]),
       mutedStreams: new Set(savedMutes as string[])
     });
+
+    // Add all initial streams to archive history
+    finalUrls.forEach(url => {
+      const username = getUsernameFromUrl(url);
+      if (username) addViewedProfile(username);
+    });
   },
 
   addStream: async (url) => {
@@ -76,6 +84,11 @@ export const useGridStore = create<GridState>((set, get) => ({
     if (currentUrls.includes(url)) return;
     const newUrls = [...currentUrls, url];
     set({ streamUrls: newUrls });
+
+    // Track in archive history
+    const username = getUsernameFromUrl(url);
+    if (username) addViewedProfile(username);
+
     await dbService.setViewArrangement(STREAM_ORDER_KEY, newUrls);
   },
 

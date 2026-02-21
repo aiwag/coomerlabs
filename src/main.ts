@@ -48,6 +48,7 @@ async function createWindow() {
       process.platform === "darwin" ? { x: 5, y: 5 } : undefined,
   });
 
+
   registerListeners(mainWindow);
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -58,6 +59,7 @@ async function createWindow() {
     );
   }
 }
+
 
 // 🧩 DevTools install remains the same
 async function installExtensions() {
@@ -96,6 +98,33 @@ app
   .whenReady()
   .then(initializeDatabase)
   .then(initializeServer)
+  .then(() => {
+    // Force global session user agent to match our spoofing
+    session.defaultSession.setUserAgent('Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0');
+
+    // Inject required headers for video streams globally
+    session.defaultSession.webRequest.onBeforeSendHeaders(
+      { urls: ["*://*.mxcontent.net/*", "*://*.mixdrop.ag/*", "*://m1xdrop.bz/*", "*://*.mixdrop.co/*"] },
+      (details, callback) => {
+        const url = new URL(details.url);
+        // Map common mixdrop domains to the referral domain used in the working curl
+        const referer = url.host.includes('mxcontent.net') ? 'https://m1xdrop.bz/' : `${url.protocol}//${url.host}/`;
+
+        details.requestHeaders['Referer'] = referer;
+        details.requestHeaders['Origin'] = referer.replace(/\/$/, '');
+        details.requestHeaders['User-Agent'] = 'Mozilla/5.0 (X11; Linux x86_64; rv:147.0) Gecko/20100101 Firefox/147.0';
+        details.requestHeaders['Sec-Fetch-Dest'] = 'video';
+        details.requestHeaders['Sec-Fetch-Mode'] = 'cors';
+        details.requestHeaders['Sec-Fetch-Site'] = 'cross-site';
+
+        if (inDevelopment) {
+          console.log(`[Stream Interceptor] Spoofed headers for: ${url.host}`);
+        }
+
+        callback({ cancel: false, requestHeaders: details.requestHeaders });
+      }
+    );
+  })
   .then(createWindow)
   .then(installExtensions);
 

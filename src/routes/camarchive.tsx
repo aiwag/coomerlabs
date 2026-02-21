@@ -1,9 +1,8 @@
-// Camarchive Route - Profile History & Videos
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Clock, Video as VideoIcon, User, Search } from 'lucide-react';
+import { ArrowLeft, Clock, Video as VideoIcon, User, Search, X, ExternalLink, Loader2, Play } from 'lucide-react';
 import * as api from '../components/camarchive/api';
 import type { Video } from '../components/camarchive/types';
 
@@ -14,13 +13,151 @@ const LoadingSpinner = ({ message = 'Loading...' }: { message?: string }) => (
   </div>
 );
 
-const VideoCard = React.memo(({ video }: { video: Video }) => (
+function useInView(options?: IntersectionObserverInit) {
+  const [ref, setRef] = useState<HTMLElement | null>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    if (!ref) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setInView(entry.isIntersecting);
+    }, options);
+    observer.observe(ref);
+    return () => observer.disconnect();
+  }, [ref, options]);
+
+  return { ref: setRef, inView };
+}
+
+const VideoPlayerModal = ({ video, onClose }: { video: Video; onClose: () => void }) => {
+  const [embedData, setEmbedData] = useState<{ embedUrl: string | null; thumbUrl: string | null }>({
+    embedUrl: null,
+    thumbUrl: null
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchEmbed = async () => {
+      try {
+        setIsLoading(true);
+        const result = await window.archivebate.getEmbedUrl(video.watchUrl);
+        if (result.success && result.data?.embedUrl) {
+          setEmbedData({
+            embedUrl: result.data.embedUrl,
+            thumbUrl: result.data.thumbUrl || null
+          });
+        } else {
+          setError(result.error || 'Failed to extract video player');
+        }
+      } catch (err) {
+        setError('Network error extracting video');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEmbed();
+  }, [video.watchUrl]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 lg:p-12"
+    >
+      <div className="absolute inset-0 bg-black/95 backdrop-blur-xl" onClick={onClose} />
+
+      <motion.div
+        initial={{ scale: 0.9, y: 20, opacity: 0 }}
+        animate={{ scale: 1, y: 0, opacity: 1 }}
+        exit={{ scale: 0.9, y: 20, opacity: 0 }}
+        className="relative w-full max-w-6xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-white/10"
+      >
+        {/* Header */}
+        <div className="absolute top-0 left-0 right-0 p-4 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent z-10 transition-opacity hover:opacity-100">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500 rounded-lg">
+              <VideoIcon className="w-4 h-4 text-white" />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-sm leading-none">{video.username}'s Archive</h3>
+              <p className="text-gray-400 text-[10px] uppercase font-black tracking-widest mt-1">Chaturbate • {video.uploaded}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.open(video.watchUrl, '_blank')}
+              className="p-2 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white transition-all border border-white/5"
+              title="Open External"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/10 hover:bg-red-500 text-white transition-all shadow-xl"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Player Content */}
+        <div className="w-full h-full relative flex items-center justify-center bg-[#070707]">
+          {isLoading ? (
+            <div className="flex flex-col items-center gap-4 z-20">
+              <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
+              <p className="text-gray-500 text-[10px] font-black uppercase tracking-[0.2em] animate-pulse">Initializing Stream Engine...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center px-4 z-20">
+              <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+                <X className="w-8 h-8 text-red-500" />
+              </div>
+              <p className="text-white font-bold mb-2">{error}</p>
+              <p className="text-gray-500 text-sm max-w-sm mx-auto mb-6">Archivebate is protecting this video. You may need to view it on the source website.</p>
+              <button
+                onClick={() => window.open(video.watchUrl, '_blank')}
+                className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase tracking-widest rounded-full transition-all"
+              >
+                Open Original Website
+              </button>
+            </div>
+          ) : embedData.embedUrl ? (
+            <>
+              {embedData.thumbUrl && (
+                <img
+                  loading="lazy"
+                  crossOrigin="anonymous"
+                  alt=""
+                  src={embedData.thumbUrl}
+                  className="absolute inset-0 w-full h-full object-cover opacity-50 pointer-events-none"
+                />
+              )}
+              {embedData.embedUrl ? (
+                <video
+                  src={embedData.embedUrl}
+                  className="absolute inset-0 w-full h-full object-contain bg-black"
+                  controls
+                  autoPlay
+                />
+              ) : null}
+            </>
+          ) : null}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+const VideoCard = React.memo(({ video, onPlay }: { video: Video; onPlay: (video: Video) => void }) => (
   <motion.div
     initial={{ opacity: 0, scale: 0.95 }}
     animate={{ opacity: 1, scale: 1 }}
     whileHover={{ y: -4 }}
     className="group relative overflow-hidden rounded-xl bg-gray-800/40 border border-white/5 cursor-pointer hover:border-blue-500/50 transition-all shadow-xl"
-    onClick={() => window.open(video.watchUrl, '_blank')}
+    onClick={() => onPlay(video)}
   >
     <div className="relative aspect-video">
       <img
@@ -52,35 +189,147 @@ const VideoCard = React.memo(({ video }: { video: Video }) => (
   </motion.div>
 ));
 
-const ProfileCard = React.memo(({ profile, onClick }: { profile: any; onClick: () => void }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    whileHover={{ y: -4, scale: 1.02 }}
-    onClick={onClick}
-    className="group relative overflow-hidden rounded-2xl bg-gray-800/30 border border-white/5 cursor-pointer hover:bg-gray-800/60 hover:border-blue-500/30 transition-all shadow-lg"
-  >
-    <div className="aspect-square relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-purple-500/10 to-blue-500/20" />
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="w-20 h-20 rounded-full bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-          <User className="w-10 h-10 text-white/40" />
+const ProfileCard = React.memo(({ profile, onClick }: { profile: any; onClick: () => void }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const { ref, inView } = useInView({ threshold: 0.1 });
+
+  // Fetch thumbnails efficiently - only when visible
+  const { data: videosData, isLoading } = useQuery({
+    queryKey: ['profile-thumbs', profile.username],
+    queryFn: () => api.fetchProfileVideos(profile.username),
+    staleTime: 30 * 60 * 1000, // Long cache for profile previews
+    enabled: inView,
+  });
+
+  const videos = videosData?.videos || [];
+  const thumbs = useMemo(() => videos.slice(0, 3).map(v => v.thumbnailUrl), [videos]);
+
+  // Auto-slide effect when hovered
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isHovered && thumbs.length > 1) {
+      interval = setInterval(() => {
+        setCurrentSlide(prev => (prev + 1) % thumbs.length);
+      }, 2500); // Slower, more cinematic slide
+    } else {
+      const resetDelay = setTimeout(() => {
+        if (!isHovered) setCurrentSlide(0);
+      }, 300);
+      return () => clearTimeout(resetDelay);
+    }
+    return () => clearInterval(interval);
+  }, [isHovered, thumbs.length]);
+
+  return (
+    <motion.div
+      ref={ref as any}
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -8, scale: 1.04 }}
+      onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      className="group relative overflow-hidden rounded-[2rem] bg-[#0c0c0c] border border-white/5 cursor-pointer hover:border-blue-500/40 transition-all duration-500 shadow-2xl aspect-square"
+    >
+      {/* Thumbnail Layers */}
+      <div className="absolute inset-0 z-0">
+        <AnimatePresence mode="popLayout" initial={false}>
+          {thumbs.length > 0 ? (
+            <motion.div
+              key={`${profile.username}-slide-${currentSlide}`}
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+              className="absolute inset-0"
+            >
+              <img
+                src={thumbs[currentSlide]}
+                className="w-full h-full object-cover brightness-75 group-hover:brightness-100 transition-all duration-700"
+                alt=""
+              />
+            </motion.div>
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-indigo-900/20 animate-pulse" />
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Dynamic Glass Overlay */}
+      <div className={`absolute inset-0 transition-opacity duration-700 z-10 ${isHovered ? 'opacity-40' : 'opacity-80'} bg-gradient-to-t from-black via-black/20 to-transparent`} />
+
+      {/* Floating Center Icon (Visible on hover) */}
+      <div className="absolute inset-0 flex items-center justify-center z-10">
+        <motion.div
+          animate={{
+            scale: isHovered ? 1 : 0.8,
+            opacity: isHovered ? 1 : 0
+          }}
+          transition={{ type: 'spring', damping: 15 }}
+          className="w-20 h-20 rounded-full bg-blue-500/10 backdrop-blur-2xl border border-white/10 flex items-center justify-center shadow-2xl"
+        >
+          <Play className="w-8 h-8 text-white fill-white ml-1" />
+        </motion.div>
+      </div>
+
+      {/* Content Info */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 z-20 transform group-hover:translate-y-[-4px] transition-transform duration-500">
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Archived</span>
+        </div>
+
+        <h3 className="text-white font-black text-xl truncate tracking-tight group-hover:text-blue-400 transition-colors drop-shadow-lg">
+          {profile.username}
+        </h3>
+
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">
+            {profile.lastViewed ? new Date(profile.lastViewed).toLocaleDateString() : 'Active'}
+          </p>
+          {videos.length > 0 && (
+            <span className="text-[10px] bg-white/10 backdrop-blur-md px-2 py-0.5 rounded-full text-white/60 font-black">
+              {videos.length}+ VIDEOS
+            </span>
+          )}
+        </div>
+
+        {/* Cinematic Progress Bar */}
+        <div className="flex gap-1.5 mt-4 opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-y-2 group-hover:translate-y-0">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-[3px] flex-1 rounded-full overflow-hidden bg-white/10"
+            >
+              <motion.div
+                initial={false}
+                animate={{
+                  width: i === currentSlide ? '100%' : (i < currentSlide ? '100%' : '0%'),
+                  opacity: i === currentSlide ? 1 : 0.3
+                }}
+                className="h-full bg-blue-500"
+                transition={{ duration: i === currentSlide ? 2.5 : 0.3, ease: 'linear' }}
+              />
+            </div>
+          ))}
         </div>
       </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 p-5">
-        <h3 className="text-white font-bold text-lg truncate group-hover:text-blue-400 transition-colors">{profile.username}</h3>
-        <p className="text-gray-400 text-[10px] uppercase tracking-widest font-bold mt-1">
-          {profile.lastViewed ? new Date(profile.lastViewed).toLocaleDateString() : 'Active Profile'}
-        </p>
-      </div>
-    </div>
-  </motion.div>
-));
+
+      {/* Loading Spin for extra content */}
+      {isHovered && isLoading && (
+        <div className="absolute top-6 right-6 z-30">
+          <Loader2 className="w-5 h-5 text-blue-500/50 animate-spin" />
+        </div>
+      )}
+    </motion.div>
+  );
+});
 
 function CamarchiveRoute() {
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [playingVideo, setPlayingVideo] = useState<Video | null>(null);
 
   // Fetch viewed profiles list
   const { data: profiles, isLoading: isLoadingProfiles } = useQuery({
@@ -89,19 +338,43 @@ function CamarchiveRoute() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Fetch profile videos
+  // Fetch archive videos with infinite scroll
   const {
-    data: videosData,
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
     isLoading: isLoadingVideos,
-    error: videosError
-  } = useQuery({
-    queryKey: ['camarchive-videos', selectedProfile],
-    queryFn: () => api.fetchProfileVideos(selectedProfile!),
+    error: videosError,
+  } = useInfiniteQuery({
+    queryKey: ["camarchive-videos", selectedProfile],
+    queryFn: ({ pageParam = 1 }) => api.fetchArchiveProfile(selectedProfile!, pageParam as number),
+    initialPageParam: 1,
     enabled: !!selectedProfile,
-    staleTime: 2 * 60 * 1000,
+    getNextPageParam: (lastPage: any) =>
+      lastPage.hasMore ? lastPage.currentPage + 1 : null,
   });
 
-  const videos = videosData?.videos || [];
+  const videos = data?.pages.flatMap((page: any) => page.videos) || [];
+
+  // Intersection Observer for infinite scroll
+  const loadMoreRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (node && hasNextPage && !isFetchingNextPage) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            if (entries[0].isIntersecting) {
+              fetchNextPage();
+            }
+          },
+          { threshold: 0.1 }
+        );
+        observer.observe(node);
+        return () => observer.disconnect();
+      }
+    },
+    [hasNextPage, isFetchingNextPage, fetchNextPage]
+  );
 
   const handleProfileClick = useCallback((username: string) => {
     setSelectedProfile(username);
@@ -229,15 +502,38 @@ function CamarchiveRoute() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <AnimatePresence>
-                  {videos.map((video, index) => (
-                    <VideoCard key={`${video.id}-${index}`} video={video} />
+                  {videos.map((video: Video, index: number) => (
+                    <VideoCard key={`${video.id}-${index}`} video={video} onPlay={setPlayingVideo} />
                   ))}
                 </AnimatePresence>
+
+                {/* Infinite Scroll Trigger */}
+                <div ref={loadMoreRef} className="col-span-full h-10 flex items-center justify-center">
+                  {isFetchingNextPage && (
+                    <div className="flex items-center gap-2 text-blue-500 font-bold">
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Loading more...</span>
+                    </div>
+                  )}
+                  {!hasNextPage && videos.length > 0 && (
+                    <p className="text-gray-600 text-sm font-bold uppercase tracking-widest">End of Archives</p>
+                  )}
+                </div>
               </div>
             )
           )}
         </div>
       </div>
+
+      {/* Video Player Modal */}
+      <AnimatePresence>
+        {playingVideo && (
+          <VideoPlayerModal
+            video={playingVideo}
+            onClose={() => setPlayingVideo(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

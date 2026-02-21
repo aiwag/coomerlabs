@@ -21,6 +21,7 @@ export interface Video {
   views: number;
   username: string;
   profileUrl: string;
+  embedUrl?: string;
 }
 
 export interface CamarchiveSettings {

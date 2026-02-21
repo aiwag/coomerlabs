@@ -4,6 +4,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchArchiveProfile } from "@/services/archivebateService";
 import { ArchiveVideoCard } from "@/components/camviewer/ArchiveVideoCard";
 import { SortableWebview } from "@/components/camviewer/grid/SortableWebview";
+import { addViewedProfile } from "@/components/camarchive/api";
 
 interface ProfileModalProps {
   username: string;
@@ -12,6 +13,13 @@ interface ProfileModalProps {
 
 export function ProfileModal({ username, onClose }: ProfileModalProps) {
   const [selectedVideo, setSelectedVideo] = useState<ArchiveVideo | null>(null);
+
+  // Add to camarchive history
+  React.useEffect(() => {
+    if (username) {
+      addViewedProfile(username);
+    }
+  }, [username]);
 
   // Fetch archive videos with infinite scroll
   const {
@@ -102,8 +110,9 @@ export function ProfileModal({ username, onClose }: ProfileModalProps) {
                   <SortableWebview
                     id={`live-${username}`}
                     url={liveCamUrl}
-                    removable={false}
-                    style={{ width: "100%", height: "100%" }}
+                    index={0}
+                    isDragging={false}
+                    isDraggable={false}
                   />
                 </div>
               </div>

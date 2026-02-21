@@ -110,8 +110,9 @@ export function RoomProfilePage() {
               <SortableWebview
                 id={`live-${username}`}
                 url={liveCamUrl}
-                removable={false}
-                style={{ width: "100%", height: "100%" }}
+                index={0}
+                isDragging={false}
+                isDraggable={false}
               />
             </div>
           </section>
@@ -210,17 +211,17 @@ export function RoomProfilePage() {
               className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-md border border-white/10 text-white transition-colors"
             >
               <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
 
             {/* Video Embed */}
             <div className="aspect-video bg-black">

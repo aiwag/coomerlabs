@@ -14,6 +14,10 @@ export function registerDatabaseHandlers() {
         return dbService.getCreatorsByService(service, page, pageSize);
     });
 
+    ipcMain.handle('db:getAllCreators', async (_, page: number, pageSize: number) => {
+        return dbService.getAllCreators(page, pageSize);
+    });
+
     ipcMain.handle('db:upsertCreators', async (_, creators: Creator[]) => {
         dbService.upsertCreators(creators);
         return { success: true };

@@ -48,7 +48,7 @@ interface ElectronAPI {
     }>;
     getEmbedUrl: (pageUrl: string) => Promise<{
       success: boolean;
-      data?: { embedUrl: string };
+      data?: { embedUrl: string; thumbUrl?: string };
       error?: string;
     }>;
   };
@@ -74,7 +74,7 @@ declare interface Window {
     }>;
     getEmbedUrl: (pageUrl: string) => Promise<{
       success: boolean;
-      data?: { embedUrl: string };
+      data?: { embedUrl: string; thumbUrl?: string };
       error?: string;
     }>;
   };

@@ -226,6 +226,33 @@ class DatabaseService {
     }
 
     /**
+     * Get all creators with pagination
+     */
+    public getAllCreators(
+        page = 1,
+        pageSize = 30
+    ): { data: Creator[]; total: number } {
+        if (!this.db) throw new Error('Database not initialized');
+
+        const offset = (page - 1) * pageSize;
+
+        const dataStmt = this.db.prepare(`
+      SELECT * FROM creators 
+      ORDER BY favorited DESC, updated DESC
+      LIMIT ? OFFSET ?
+    `);
+
+        const countStmt = this.db.prepare(`
+      SELECT COUNT(*) as count FROM creators
+    `);
+
+        const data = dataStmt.all(pageSize, offset) as Creator[];
+        const { count } = countStmt.get() as { count: number };
+
+        return { data, total: count };
+    }
+
+    /**
      * Toggle favorite status
      */
     public toggleFavorite(creatorId: string): boolean {

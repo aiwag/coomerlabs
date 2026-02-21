@@ -38,22 +38,30 @@ export const getViewedProfiles = (): string[] => {
 };
 
 // Fetch profile videos from archivebate using Electron IPC (to bypass CORS/headers restrictions)
-export const fetchProfileVideos = async (username: string): Promise<{ videos: Video[] }> => {
+export const fetchProfileVideos = async (username: string, page: number = 1): Promise<{ videos: Video[] }> => {
+  const result = await fetchArchiveProfile(username, page);
+  return { videos: result.videos };
+};
+
+export const fetchArchiveProfile = async (username: string, page: number = 1): Promise<{ videos: Video[], hasMore: boolean, currentPage: number }> => {
   try {
-    console.log('[CamArchive API] Using IPC to fetch videos for:', username);
-    const result = await window.archivebate.getProfile(username);
+    console.log('[CamArchive API] Using IPC to fetch videos for:', username, 'page:', page);
+    // Note: window.electronAPI.archivebate is the standardized way other parts of the app use IPC
+    // but camarchive.tsx seems to use window.archivebate. Check which one is correct.
+    const api = (window as any).electronAPI?.archivebate || (window as any).archivebate;
+    const result = await api.getProfile(username, page);
 
     if (!result.success || !result.data) {
       console.error('[CamArchive API] IPC fetch failed:', result.error);
-      return { videos: [] };
+      return { videos: [], hasMore: false, currentPage: page };
     }
 
     // Map ArchiveVideo from IPC to CamArchive Video type
-    const videos: Video[] = result.data.videos.map(av => ({
+    const videos: Video[] = result.data.videos.map((av: any) => ({
       id: av.id,
       watchUrl: av.pageUrl,
       thumbnailUrl: av.thumbnail,
-      previewVideoUrl: '', // Not currently available in IPC response
+      previewVideoUrl: '',
       duration: av.duration || '',
       uploaded: av.date || '',
       platform: 'Chaturbate',
@@ -62,10 +70,14 @@ export const fetchProfileVideos = async (username: string): Promise<{ videos: Vi
       profileUrl: `https://archivebate.com/profile/${username}`
     }));
 
-    return { videos };
+    return {
+      videos,
+      hasMore: result.data.hasMore,
+      currentPage: result.data.currentPage
+    };
   } catch (error) {
     console.error(`Error fetching videos for ${username} via IPC:`, error);
-    return { videos: [] };
+    return { videos: [], hasMore: false, currentPage: page };
   }
 };
 
