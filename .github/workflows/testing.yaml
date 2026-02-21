@@ -10,30 +10,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - uses: oven-sh/setup-bun@v1
       - name: Install dependencies
-        run: npm ci
+        run: bun install
       - name: Run unit tests
-        run: npm run test:unit
+        run: bun run test:unit
 
   test-e2e:
-    timeout-minutes: 10
-    runs-on: windows-latest
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - uses: oven-sh/setup-bun@v1
       - name: Install dependencies
-        run: npm ci
+        run: bun install
       - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
-      - name: Create Executable
-        run: npm run make
+        run: bunx playwright install --with-deps
       - name: Run Playwright tests
-        run: npm run test:e2e
+        run: bun run test:e2e
       - uses: actions/upload-artifact@v4
         if: always()
         with:
