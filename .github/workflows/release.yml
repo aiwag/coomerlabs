@@ -38,11 +38,9 @@ jobs:
             ${{ runner.os }}-bun-
 
       - name: Install
-        run: bun install --frozen-lockfile
+        run: bun install
 
       - name: Build & Publish
         run: bun run publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DEBUG: electron-forge:*
-          NODE_ENV: production
