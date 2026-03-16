@@ -102,7 +102,7 @@
     "@rollup/plugin-typescript": "^12.3.0",
     "@tailwindcss/vite": "^4.2.1",
     "@tanstack/react-query": "^5.90.21",
-    "@tanstack/react-router": "^1.166.8",
+    "@tanstack/react-router": "^1.167.3",
     "@tanstack/react-virtual": "^3.13.22",
     "@types/better-sqlite3": "^7.6.13",
     "artplayer": "^5.4.0",
