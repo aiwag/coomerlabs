@@ -398,10 +398,16 @@ export function StreamGrid() {
     >
       <div
         className="relative h-full w-full bg-transparent overflow-hidden"
-        onMouseEnter={() => setShowControls(true)}
+        onMouseMove={(e) => {
+          // Reveal controls when mouse is in bottom 20% of screen
+          const isNearBottom = e.clientY > window.innerHeight * 0.8;
+          if (showControls !== isNearBottom) {
+            setShowControls(isNearBottom);
+          }
+        }}
         onMouseLeave={() => setShowControls(false)}
       >
-        <div className={`h-full w-full transition-all duration-300 ${panicMode ? 'blur-3xl brightness-0 scale-105 pointer-events-none' : ''}`}>
+        <div className={`h-full w-full transition-all duration-300 ${panicMode ? 'blur-[40px] brightness-0 scale-105 pointer-events-none' : ''}`}>
           <SortableContext items={streamUrls} strategy={rectSwappingStrategy}>
             <div
               ref={gridRef}
@@ -441,7 +447,15 @@ export function StreamGrid() {
 
         {/* --- LUXURY CONTROL BAR --- */}
         <div
-          className={`absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-4 px-6 py-3 glass-card rounded-2xl transition-all duration-500 z-50 ${showControls || activeId ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0'}`}
+          className={`absolute bottom-8 left-1/2 transform -translate-x-1/2 flex items-center gap-4 px-8 py-4 rounded-3xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] z-50 ${showControls || activeId ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-24 opacity-0 scale-95'}`}
+          style={{
+            background: 'linear-gradient(to bottom, rgba(20, 20, 20, 0.7) 0%, rgba(10, 10, 10, 0.9) 100%)',
+            backdropFilter: 'blur(30px)',
+            WebkitBackdropFilter: 'blur(30px)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.05)',
+          }}
+          onMouseEnter={() => setShowControls(true)}
         >
           {/* Panic Shield - Priority Left */}
           <button

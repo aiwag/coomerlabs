@@ -201,23 +201,7 @@ const FapelloRoute = () => {
 
   const creatorName = creatorProfile?.name || '';
 
-  // Custom scrollbar styles
-  useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
-      ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.1); border-radius: 4px; }
-      ::-webkit-scrollbar-thumb { background: rgba(156, 163, 175, 0.5); border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: rgba(156, 163, 175, 0.7); }
-      .dark ::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
-      .dark ::-webkit-scrollbar-thumb { background: rgba(75, 85, 99, 0.5); }
-      .dark ::-webkit-scrollbar-thumb:hover { background: rgba(75, 85, 99, 0.7); }
-      .glass-header { background: rgba(17, 24, 39, 0.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
-      .glass-card { background: rgba(31, 41, 55, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
-    `;
-    document.head.appendChild(style);
-    return () => { document.head.removeChild(style); };
-  }, []);
+  // Scrollbar and glass styles are already defined in global.css
 
   // Memoized render item functions
   const renderProfileCard = useCallback((profile: Profile, index: number) => (

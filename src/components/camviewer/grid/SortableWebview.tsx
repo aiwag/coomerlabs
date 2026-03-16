@@ -224,6 +224,8 @@ const SortableWebviewComponent = ({
     }
   }, [isGlobalMute, isMuted, domReady]);
 
+  const lastPlayScriptRef = useRef("");
+
   useEffect(() => {
     if (!domReady) return;
 
@@ -232,7 +234,11 @@ const SortableWebviewComponent = ({
     const script = shouldPlay
       ? `const v=document.querySelector('video');if(v){v.muted=${isGlobalMute || isMuted};v.play();}`
       : "document.querySelector('video')?.pause();";
-    executeWebviewScript(webviewRef.current, script);
+    
+    if (lastPlayScriptRef.current !== script) {
+      executeWebviewScript(webviewRef.current, script);
+      lastPlayScriptRef.current = script;
+    }
     setPlaying(index, shouldPlay);
   }, [inView, isFullViewMode, domReady, index, setPlaying, viewMode, isGlobalMute, isMuted]);
 
@@ -354,8 +360,6 @@ const SortableWebviewComponent = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={dropIndicatorClasses} />
-
       <div className={dropIndicatorClasses} />
 
       {!domReady && !error && (

@@ -2,6 +2,19 @@
 
 export const webviewInjectionScript = `
 (function(){
+  // Prevent double-injection (caused by dom-ready + did-stop-loading + timeout)
+  if (window.__cvInjected) return;
+  window.__cvInjected = true;
+
+  // Safe IPC helper - only sends if bridge exists
+  const safeSendToHost = (channel, ...args) => {
+    try {
+      if (window.electron && window.electron.ipcRenderer && typeof window.electron.ipcRenderer.sendToHost === 'function') {
+        window.electron.ipcRenderer.sendToHost(channel, ...args);
+      }
+    } catch(e) {}
+  };
+
   try {
     const isFapello = window.location.hostname.includes('fapello');
     const isRedGifs = window.location.hostname.includes('redgifs');
@@ -144,9 +157,7 @@ export const webviewInjectionScript = `
         // Try unmuted first for better UX
         video.muted = false; 
         video.play().then(() => {
-          if (window.electron?.ipcRenderer) {
-            window.electron.ipcRenderer.sendToHost('webview-ready');
-          }
+          safeSendToHost('webview-ready');
           clearInterval(playInterval);
         }).catch(() => {
            // Fallback: Mute and play (required by browser policies)
@@ -170,17 +181,8 @@ export const webviewInjectionScript = `
     }, 500);
 
     // Part 3: Smart Audio Interaction
-    document.addEventListener('mouseenter', () => {
-      if (window.electron && window.electron.ipcRenderer) {
-         try { window.electron.ipcRenderer.sendToHost('mouseenter'); } catch(e){}
-      }
-    });
-
-    document.addEventListener('mouseleave', () => {
-      if (window.electron && window.electron.ipcRenderer) {
-         try { window.electron.ipcRenderer.sendToHost('mouseleave'); } catch(e){}
-      }
-    });
+    document.addEventListener('mouseenter', () => safeSendToHost('mouseenter'));
+    document.addEventListener('mouseleave', () => safeSendToHost('mouseleave'));
 
     // Part 4: Sentry Mode (Computer Vision Motion Detection) - Optimized
     const initMotionDetector = () => {
@@ -220,9 +222,7 @@ export const webviewInjectionScript = `
                const now = Date.now();
                // Throttle emission to 800ms
                if (now - lastActivityEmit > 800) {
-                 if (window.electron?.ipcRenderer) {
-                    window.electron.ipcRenderer.sendToHost('activity-update', score);
-                 }
+                 safeSendToHost('activity-update', score);
                  lastActivityEmit = now;
                }
             }

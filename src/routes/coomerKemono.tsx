@@ -5,18 +5,12 @@ import indexedDbDriver from "unstorage/drivers/indexedb";
 import { createFileRoute } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import {
-  Loader2, RefreshCw, Search, ImageOff, AlertCircle, Filter, X, Play, Pause,
-  ChevronLeft, ChevronRight, Heart, Share2, Bookmark, MoreHorizontal,
-  Grid3x3, Download, ZoomIn, ZoomOut, RotateCw, Shuffle, SkipForward, SkipBack,
-  Eye, Settings, Sliders, MousePointer, Sun, Moon, Monitor, Smartphone, Tablet,
-  Tv, Film, Power, FolderOpen, HardDrive, Package, Zap, Image as ImageIcon,
-  Wifi, WifiOff, PauseCircle, PlayCircle, Maximize2, Minimize2, Volume2, VolumeX,
-  Copy, Check, Info, ThumbsUp, ThumbsDown, Send, Smile, ChevronDown, ArrowUp,
-  Sparkles, Flame, TrendingUp, Clock, Calendar, User, Users, Hash, AtSign,
-  Camera, Layers, Aperture, Focus, Grid3X3, List, LayoutGrid, LayoutList,
-  Filter as FilterIcon, SortAsc, SortDesc, DownloadCloud, Share, Link2,
-  ExternalLink, HeartHandshake, Star, Award, Trophy, Crown, Gem,
-  Save
+  Loader2, RefreshCw, Search, ImageOff, X, Play, Pause,
+  ChevronLeft, ChevronRight, Heart, Star, Bookmark, Download,
+  Eye, Sun, Moon, Info, Check, Copy,
+  ZoomIn, ZoomOut, RotateCw, Minimize2, Maximize2,
+  Layers, Grid3X3, Grid3x3, LayoutGrid, MousePointer,
+  Sparkles, User, Wifi, WifiOff, HardDrive, Power, Tv, PlayCircle, Save
 } from 'lucide-react';
 
 // --- TYPES ---
@@ -218,169 +212,59 @@ const useMasonryLayout = (
   return { containerRef, layout, measureItem };
 };
 
-// --- ADVANCED IMAGE CACHE SYSTEM ---
-class AdvancedImageCache {
-  private cache = new Map<string, { url: string; timestamp: number; size: number; blob?: Blob }>();
-  private loadingPromises = new Map<string, Promise<string>>();
-  private maxCacheSize = 500;
-  private maxCacheSizeBytes = 500 * 1024 * 1024;
-  private cacheExpiry = 24 * 60 * 60 * 1000;
-  private currentCacheSize = 0;
-  private storageKey = 'advanced-image-cache';
+// --- LIGHTWEIGHT IMAGE PRELOADER (uses browser's native HTTP cache) ---
+class ImagePreloader {
+  private preloaded = new Set<string>();
+  private loading = new Set<string>();
+  private maxConcurrent = 6;
 
-  constructor() {
-    this.loadCacheFromStorage();
+  async getImage(url: string): Promise<string> {
+    // Just return the URL - the browser cache handles everything
+    if (!this.preloaded.has(url) && !this.loading.has(url)) {
+      this.preloadSingle(url);
+    }
+    return url;
   }
 
-  async loadCacheFromStorage() {
-    try {
-      const cachedData = localStorage.getItem(this.storageKey);
-      if (cachedData) {
-        const parsedCache = JSON.parse(cachedData);
-        this.cache = new Map(parsedCache.entries);
-        this.currentCacheSize = parsedCache.size || 0;
-        this.cleanupExpiredEntries();
-      }
-    } catch (error) {
-      console.error('Failed to load cache from storage:', error);
-    }
-  }
+  private preloadSingle(url: string): void {
+    if (this.loading.size >= this.maxConcurrent) return;
+    this.loading.add(url);
 
-  saveCacheToStorage() {
-    try {
-      const cacheData = {
-        entries: Array.from(this.cache.entries()),
-        size: this.currentCacheSize
-      };
-      localStorage.setItem(this.storageKey, JSON.stringify(cacheData));
-    } catch (error) {
-      console.error('Failed to save cache to storage:', error);
-    }
-  }
-
-  async getImage(originalUrl: string): Promise<string> {
-    if (this.cache.has(originalUrl)) {
-      const cached = this.cache.get(originalUrl)!;
-      if (Date.now() - cached.timestamp < this.cacheExpiry) {
-        // Re-create object URL if it doesn't exist
-        if (!cached.url.startsWith('blob:')) {
-          if (cached.blob) {
-            cached.url = URL.createObjectURL(cached.blob);
-          }
-        }
-        return cached.url;
-      } else {
-        this.removeFromCache(originalUrl);
-      }
-    }
-
-    if (this.loadingPromises.has(originalUrl)) {
-      return this.loadingPromises.get(originalUrl)!;
-    }
-
-    const loadingPromise = this.loadImage(originalUrl);
-    this.loadingPromises.set(originalUrl, loadingPromise);
-
-    try {
-      const url = await loadingPromise;
-      return url;
-    } finally {
-      this.loadingPromises.delete(originalUrl);
-    }
-  }
-
-  private async loadImage(originalUrl: string): Promise<string> {
-    try {
-      const response = await fetch(originalUrl);
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const size = blob.size;
-
-      this.cache.set(originalUrl, { url: objectUrl, timestamp: Date.now(), size, blob });
-      this.currentCacheSize += size;
-
-      if (this.cache.size > this.maxCacheSize || this.currentCacheSize > this.maxCacheSizeBytes) {
-        this.cleanupCache();
-      }
-
-      this.saveCacheToStorage();
-      return objectUrl;
-    } catch (error) {
-      console.error('Failed to load image:', error);
-      return originalUrl;
-    }
-  }
-
-  private removeFromCache(url: string) {
-    if (this.cache.has(url)) {
-      const cached = this.cache.get(url)!;
-      if (cached.url.startsWith('blob:')) {
-        URL.revokeObjectURL(cached.url);
-      }
-      this.currentCacheSize -= cached.size;
-      this.cache.delete(url);
-    }
-  }
-
-  private cleanupExpiredEntries() {
-    const now = Date.now();
-    const expiredKeys: string[] = [];
-
-    this.cache.forEach((value, key) => {
-      if (now - value.timestamp > this.cacheExpiry) {
-        expiredKeys.push(key);
-      }
-    });
-
-    expiredKeys.forEach(key => this.removeFromCache(key));
-  }
-
-  private cleanupCache() {
-    const entries = Array.from(this.cache.entries());
-    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
-
-    while (
-      (this.cache.size > this.maxCacheSize || this.currentCacheSize > this.maxCacheSizeBytes) &&
-      entries.length > 0
-    ) {
-      const [url] = entries.shift()!;
-      this.removeFromCache(url);
-    }
-
-    this.saveCacheToStorage();
+    const img = new Image();
+    img.onload = () => {
+      this.preloaded.add(url);
+      this.loading.delete(url);
+    };
+    img.onerror = () => {
+      this.loading.delete(url);
+    };
+    img.src = url;
   }
 
   preloadImages(urls: string[]): void {
-    urls.forEach(url => {
-      if (!this.cache.has(url) && !this.loadingPromises.has(url)) {
-        this.getImage(url).catch(() => { });
+    for (const url of urls) {
+      if (!this.preloaded.has(url) && !this.loading.has(url)) {
+        this.preloadSingle(url);
       }
-    });
-  }
-
-  clearCache() {
-    this.cache.forEach((value) => {
-      if (value.url.startsWith('blob:')) {
-        URL.revokeObjectURL(value.url);
-      }
-    });
-
-    this.cache.clear();
-    this.currentCacheSize = 0;
-    localStorage.removeItem(this.storageKey);
+    }
   }
 
   getCacheInfo() {
     return {
-      count: this.cache.size,
-      sizeBytes: this.currentCacheSize,
-      sizeMB: Math.round(this.currentCacheSize / (1024 * 1024) * 100) / 100,
-      maxSizeMB: Math.round(this.maxCacheSizeBytes / (1024 * 1024))
+      count: this.preloaded.size,
+      sizeBytes: 0, // Browser manages this
+      sizeMB: 0,
+      maxSizeMB: 0
     };
+  }
+
+  clearCache() {
+    this.preloaded.clear();
+    this.loading.clear();
   }
 }
 
-const advancedImageCache = new AdvancedImageCache();
+const advancedImageCache = new ImagePreloader();
 
 // --- FAVORITES SYSTEM ---
 class FavoritesManager {
@@ -660,7 +544,6 @@ const OptimizedImage = React.memo(({
   onError,
   style,
   objectFit = 'cover',
-  priority = false
 }: {
   src: string;
   alt: string;
@@ -671,59 +554,7 @@ const OptimizedImage = React.memo(({
   objectFit?: 'cover' | 'contain' | 'fill';
   priority?: boolean;
 }) => {
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
-  const [isInView, setIsInView] = useState(false);
-  const imgRef = useRef<HTMLImageElement>(null);
-
-  useEffect(() => {
-    if (!priority && !isInView) return;
-
-    const loadImage = async () => {
-      try {
-        setIsLoading(true);
-        setIsError(false);
-
-        const cachedUrl = await advancedImageCache.getImage(src);
-        setImageSrc(cachedUrl);
-        setIsLoading(false);
-        onLoad?.();
-      } catch (error) {
-        console.error('Error loading image:', error);
-        setImageSrc(src);
-        setIsLoading(false);
-        setIsError(true);
-        onError?.();
-      }
-    };
-
-    loadImage();
-  }, [src, priority, isInView, onLoad, onError]);
-
-  useEffect(() => {
-    if (!imgRef.current || priority) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setIsInView(true);
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { rootMargin: '100px' }
-    );
-
-    observer.observe(imgRef.current);
-
-    return () => {
-      if (imgRef.current) {
-        observer.unobserve(imgRef.current);
-      }
-    };
-  }, [priority]);
 
   if (isError) {
     return (
@@ -734,21 +565,19 @@ const OptimizedImage = React.memo(({
   }
 
   return (
-    <>
-      {isLoading && (
-        <div className={`absolute inset-0 flex items-center justify-center bg-gray-200 dark:bg-gray-800 ${className}`} style={style}>
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-      <img
-        ref={imgRef}
-        src={imageSrc || src}
-        alt={alt}
-        className={`${className} transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'}`}
-        style={{ ...style, objectFit }}
-        loading="lazy"
-      />
-    </>
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      style={{ ...style, objectFit }}
+      loading="lazy"
+      decoding="async"
+      onLoad={onLoad}
+      onError={() => {
+        setIsError(true);
+        onError?.();
+      }}
+    />
   );
 });
 

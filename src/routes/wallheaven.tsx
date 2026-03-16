@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { useInView } from 'react-intersection-observer';
@@ -1124,16 +1124,6 @@ function RouteComponent() {
   );
 }
 
-// --- TanStack Router and Query Client Setup ---
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
-    },
-  },
-});
-
 export const Route = createFileRoute('/wallheaven')({
   errorComponent: ({ error }) => (
     <div className="p-6 text-red-500">
@@ -1141,7 +1131,7 @@ export const Route = createFileRoute('/wallheaven')({
     </div>
   ),
   component: () => (
-    <QueryClientProvider client={queryClient}>
+    <>
       <RouteComponent />
       <Toaster
         position="bottom-right"
@@ -1153,6 +1143,6 @@ export const Route = createFileRoute('/wallheaven')({
           },
         }}
       />
-    </QueryClientProvider>
+    </>
   ),
 });

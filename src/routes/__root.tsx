@@ -11,13 +11,18 @@ import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 
-// Create a client
+// Create a client with optimized defaults
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 10, // 10 minutes - reduce unnecessary refetches
+      gcTime: 1000 * 60 * 30, // 30 minutes - keep data in memory longer
       refetchOnWindowFocus: false,
-      retry: 3,
+      refetchOnMount: false,
+      refetchOnReconnect: 'always',
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
+      structuralSharing: true, // Efficient re-render avoidance
     },
   },
 });
