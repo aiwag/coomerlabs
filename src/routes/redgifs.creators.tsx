@@ -1,5 +1,5 @@
 // RedGifs - Creators Tab
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import React, { useEffect, useRef } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { Loader2, RefreshCw, Users, Eye, Heart, Film, CheckCircle } from 'lucide-react';
@@ -16,7 +16,11 @@ const CreatorCard = React.memo(({ creator }: { creator: Creator }) => {
   const initial = (creator.username?.[0] ?? '?').toUpperCase();
 
   return (
-    <div className="group relative overflow-hidden rounded-xl border border-white/5 hover:border-pink-500/30 bg-white/[0.03] hover:bg-white/[0.06] transition-all duration-300 cursor-pointer p-4">
+    <Link
+      to="/redgifs/users/$username"
+      params={{ username: creator.username }}
+      className="block group relative overflow-hidden rounded-xl border border-white/5 hover:border-pink-500/30 bg-white/[0.03] hover:bg-white/[0.06] transition-all duration-300 cursor-pointer p-4 no-underline text-inherit"
+    >
       {/* Profile */}
       <div className="flex items-center gap-3 mb-3">
         {creator.profileImageUrl ? (
@@ -64,7 +68,7 @@ const CreatorCard = React.memo(({ creator }: { creator: Creator }) => {
           <p className="text-[10px] font-bold text-white/70">{formatNumber(creator.gifs)}</p>
         </div>
       </div>
-    </div>
+    </Link>
   );
 });
 
