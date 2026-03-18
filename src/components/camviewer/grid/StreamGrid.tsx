@@ -10,7 +10,7 @@ import { SortableContext, rectSwappingStrategy } from "@dnd-kit/sortable";
 import { useGridStore } from "@/state/gridStore";
 import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore, LayoutMode } from "@/state/settingsStore";
-import { SortableWebview } from "./SortableWebview";
+import { HlsStreamCell } from "./HlsStreamCell";
 import { WaterfallLayout } from "./WaterfallLayout";
 import {
   Maximize2, Minimize2, Ear, Volume2, SlidersHorizontal, VolumeX,
@@ -417,11 +417,12 @@ export function StreamGrid() {
               {streamUrls.map((url, index) => {
                 const smartDims = getSmartDimensions(index, streamUrls.length);
                 return (
-                  <SortableWebview
+                  <HlsStreamCell
                     key={url}
                     id={url}
                     url={url}
                     index={index}
+                    totalStreams={streamUrls.length}
                     isFullViewMode={fullViewMode === index}
                     isDragging={activeId === url}
                     isDraggable={isDraggable}

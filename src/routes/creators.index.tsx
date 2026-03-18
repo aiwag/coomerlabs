@@ -145,7 +145,7 @@ function CreatorsRoute() {
     const hasMore = !searchQuery && creators.length < total;
 
     return (
-        <div className="flex flex-col h-full bg-[#09090b] text-white">
+        <div className="flex flex-col h-full bg-[var(--app-bg)] text-white">
             {/* ── Toolbar ── */}
             <div
                 className="flex flex-wrap items-center gap-3 px-5 py-3 border-b border-white/8 shrink-0 backdrop-blur supports-[backdrop-filter]:bg-black/20"

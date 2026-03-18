@@ -37,6 +37,20 @@ interface ArchiveProfileResponse {
   hasMore: boolean;
 }
 
+interface Recording {
+  id: string;
+  username: string;
+  filePath: string;
+  thumbnailPath: string | null;
+  startedAt: number;
+  stoppedAt: number | null;
+  duration: number | null;
+  fileSize: number | null;
+  status: 'recording' | 'completed' | 'failed';
+  gender: string;
+  tags: string[];
+}
+
 interface ElectronAPI {
   openExternal: (url: string) => Promise<void>;
   db: any;
@@ -51,6 +65,49 @@ interface ElectronAPI {
       data?: { embedUrl: string; thumbUrl?: string };
       error?: string;
     }>;
+  };
+  recording: {
+    start: (username: string, streamerInfo?: { gender?: string; tags?: string[] }) => Promise<{ success: boolean; recording?: Recording; error?: string }>;
+    stop: (username: string) => Promise<{ success: boolean; error?: string }>;
+    list: () => Promise<Recording[]>;
+    active: () => Promise<{ username: string; id: string; startedAt: number; duration: number }[]>;
+    delete: (id: string) => Promise<{ success: boolean; error?: string }>;
+    isRecording: (username: string) => Promise<boolean>;
+    getFilePath: (id: string) => Promise<string | null>;
+    openFolder: (id: string) => Promise<{ success: boolean; error?: string }>;
+    getStorageInfo: () => Promise<{totalDiskSpace: number; freeDiskSpace: number; recordingsSize: number; recordingsPath: string;}>;
+    onEvent: (callback: (event: { type: 'started' | 'completed' | 'failed'; username: string; id: string; duration?: number; fileSize?: number; error?: string }) => void) => () => void;
+  };
+  system: {
+    setProxy: (config: any) => Promise<{ success: boolean; error?: string }>;
+    clearProxy: () => Promise<{ success: boolean; error?: string }>;
+    wreqFetch: (url: string, options?: any) => Promise<{ success: boolean; data?: string; status?: number; error?: string }>;
+  };
+  nsfwalbum: {
+    fetchPage: (page: number, query: string) => Promise<{ success: boolean; data?: string; error?: string }>;
+    resolveHQ: (photoId: string) => Promise<{ success: boolean; url?: string; width?: number; height?: number; error?: string }>;
+  };
+  bunkr: {
+    fetch: (url: string) => Promise<{ success: boolean; status?: number; data?: string; error?: string }>;
+  };
+  proxyPool: {
+    refreshPool: () => Promise<any>;
+    getStats: () => Promise<any>;
+    getPool: () => Promise<any>;
+    getCurrent: () => Promise<any>;
+    rotate: () => Promise<any>;
+    applyPoolProxy: () => Promise<any>;
+    reportFailure: (proxy: any) => Promise<any>;
+    reportSuccess: (proxy: any) => Promise<any>;
+    startAutoRefresh: () => Promise<any>;
+    stopAutoRefresh: () => Promise<any>;
+    getProgress: () => Promise<any>;
+    onProgress: (callback: (progress: any) => void) => () => void;
+    verifyIp: () => Promise<any>;
+  };
+  chaturbate: {
+    fetch: (urlPath: string) => Promise<{ success: boolean; data?: any; error?: string }>;
+    getHlsUrl: (username: string) => Promise<{ success: boolean; url?: string; error?: string }>;
   };
 }
 

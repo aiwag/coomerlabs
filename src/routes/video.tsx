@@ -30,7 +30,7 @@ export const SingleVideoPage = () => {
 
   if (loading && !video) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-950 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] text-white">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-cyan-500 border-t-transparent"></div>
           <span className="text-xs font-black uppercase tracking-widest text-cyan-500 animate-pulse">Extracting Alpha Stream...</span>
@@ -41,7 +41,7 @@ export const SingleVideoPage = () => {
 
   if (error || !video) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-950 p-8 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] p-8 text-white">
         <div className="max-w-md text-center glass-card p-12 rounded-[2.5rem] border border-white/10">
           <h1 className="mb-4 text-2xl font-black tracking-tight text-red-500 uppercase">System Error</h1>
           <p className="mb-8 text-sm font-medium text-white/40">{error || "Video protocol not initialized or content unavailable."}</p>

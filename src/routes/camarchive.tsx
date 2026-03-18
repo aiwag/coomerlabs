@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Clock, Video as VideoIcon, User, Search, X, ExternalLink, Loader2, Play, Heart, Trash2 } from 'lucide-react';
+import { ArrowLeft, Clock, Video as VideoIcon, User, Search, X, ExternalLink, Loader2, Play, Heart, Trash2, Download, Upload } from 'lucide-react';
 import * as api from '../components/camarchive/api';
 import type { Video } from '../components/camarchive/types';
 
@@ -340,6 +340,7 @@ function CamarchiveRoute() {
   const [playingVideo, setPlayingVideo] = useState<Video | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync saved state when profile changes
   useEffect(() => {
@@ -426,7 +427,7 @@ function CamarchiveRoute() {
   }, [queryClient]);
 
   return (
-    <div className="h-screen flex flex-col bg-gray-950 overflow-hidden font-sans text-gray-100">
+    <div className="h-screen flex flex-col bg-[var(--app-bg)] overflow-hidden font-sans text-gray-100">
       {/* Header */}
       <div
         className="flex-none z-50 bg-black/40 backdrop-blur-2xl border-b border-white/5 px-6 py-4 anim-slide-down"
@@ -489,6 +490,47 @@ function CamarchiveRoute() {
               >
                 <Heart className={`h-5 w-5 ${isSaved ? 'fill-pink-400' : ''}`} />
               </motion.button>
+            )}
+
+            {/* Export/Import Buttons (profile list view only) */}
+            {!selectedProfile && profiles && profiles.length > 0 && (
+              <>
+                <button
+                  onClick={() => {
+                    const count = api.exportProfiles();
+                    import('sonner').then(({ toast }) => toast.success(`Exported ${count} profiles`));
+                  }}
+                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-green-400 transition-all"
+                  title="Export saved profiles"
+                >
+                  <Download className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 text-gray-400 hover:bg-white/10 hover:text-blue-400 transition-all"
+                  title="Import profiles"
+                >
+                  <Upload className="h-4 w-4" />
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const result = await api.importProfiles(file);
+                      import('sonner').then(({ toast }) => toast.success(`Imported ${result.added} new profiles (${result.total} total)`));
+                      queryClient.invalidateQueries({ queryKey: ['camarchive-profiles'] });
+                    } catch (err: any) {
+                      import('sonner').then(({ toast }) => toast.error(err.message || 'Import failed'));
+                    }
+                    e.target.value = '';
+                  }}
+                />
+              </>
             )}
           </div>
         </div>

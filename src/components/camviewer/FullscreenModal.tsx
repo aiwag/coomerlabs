@@ -1,22 +1,12 @@
 import React, { useRef, useEffect, useCallback } from "react";
 import { X, Minimize2 } from "lucide-react";
 import { useGridStore } from "@/state/gridStore";
-import { webviewInjectionScript } from "@/lib/webview-injection";
+import { HlsStreamCell } from "./grid/HlsStreamCell";
 
 export function FullscreenModal() {
   const { fullscreenStream, setFullscreenStream } = useGridStore();
-  const webviewRef = useRef<HTMLWebViewElement>(null);
 
   const handleClose = useCallback(() => setFullscreenStream(null), [setFullscreenStream]);
-
-  const injectScript = useCallback(() => {
-    const webview = webviewRef.current;
-    if (!webview || !("executeJavaScript" in webview)) return;
-
-    setTimeout(() => {
-      (webview as any).executeJavaScript(webviewInjectionScript).catch(() => {});
-    }, 300);
-  }, []);
 
   // Keyboard: Escape to close
   useEffect(() => {
@@ -28,13 +18,6 @@ export function FullscreenModal() {
     return () => window.removeEventListener('keydown', handleKey);
   }, [fullscreenStream, handleClose]);
 
-  useEffect(() => {
-    const webview = webviewRef.current;
-    if (fullscreenStream && webview) {
-      webview.addEventListener("dom-ready", injectScript);
-      return () => webview.removeEventListener("dom-ready", injectScript);
-    }
-  }, [fullscreenStream, injectScript]);
 
   if (!fullscreenStream) return null;
 
@@ -57,10 +40,15 @@ export function FullscreenModal() {
         </button>
       </header>
       <div className="flex-1">
-        <webview
-          ref={webviewRef}
-          src={fullscreenStream.url}
-          className="h-full w-full"
+        <HlsStreamCell
+          id={`fullscreen-${fullscreenStream.url}`}
+          url={fullscreenStream.url}
+          index={0}
+          totalStreams={1}
+          isFullViewMode={true}
+          isDragging={false}
+          isDraggable={false}
+          viewMode="grid"
         />
       </div>
     </div>

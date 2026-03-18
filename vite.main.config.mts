@@ -11,7 +11,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      external: ["better-sqlite3", "jsdom", "cssstyle", "whatwg-url", "whatwg-mimetype"],
+      external: ["better-sqlite3", "jsdom", "cssstyle", "whatwg-url", "whatwg-mimetype", "wreq-js"],
     },
   },
 });

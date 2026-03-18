@@ -140,7 +140,7 @@ function CreatorDetailRoute() {
 
   if (isLoadingProfile && !profile) {
     return (
-      <div className="flex h-full items-center justify-center bg-[#09090b]">
+      <div className="flex h-full items-center justify-center bg-[var(--app-bg)]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
           <p className="text-white/40 text-sm animate-pulse">Loading profile...</p>
@@ -150,7 +150,7 @@ function CreatorDetailRoute() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-[#09090b] text-white">
+    <div className="flex flex-col h-full bg-[var(--app-bg)] text-white">
       {/* ── Header ── */}
       <div className="relative h-64 shrink-0 overflow-hidden">
         {/* Banner/Backdrop */}

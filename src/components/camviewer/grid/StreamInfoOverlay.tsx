@@ -1,5 +1,6 @@
-import React from "react";
-import { Eye, Users, Clock, Activity } from "lucide-react";
+import React, { useEffect } from "react";
+import { Eye, Users, Clock, Activity, Circle } from "lucide-react";
+import { useRecordingStore } from "@/state/recordingStore";
 
 interface StreamInfoOverlayProps {
   username: string;
@@ -7,6 +8,8 @@ interface StreamInfoOverlayProps {
   viewerCount?: number;
   duration?: number;
   show?: boolean;
+  gender?: string;
+  tags?: string[];
 }
 
 export function StreamInfoOverlay({
@@ -15,7 +18,17 @@ export function StreamInfoOverlay({
   viewerCount,
   duration,
   show = false,
+  gender,
+  tags,
 }: StreamInfoOverlayProps) {
+  const { isRecording, toggleRecording, syncActive } = useRecordingStore();
+  const recording = isRecording(username);
+
+  // Sync active recordings on mount
+  useEffect(() => {
+    syncActive();
+  }, []);
+
   const formatDuration = (seconds?: number) => {
     if (!seconds) return "";
     const mins = Math.floor(seconds / 60);
@@ -27,6 +40,12 @@ export function StreamInfoOverlay({
     if (!count) return "";
     if (count >= 1000) return `${(count / 1000).toFixed(1)}k`;
     return count.toString();
+  };
+
+  const handleRecord = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    await toggleRecording(username, { gender, tags });
   };
 
   return (
@@ -43,12 +62,32 @@ export function StreamInfoOverlay({
             {username}
           </span>
         </div>
-        {viewerCount !== undefined && (
-          <div className="flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-xs text-white/80">
-            <Users size={10} />
-            <span>{formatViewers(viewerCount)}</span>
-          </div>
-        )}
+
+        <div className="flex items-center gap-1.5">
+          {/* Record button */}
+          <button
+            onClick={handleRecord}
+            className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-bold transition-all ${
+              recording
+                ? "bg-red-600/90 text-white animate-pulse"
+                : "bg-black/50 text-white/60 hover:text-red-400 hover:bg-black/70"
+            }`}
+            title={recording ? `Stop recording ${username}` : `Record ${username}`}
+          >
+            <Circle
+              size={8}
+              className={recording ? "text-white fill-current" : "text-red-400 fill-red-400"}
+            />
+            {recording ? "REC" : "Rec"}
+          </button>
+
+          {viewerCount !== undefined && (
+            <div className="flex items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-xs text-white/80">
+              <Users size={10} />
+              <span>{formatViewers(viewerCount)}</span>
+            </div>
+          )}
+        </div>
       </div>
 
       {duration !== undefined && duration > 0 && (

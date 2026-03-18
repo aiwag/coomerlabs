@@ -254,13 +254,17 @@ function getTabTitle(path: string): string {
     '/coomerKemono': 'Creator Archive',
     '/javtube': 'JavTube',
     '/actresses': 'Star Database',
-    '/dashboard': 'Dashboard',
+    '/nsfwalbum': 'NSFWAlbum',
+    '/bunkr': 'Bunkr',
+    '/recordings': 'Recordings',
+    '/camarchive': 'CamArchive',
   };
 
   // Handle dynamic routes
   if (path.startsWith('/actress/')) return 'Star Profile';
   if (path.startsWith('/javtube/')) return 'JavTube';
   if (path.startsWith('/fapello/')) return 'Fapello';
+  if (path.startsWith('/bunkr/')) return 'Bunkr';
 
   return titleMap[path] || 'New Tab';
 }

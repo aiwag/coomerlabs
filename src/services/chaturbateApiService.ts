@@ -23,13 +23,30 @@ interface CarouselRoom { room: string; img: string; gender: string; subject: str
 interface ListApiResponse { rooms: Streamer[]; total_count: number; limit?: number; }
 interface CarouselApiResponse { rooms: CarouselRoom[]; }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL + '/api/ts/';
-const CHROME_HEADERS = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" };
-
 const normalizeRoomToStreamer = (room: CarouselRoom): Streamer => ({ username: room.room, img: room.img, gender: room.gender, subject: room.subject, num_users: room.viewers, display_age: room.display_age ? parseInt(room.display_age, 10) : null, country: room.country, tags: [], num_followers: 0, is_new: false, is_age_verified: false, location: "", current_show: "public", label: "public", start_dt_utc: new Date().toISOString() });
 
-async function robustFetch(url: string, signal: AbortSignal): Promise<any> {
-  const response = await fetch(url, { headers: CHROME_HEADERS, signal });
+/**
+ * Fetch from Chaturbate API. Tries main process IPC first (bypasses proxy),
+ * falls back to renderer fetch (has session cookies from webviews).
+ */
+async function robustFetch(urlPath: string, signal: AbortSignal): Promise<any> {
+  // Try IPC first (bypasses proxy, uses extracted session cookies)
+  if (window.electronAPI?.chaturbate?.fetch) {
+    try {
+      const result = await window.electronAPI.chaturbate.fetch(urlPath);
+      if (result.success && result.data) return result.data;
+    } catch {
+      // IPC failed, fall through to renderer fetch
+    }
+  }
+  // Fallback: renderer fetch (goes through session with cookies — has Cloudflare tokens)
+  const response = await fetch(`https://chaturbate.com${urlPath}`, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      "X-Requested-With": "XMLHttpRequest",
+    },
+    signal,
+  });
   if (!response.ok) throw new Error(`API request failed: ${response.statusText}`);
   return response.json();
 }
@@ -37,19 +54,19 @@ async function robustFetch(url: string, signal: AbortSignal): Promise<any> {
 // --- Helper for TRUE paginated endpoints ---
 const getPaginatedList = async (endpoint: string, page: number, limit: number, signal: AbortSignal, params = ''): Promise<ListApiResponse> => {
   const offset = (page - 1) * limit;
-  const url = `${API_BASE_URL}${endpoint}?limit=${limit}&offset=${offset}&require_fingerprint=false${params}`;
-  const data = await robustFetch(url, signal);
+  const urlPath = `/api/ts/${endpoint}?limit=${limit}&offset=${offset}&require_fingerprint=false${params}`;
+  const data = await robustFetch(urlPath, signal);
   return { ...data, limit };
 };
 
 // --- Helper for NON-paginated carousel endpoints ---
 const getCarouselList = async (endpoint: string, signal: AbortSignal, params = ''): Promise<ListApiResponse> => {
-  const url = `${API_BASE_URL}${endpoint}${params}`;
-  const response: CarouselApiResponse = await robustFetch(url, signal);
+  const urlPath = `/api/ts/${endpoint}${params}`;
+  const response: CarouselApiResponse = await robustFetch(urlPath, signal);
   return {
     rooms: response.rooms.map(normalizeRoomToStreamer),
     total_count: response.rooms.length,
-    limit: response.rooms.length, // The limit is the total number of items
+    limit: response.rooms.length,
   };
 };
 

@@ -1,5 +1,5 @@
 // src/routes/__root.tsx
-import React from "react";
+import React, { useRef } from "react";
 import { useLocation } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import BaseLayout from "@/layouts/BaseLayout";
@@ -10,38 +10,73 @@ import {
 import { Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, RefreshCw } from "lucide-react";
+import { useRecordingNotifications } from "@/hooks/useRecordingNotifications";
+import { GlobalSearch } from "@/components/GlobalSearch";
+import { CamViewerPage } from "./camviewer";
 
 // Create a client with optimized defaults
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 10, // 10 minutes - reduce unnecessary refetches
-      gcTime: 1000 * 60 * 30, // 30 minutes - keep data in memory longer
+      staleTime: 1000 * 60 * 10,
+      gcTime: 1000 * 60 * 30,
       refetchOnWindowFocus: false,
       refetchOnMount: false,
       refetchOnReconnect: 'always',
       retry: 2,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-      structuralSharing: true, // Efficient re-render avoidance
+      structuralSharing: true,
     },
   },
 });
 
 function Root() {
   const location = useLocation();
-  const isCamViewer = location.pathname === "/camviewer";
+  const pathname = location.pathname;
+  const isCamViewer = pathname === "/camviewer" || pathname.startsWith("/camviewer/");
+
+  // Once CamViewer is visited, keep it mounted forever
+  const camViewerVisited = useRef(false);
+  if (isCamViewer) camViewerVisited.current = true;
+
+  useRecordingNotifications();
+
+  React.useEffect(() => {
+    import("@/state/proxyStore").then(({ useProxyStore }) => {
+      const { mode, applyManualProxy, applyPoolProxy, fetchPoolStats } = useProxyStore.getState();
+      if (mode === 'manual') applyManualProxy();
+      else if (mode === 'pool') {
+        applyPoolProxy();
+        fetchPoolStats();
+      }
+    });
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
-      {isCamViewer ? (
-        <>
-          <Outlet />
-          <Toaster position="top-right" />
-        </>
-      ) : (
+      {/* 
+        CamViewer: persisted across navigation.
+        Once visited, stays mounted but hidden when inactive.
+        This preserves webviews, state, sidebar data, etc.
+      */}
+      {camViewerVisited.current && (
+        <div
+          style={{
+            display: isCamViewer ? 'contents' : 'none',
+          }}
+        >
+          <CamViewerPage />
+          {isCamViewer && <Toaster position="top-right" />}
+          {isCamViewer && <GlobalSearch />}
+        </div>
+      )}
+
+      {/* Normal routed content — all other pages */}
+      {!isCamViewer && (
         <BaseLayout>
           <Outlet />
           <Toaster position="top-right" />
+          <GlobalSearch />
         </BaseLayout>
       )}
     </QueryClientProvider>

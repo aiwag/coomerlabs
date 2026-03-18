@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { LayoutGrid } from "lucide-react";
+import { Circle, Film } from "lucide-react";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useGridStore } from "@/state/gridStore";
 import { useSettingsStore } from "@/state/settingsStore";
 import { useProfileModalStore } from "@/state/profileModalStore";
+import { useRecordingStore } from "@/state/recordingStore";
 import { StreamListSidebar } from "@/components/camviewer/StreamListSidebar";
 import { StreamGrid } from "@/components/camviewer/grid/StreamGrid";
 import { FullViewLayout } from "@/components/camviewer/FullViewLayout";
@@ -12,12 +13,7 @@ import { StatusHUD } from "@/components/camviewer/StatusHUD";
 import { EmptyState } from "@/components/camviewer/EmptyState";
 import { ProfileModal } from "@/components/camviewer/ProfileModal";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  closeWindow,
-  maximizeWindow,
-  minimizeWindow,
-} from "@/helpers/window_helpers";
-import { isMacOS } from "@/utils/platform";
+import DragWindowRegion from "@/components/DragWindowRegion";
 
 export function CamViewerPage() {
   const initializeStreams = useGridStore((state) => state.initializeStreams);
@@ -46,75 +42,42 @@ export function CamViewerPage() {
   }, [initializeStreams]);
 
   const hasStreams = streamUrls.length > 0;
+  const activeRecordings = useRecordingStore((s) => s.activeRecordings);
+  const syncActive = useRecordingStore((s) => s.syncActive);
+  const recordingCount = activeRecordings.size;
+
+  // Poll active recordings every 3s
+  useEffect(() => {
+    syncActive();
+    const interval = setInterval(syncActive, 3000);
+    return () => clearInterval(interval);
+  }, [syncActive]);
 
   return (
     <div className="fixed inset-0 flex flex-col bg-black text-white select-none">
-      {/* Window Controls Bar - Top Layer */}
-      <div
-        className="relative flex shrink-0 glass-header"
-        style={{ zIndex: 9999, pointerEvents: "auto" }}
-      >
-        <div className="flex w-full items-center justify-between px-4 py-2">
-          {/* Drag Region - Left side (only this area is draggable) */}
-          <div className="draglayer flex flex-1 items-center gap-3">
-            <Link
-              to="/"
-              className="no-drag flex items-center gap-2 rounded-md bg-white/5 px-2 py-1 text-xs font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white pointer-events-auto"
-            >
-              <LayoutGrid size={14} />
-              <span>Back to Apps</span>
-            </Link>
-            <span className="h-4 w-px bg-white/10" />
-            <span className="text-xs font-medium text-neutral-400">
-              {streamUrls.length} stream{streamUrls.length !== 1 ? "s" : ""}
-            </span>
-          </div>
-
-          {/* Window Controls - Right side - Only show on non-mac */}
-          {!isMacOS() && (
-            <div className="pointer-events-auto ml-2 flex gap-1">
-              <button
-                onClick={minimizeWindow}
-                className="cursor-pointer rounded p-1 text-neutral-500 transition-colors hover:bg-white/10 hover:text-white"
-                title="Minimize"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12">
-                  <rect fill="currentColor" width="10" height="1" x="1" y="6" />
-                </svg>
-              </button>
-              <button
-                onClick={maximizeWindow}
-                className="cursor-pointer rounded p-1 text-neutral-500 transition-colors hover:bg-white/10 hover:text-white"
-                title="Maximize"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12">
-                  <rect
-                    width="9"
-                    height="9"
-                    x="1.5"
-                    y="1.5"
-                    fill="none"
-                    stroke="currentColor"
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={closeWindow}
-                className="cursor-pointer rounded p-1 text-neutral-500 transition-colors hover:bg-red-400/10 hover:text-red-400"
-                title="Close"
-              >
-                <svg width="12" height="12" viewBox="0 0 12 12">
-                  <polygon
-                    fill="currentColor"
-                    fillRule="evenodd"
-                    points="11 1.576 6.583 6 11 10.424 10.424 11 6 6.583 1.576 11 1 10.424 5.417 6 1 1.576 1.576 1 6 5.417 10.424 1"
-                  />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Shared Title Bar with app switcher + proxy menu */}
+      <DragWindowRegion
+        title={
+          <span className="flex items-center gap-2">
+            <span>{streamUrls.length} stream{streamUrls.length !== 1 ? "s" : ""}</span>
+            {recordingCount > 0 && (
+              <>
+                <span className="h-3 w-px bg-white/10" />
+                <Link
+                  to="/recordings"
+                  className="no-drag flex items-center gap-1.5 rounded-md bg-red-600/20 border border-red-500/30 px-2 py-0.5 text-[10px] font-bold text-red-400 transition-all hover:bg-red-600/30 pointer-events-auto animate-pulse"
+                >
+                  <Circle size={5} className="fill-current" />
+                  <span>REC</span>
+                  <span className="text-white/50">•</span>
+                  <span className="text-red-300">{recordingCount}</span>
+                  <Film size={9} className="text-red-400/60 ml-0.5" />
+                </Link>
+              </>
+            )}
+          </span>
+        }
+      />
 
       {/* Main Area - Full viewport */}
       <div className="relative flex flex-1 overflow-hidden">

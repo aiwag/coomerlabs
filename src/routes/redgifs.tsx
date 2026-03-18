@@ -77,7 +77,7 @@ const RedgifsRoute = () => {
   const handleSortChange = useCallback(() => refetch(), [refetch]);
 
   return (
-    <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
+    <div className="h-screen flex flex-col bg-[var(--app-bg)] text-white overflow-hidden">
       <Header onSortChange={handleSortChange} />
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">

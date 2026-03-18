@@ -3,7 +3,7 @@ import { X, Video, Film, Loader2, AlertCircle, ExternalLink, Play } from "lucide
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchArchiveProfile } from "@/services/archivebateService";
 import { ArchiveVideoCard } from "@/components/camviewer/ArchiveVideoCard";
-import { SortableWebview } from "@/components/camviewer/grid/SortableWebview";
+import { HlsStreamCell } from "@/components/camviewer/grid/HlsStreamCell";
 import { addViewedProfile } from "@/components/camarchive/api";
 
 interface ProfileModalProps {
@@ -107,10 +107,11 @@ export function ProfileModal({ username, onClose }: ProfileModalProps) {
               </div>
               <div className="px-6">
                 <div className="aspect-video glass-card rounded-xl overflow-hidden max-h-[50vh]">
-                  <SortableWebview
+                  <HlsStreamCell
                     id={`live-${username}`}
                     url={liveCamUrl}
                     index={0}
+                    totalStreams={1}
                     isDragging={false}
                     isDraggable={false}
                   />

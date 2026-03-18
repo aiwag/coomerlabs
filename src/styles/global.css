@@ -4,6 +4,15 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* App-wide dark theme tokens */
+:root {
+  --app-bg: #050508;
+  --app-surface: rgba(255, 255, 255, 0.03);
+  --app-surface-hover: rgba(255, 255, 255, 0.06);
+  --app-border: rgba(255, 255, 255, 0.06);
+  --app-header: rgba(0, 0, 0, 0.4);
+}
+
 @theme {
   --color-border: hsl(var(--border));
   --color-input: hsl(var(--input));

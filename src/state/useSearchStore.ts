@@ -17,9 +17,18 @@ interface SearchState {
 }
 
 // --- Sample Data & Search Logic ---
-const allMenuItems = [
+const allMenuItems: SearchResult[] = [
   { type: 'page', title: 'Home', to: '/' },
   { type: 'page', title: 'Cam Viewer', to: '/camviewer' },
+  { type: 'page', title: 'Recordings', to: '/recordings' },
+  { type: 'page', title: 'Archive', to: '/camarchive' },
+  { type: 'page', title: 'Discovery (RedGifs)', to: '/redgifs' },
+  { type: 'page', title: 'Galleries (Fapello)', to: '/fapello' },
+  { type: 'page', title: 'Wallheaven', to: '/wallheaven' },
+  { type: 'page', title: 'Creator Labs', to: '/coomerKemono' },
+  { type: 'page', title: 'JavTube', to: '/javtube' },
+  { type: 'page', title: 'NSFWAlbum', to: '/nsfwalbum' },
+  { type: 'page', title: 'Bunkr', to: '/bunkr' },
 ];
 
 const performSearch = (query: string): SearchResult[] => {

@@ -5,7 +5,7 @@ import { ArrowLeft, Video, Film, Loader2, AlertCircle } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { fetchArchiveProfile } from "@/services/archivebateService";
 import { ArchiveVideoCard } from "@/components/camviewer/ArchiveVideoCard";
-import { SortableWebview } from "@/components/camviewer/grid/SortableWebview";
+import { HlsStreamCell } from "@/components/camviewer/grid/HlsStreamCell";
 import { addViewedProfile } from "@/components/camarchive/api";
 
 export function RoomProfilePage() {
@@ -107,10 +107,11 @@ export function RoomProfilePage() {
               </h2>
             </div>
             <div className="aspect-video glass-card rounded-xl overflow-hidden">
-              <SortableWebview
+              <HlsStreamCell
                 id={`live-${username}`}
                 url={liveCamUrl}
                 index={0}
+                totalStreams={1}
                 isDragging={false}
                 isDraggable={false}
               />

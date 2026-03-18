@@ -95,3 +95,50 @@ export const getViewedProfilesList = async (): Promise<CamProfile[]> => {
 
   return profiles;
 };
+
+// Export saved profiles as a JSON file (triggers download)
+export const exportProfiles = () => {
+  const profiles = getSavedProfiles();
+  const data = JSON.stringify({ version: 1, profiles, exportedAt: new Date().toISOString() }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `camarchive-profiles-${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  return profiles.length;
+};
+
+// Import profiles from a JSON file (merge with existing)
+export const importProfiles = (file: File): Promise<{ added: number; total: number }> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        const incoming: string[] = Array.isArray(data.profiles) ? data.profiles : Array.isArray(data) ? data : [];
+        if (incoming.length === 0) {
+          reject(new Error('No profiles found in file'));
+          return;
+        }
+        const existing = getSavedProfiles();
+        const existingSet = new Set(existing);
+        let added = 0;
+        for (const username of incoming) {
+          if (typeof username === 'string' && username.trim() && !existingSet.has(username)) {
+            existing.push(username);
+            existingSet.add(username);
+            added++;
+          }
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(existing));
+        resolve({ added, total: existing.length });
+      } catch {
+        reject(new Error('Invalid JSON file'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.readAsText(file);
+  });
+};

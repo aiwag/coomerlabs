@@ -1,5 +1,5 @@
 // main.ts
-import { app, BrowserWindow, session } from "electron";
+import { app, BrowserWindow, session, ipcMain } from "electron";
 import registerListeners from "./helpers/ipc/listeners-register";
 import path from "path";
 import {
@@ -7,13 +7,20 @@ import {
   REACT_DEVELOPER_TOOLS,
 } from "electron-devtools-installer";
 import { dbService } from "./services/sqliteService";
+import { stopAllRecordings } from "./services/recordingService";
 
-// import { ElectronBlocker } from "@ghostery/adblocker-electron";
-// import "@ghostery/adblocker-electron-preload";
-// import fetch from "cross-fetch";
-// import { promises as fs } from "fs";
+import { initAdBlocker, toggleAdBlocker, getAdBlockerStatus, updateFilterLists } from './services/adBlockerService';
 
 const inDevelopment = process.env.NODE_ENV === "development";
+
+// 🔒 Encrypted DNS (DNS-over-HTTPS) — ISP cannot see domain queries
+// Must be called after app is ready
+app.whenReady().then(() => {
+  app.configureHostResolver({
+    secureDnsMode: 'automatic',
+    secureDnsServers: ['https://dns.adguard-dns.com/dns-query'],
+  });
+});
 
 // ⚡ GPU & Performance Flags — run on compositor thread, not main thread
 app.commandLine.appendSwitch('enable-gpu-rasterization');
@@ -120,6 +127,14 @@ app.whenReady().then(async () => {
   initializeDatabase();
   setupSessionHeaders();
 
+  // Initialize ad blocker (async, non-blocking)
+  initAdBlocker().catch(err => console.error('[AdBlocker] Init error:', err));
+
+  // Register ad blocker IPC handlers
+  ipcMain.handle('adblock:toggle', () => toggleAdBlocker());
+  ipcMain.handle('adblock:status', () => getAdBlockerStatus());
+  ipcMain.handle('adblock:updateLists', () => updateFilterLists());
+
   // Create window immediately after sync setup
   await createWindow();
 });
@@ -142,5 +157,6 @@ app.on("activate", () => {
 
 // Clean up on quit
 app.on("before-quit", () => {
+  stopAllRecordings();
   dbService.close();
 });

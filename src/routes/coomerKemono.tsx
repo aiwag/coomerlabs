@@ -6,7 +6,7 @@ import indexedDbDriver from "unstorage/drivers/indexedb";
 import { createFileRoute } from '@tanstack/react-router';
 import { toast } from 'sonner';
 import {
-  Loader2, RefreshCw, Search, Star, Sun, Moon,
+  Loader2, RefreshCw, Search, Star,
   Layers, Grid3X3, LayoutGrid, WifiOff, ChevronLeft, ChevronRight,
   Sparkles,
 } from 'lucide-react';
@@ -454,7 +454,7 @@ function RouteComponent() {
   const [hasMore, setHasMore] = useState(true);
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
   const [isProfileViewerOpen, setIsProfileViewerOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
+
   const [gridColumns, setGridColumns] = useState(6);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [searchResults, setSearchResults] = useState<Creator[]>([]);
@@ -659,7 +659,7 @@ function RouteComponent() {
   };
 
   return (
-    <div className={`h-screen w-screen flex flex-col ${isDarkMode ? 'dark' : ''} bg-gray-50 dark:bg-gray-900`}>
+    <div className="h-screen w-screen flex flex-col dark bg-[var(--app-bg)]">
       <header className="flex-shrink-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -704,9 +704,7 @@ function RouteComponent() {
               <button onClick={() => setShowFavoritesOnly(!showFavoritesOnly)} className={`p-1.5 rounded-lg transition-colors ${showFavoritesOnly ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-600 dark:text-yellow-400' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'}`}>
                 <Star className="h-4 w-4" />
               </button>
-              <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-1.5 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
-                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
+
             </div>
 
             <div className="flex items-center gap-1">

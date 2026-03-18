@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Volume2,
   VolumeX,
@@ -16,11 +16,14 @@ import {
   Trash2,
   ExternalLink,
   User,
-  GripVertical
+  GripVertical,
+  Circle,
+  Loader2,
 } from "lucide-react";
 import { useGridStore } from "@/state/gridStore";
 import { useShallow } from "zustand/react/shallow";
 import { useProfileModalStore } from "@/state/profileModalStore";
+import { useRecordingStore } from "@/state/recordingStore";
 import { getUsernameFromUrl } from "@/utils/formatters";
 
 export const StreamControls = React.memo(({
@@ -35,6 +38,8 @@ export const StreamControls = React.memo(({
   onTogglePause?: () => void;
 }) => {
   const openProfile = useProfileModalStore((state) => state.openProfile);
+  const { isRecording, toggleRecording, syncActive } = useRecordingStore();
+
   const {
     isMuted,
     isFavorite,
@@ -66,8 +71,42 @@ export const StreamControls = React.memo(({
 
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [volume, setVolume] = useState(100);
+  const [recordFeedback, setRecordFeedback] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [recordMessage, setRecordMessage] = useState('');
 
   const username = getUsernameFromUrl(url) || "Stream";
+  const recording = isRecording(username);
+
+  useEffect(() => { syncActive(); }, []);
+
+  const handleRecord = async () => {
+    setRecordFeedback('loading');
+    try {
+      if (recording) {
+        const result = await useRecordingStore.getState().stopRecording(username);
+        if (result.success) {
+          setRecordFeedback('success');
+          setRecordMessage('Stopped');
+        } else {
+          setRecordFeedback('error');
+          setRecordMessage(result.error || 'Failed');
+        }
+      } else {
+        const result = await useRecordingStore.getState().startRecording(username);
+        if (result.success) {
+          setRecordFeedback('success');
+          setRecordMessage('Recording...');
+        } else {
+          setRecordFeedback('error');
+          setRecordMessage(result.error || 'Failed');
+        }
+      }
+    } catch {
+      setRecordFeedback('error');
+      setRecordMessage('Error');
+    }
+    setTimeout(() => { setRecordFeedback('idle'); setRecordMessage(''); }, 2500);
+  };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseInt(e.target.value);
@@ -203,6 +242,40 @@ export const StreamControls = React.memo(({
 
         <ControlButton icon={Copy} title="Copy URL" onClick={handleCopyUrl} />
         <ControlButton icon={ExternalLink} title="Pop-out" onClick={handlePopout} className="bg-blue-600/50 hover:bg-blue-600" />
+
+        <div className="mx-0.5 h-4 w-px bg-white/10" />
+
+        {/* Record button with feedback */}
+        <div className="relative">
+          <button
+            onClick={(e) => { e.stopPropagation(); handleRecord(); }}
+            disabled={recordFeedback === 'loading'}
+            className={`rounded-full p-1.5 text-white transition-all hover:scale-110 active:scale-95 ${
+              recordFeedback === 'loading'
+                ? 'bg-yellow-600/50 cursor-wait'
+                : recordFeedback === 'error'
+                  ? 'bg-red-900 shadow-red-900/50'
+                  : recording
+                    ? 'bg-red-600 hover:bg-red-700 shadow-lg shadow-red-600/50 animate-pulse'
+                    : 'bg-red-600/30 hover:bg-red-600/60 border border-white/5'
+            }`}
+            title={recording ? `Stop Recording ${username}` : `Record ${username}`}
+          >
+            {recordFeedback === 'loading' ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Circle size={12} className={recording ? 'fill-current' : ''} />
+            )}
+          </button>
+          {/* Feedback tooltip */}
+          {recordMessage && (
+            <div className={`absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded text-[9px] font-bold ${
+              recordFeedback === 'error' ? 'bg-red-900/90 text-red-300' : 'bg-emerald-900/90 text-emerald-300'
+            }`}>
+              {recordMessage}
+            </div>
+          )}
+        </div>
 
         <div className="mx-0.5 h-4 w-px bg-white/10" />
 

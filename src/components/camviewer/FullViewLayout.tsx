@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { useGridStore } from "@/state/gridStore";
-import { SortableWebview } from "./grid/SortableWebview";
+import { HlsStreamCell } from "./grid/HlsStreamCell";
 import { MinimizedStream } from "./MinimizedStream";
 import { Minimize2, Volume2, VolumeX, ExternalLink, Star, Trash2 } from "lucide-react";
 import { getUsernameFromUrl } from "@/utils/formatters";

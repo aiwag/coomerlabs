@@ -3,7 +3,7 @@ import { useGridStore } from "@/state/gridStore";
 import { useSettingsStore } from "@/state/settingsStore";
 import { useResizeObserver } from "@/hooks/useResizeObserver";
 import { useOptimalLayout } from "@/hooks/useOptimalLayout";
-import { SortableWebview } from "./SortableWebview";
+import { HlsStreamCell } from "./HlsStreamCell";
 
 interface OptimalGridLayoutProps {
   activeId: string | null;
@@ -41,17 +41,16 @@ export function OptimalGridLayout({ activeId }: OptimalGridLayoutProps) {
         if (w === 0 || h === 0) return null;
 
         return (
-          <SortableWebview
+          <HlsStreamCell
             key={url}
             id={url}
             url={url}
             index={index}
+            totalStreams={streamUrls.length}
             isDragging={activeId === url}
             isDraggable={true} // Dragging is enabled for this layout
             width={w}
             height={h}
-            top={top}
-            left={left}
           />
         );
       })}

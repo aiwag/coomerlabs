@@ -76,7 +76,7 @@ export const JavTube = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-[#050505] text-white">
+    <div className="flex h-screen flex-col bg-[var(--app-bg)] text-white">
       <div className="flex-none flex items-center justify-between px-6 py-4 z-50">
         <div className="flex items-center gap-3">
           <Link to="/javtube" className="flex items-center gap-3">

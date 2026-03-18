@@ -11,7 +11,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { useGridStore } from "@/state/gridStore";
-import { SortableWebview } from "./SortableWebview";
+import { HlsStreamCell } from "./HlsStreamCell";
 
 export function WaterfallLayout() {
   const { streamUrls, handleDragEnd } = useGridStore();
@@ -34,17 +34,16 @@ export function WaterfallLayout() {
       >
         <div className="custom-scrollbar flex h-full w-full flex-col gap-1 overflow-y-auto p-2">
           {streamUrls.map((url, index) => (
-            <SortableWebview
+            <HlsStreamCell
               key={url}
               id={url}
               url={url}
               index={index}
+              totalStreams={streamUrls.length}
               isDragging={activeId === url}
               isDraggable={true}
               width="100%"
               height="192px"
-              top={0}
-              left={0}
               viewMode="waterfall"
             />
           ))}

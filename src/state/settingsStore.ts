@@ -18,6 +18,9 @@ interface SettingsState {
   layoutMode: LayoutMode;
   previousLayoutMode: LayoutMode;
   browserVisible: boolean;
+  recordingAllocationLimit: number; // in GB, 0 = unlimited
+
+  setRecordingAllocationLimit: (gb: number) => void;
 
   toggleSidebar: () => void;
   toggleSidebarCollapse: () => void;
@@ -34,6 +37,9 @@ export const useSettingsStore = create<SettingsState>()(
       layoutMode: "magic",
       previousLayoutMode: "magic",
       browserVisible: true,
+      recordingAllocationLimit: 50, // default 50GB
+
+      setRecordingAllocationLimit: (gb) => set({ recordingAllocationLimit: gb }),
 
       toggleSidebar: () =>
         set((state) => ({ sidebarVisible: !state.sidebarVisible })),
