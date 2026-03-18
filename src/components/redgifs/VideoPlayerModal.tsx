@@ -21,7 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { GifItem } from './types';
 import { useRedgifsSettings, useRedgifsPlayer } from './hooks';
 import { getGifUrl } from './api';

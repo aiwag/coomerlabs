@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Clock, Video as VideoIcon, User, Search, X, ExternalLink, Loader2, Play } from 'lucide-react';
+import { ArrowLeft, Clock, Video as VideoIcon, User, Search, X, ExternalLink, Loader2, Play, Heart, Trash2 } from 'lucide-react';
 import * as api from '../components/camarchive/api';
 import type { Video } from '../components/camarchive/types';
 
@@ -152,11 +152,9 @@ const VideoPlayerModal = ({ video, onClose }: { video: Video; onClose: () => voi
 };
 
 const VideoCard = React.memo(({ video, onPlay }: { video: Video; onPlay: (video: Video) => void }) => (
-  <motion.div
-    initial={{ opacity: 0, scale: 0.95 }}
-    animate={{ opacity: 1, scale: 1 }}
-    whileHover={{ y: -4 }}
-    className="group relative overflow-hidden rounded-xl bg-gray-800/40 border border-white/5 cursor-pointer hover:border-blue-500/50 transition-all shadow-xl"
+  <div
+    className="anim-scale anim-stagger-capped group relative overflow-hidden rounded-xl bg-gray-800/40 border border-white/5 cursor-pointer hover:border-blue-500/50 hover:-translate-y-1 transition-[border-color,transform] duration-300 shadow-xl"
+    style={{ '--i': 0 } as React.CSSProperties}
     onClick={() => onPlay(video)}
   >
     <div className="relative aspect-video">
@@ -186,10 +184,10 @@ const VideoCard = React.memo(({ video, onPlay }: { video: Video; onPlay: (video:
         <span>{video.views.toLocaleString()} views</span>
       </div>
     </div>
-  </motion.div>
+  </div>
 ));
 
-const ProfileCard = React.memo(({ profile, onClick }: { profile: any; onClick: () => void }) => {
+const ProfileCard = React.memo(({ profile, onClick, onRemove }: { profile: any; onClick: () => void; onRemove?: (username: string) => void }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const { ref, inView } = useInView({ threshold: 0.1 });
@@ -222,19 +220,29 @@ const ProfileCard = React.memo(({ profile, onClick }: { profile: any; onClick: (
   }, [isHovered, thumbs.length]);
 
   return (
-    <motion.div
+    <div
       ref={ref as any}
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -8, scale: 1.04 }}
       onClick={onClick}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="group relative overflow-hidden rounded-[2rem] bg-[#0c0c0c] border border-white/5 cursor-pointer hover:border-blue-500/40 transition-all duration-500 shadow-2xl aspect-square"
+      className="group relative overflow-hidden rounded-[2rem] bg-[#0c0c0c] border border-white/5 cursor-pointer hover:border-blue-500/40 hover:-translate-y-2 hover:scale-[1.04] transition-[border-color,transform] duration-500 shadow-2xl aspect-square anim-fade-scale"
     >
+      {/* Remove Button */}
+      {onRemove && (
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: isHovered ? 1 : 0 }}
+          onClick={(e) => { e.stopPropagation(); onRemove(profile.username); }}
+          className="absolute top-4 right-4 z-30 p-2.5 rounded-full bg-black/60 backdrop-blur-xl border border-white/10 hover:bg-red-500/80 hover:border-red-400/50 text-white/60 hover:text-white transition-all shadow-xl"
+          title="Remove from saved"
+        >
+          <Trash2 className="w-4 h-4" />
+        </motion.button>
+      )}
+
       {/* Thumbnail Layers */}
       <div className="absolute inset-0 z-0">
-        <AnimatePresence mode="popLayout" initial={false}>
+        <AnimatePresence mode="wait" initial={false}>
           {thumbs.length > 0 ? (
             <motion.div
               key={`${profile.username}-slide-${currentSlide}`}
@@ -246,7 +254,7 @@ const ProfileCard = React.memo(({ profile, onClick }: { profile: any; onClick: (
             >
               <img
                 src={thumbs[currentSlide]}
-                className="w-full h-full object-cover brightness-75 group-hover:brightness-100 transition-all duration-700"
+                className="w-full h-full object-cover brightness-75 group-hover:brightness-100 transition-[filter] duration-700"
                 alt=""
               />
             </motion.div>
@@ -277,7 +285,7 @@ const ProfileCard = React.memo(({ profile, onClick }: { profile: any; onClick: (
       <div className="absolute bottom-0 left-0 right-0 p-6 z-20 transform group-hover:translate-y-[-4px] transition-transform duration-500">
         <div className="flex items-center gap-2 mb-2">
           <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Archived</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Saved</span>
         </div>
 
         <h3 className="text-white font-black text-xl truncate tracking-tight group-hover:text-blue-400 transition-colors drop-shadow-lg">
@@ -322,7 +330,7 @@ const ProfileCard = React.memo(({ profile, onClick }: { profile: any; onClick: (
           <Loader2 className="w-5 h-5 text-blue-500/50 animate-spin" />
         </div>
       )}
-    </motion.div>
+    </div>
   );
 });
 
@@ -330,8 +338,15 @@ function CamarchiveRoute() {
   const [selectedProfile, setSelectedProfile] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [playingVideo, setPlayingVideo] = useState<Video | null>(null);
+  const [isSaved, setIsSaved] = useState(false);
+  const queryClient = useQueryClient();
 
-  // Fetch viewed profiles list
+  // Sync saved state when profile changes
+  useEffect(() => {
+    setIsSaved(selectedProfile ? api.isProfileSaved(selectedProfile) : false);
+  }, [selectedProfile]);
+
+  // Fetch saved profiles list
   const { data: profiles, isLoading: isLoadingProfiles } = useQuery({
     queryKey: ['camarchive-profiles'],
     queryFn: api.getViewedProfilesList,
@@ -393,13 +408,28 @@ function CamarchiveRoute() {
     }
   };
 
+  const handleToggleSave = useCallback(() => {
+    if (!selectedProfile) return;
+    if (isSaved) {
+      api.removeSavedProfile(selectedProfile);
+      setIsSaved(false);
+    } else {
+      api.addSavedProfile(selectedProfile);
+      setIsSaved(true);
+    }
+    queryClient.invalidateQueries({ queryKey: ['camarchive-profiles'] });
+  }, [selectedProfile, isSaved, queryClient]);
+
+  const handleRemoveProfile = useCallback((username: string) => {
+    api.removeSavedProfile(username);
+    queryClient.invalidateQueries({ queryKey: ['camarchive-profiles'] });
+  }, [queryClient]);
+
   return (
     <div className="h-screen flex flex-col bg-gray-950 overflow-hidden font-sans text-gray-100">
       {/* Header */}
-      <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="flex-none z-50 bg-black/40 backdrop-blur-2xl border-b border-white/5 px-6 py-4"
+      <div
+        className="flex-none z-50 bg-black/40 backdrop-blur-2xl border-b border-white/5 px-6 py-4 anim-slide-down"
       >
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-6">
           <div className="flex items-center gap-4">
@@ -430,18 +460,39 @@ function CamarchiveRoute() {
             </div>
           </div>
 
-          <form onSubmit={handleSearch} className="flex-1 max-w-md relative group">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
-            <input
-              type="text"
-              placeholder="Search profile username..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:bg-white/10 transition-all placeholder:text-gray-600"
-            />
-          </form>
+          <div className="flex items-center gap-3 flex-1 max-w-lg">
+            <form onSubmit={handleSearch} className="flex-1 relative group">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
+              <input
+                type="text"
+                placeholder="Search profile username..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:bg-white/10 transition-all placeholder:text-gray-600"
+              />
+            </form>
+
+            {/* Save/Favorite Button */}
+            {selectedProfile && (
+              <motion.button
+                onClick={handleToggleSave}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className={`p-2.5 rounded-xl border transition-all shadow-lg ${
+                  isSaved
+                    ? 'bg-pink-500/20 border-pink-500/40 text-pink-400 hover:bg-pink-500/30'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:text-pink-400'
+                }`}
+                title={isSaved ? 'Remove from saved' : 'Save profile'}
+              >
+                <Heart className={`h-5 w-5 ${isSaved ? 'fill-pink-400' : ''}`} />
+              </motion.button>
+            )}
+          </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-6 py-8">
@@ -451,15 +502,13 @@ function CamarchiveRoute() {
             isLoadingProfiles ? (
               <LoadingSpinner message="Searching history..." />
             ) : !profiles || profiles.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="text-center py-32 bg-white/5 rounded-3xl border border-dashed border-white/10"
+              <div
+                className="text-center py-32 bg-white/5 rounded-3xl border border-dashed border-white/10 anim-scale"
               >
                 <VideoIcon className="h-20 w-20 mx-auto text-gray-800 mb-6" />
                 <h2 className="text-2xl font-bold text-gray-300">No Archive History</h2>
                 <p className="text-gray-500 mt-2 max-w-sm mx-auto">Use the search bar above to look up any profile or view cams to build your history.</p>
-              </motion.div>
+              </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
                 <AnimatePresence>
@@ -468,6 +517,7 @@ function CamarchiveRoute() {
                       key={profile.id}
                       profile={profile}
                       onClick={() => handleProfileClick(profile.username)}
+                      onRemove={handleRemoveProfile}
                     />
                   ))}
                 </AnimatePresence>

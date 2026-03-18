@@ -267,6 +267,54 @@
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.3);
   }
+
+  /* === GPU-Accelerated CSS Animations (replaces Framer Motion) === */
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  @keyframes fadeScaleIn {
+    from { opacity: 0; transform: scale(0.95) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* Utility classes — use these instead of motion.div */
+  .anim-fade { animation: fadeIn 0.3s ease-out both; }
+  .anim-scale { animation: scaleIn 0.3s ease-out both; }
+  .anim-fade-scale { animation: fadeScaleIn 0.35s ease-out both; }
+  .anim-slide-up { animation: slideUp 0.35s ease-out both; }
+  .anim-slide-down { animation: slideDown 0.3s ease-out both; }
+  .anim-modal { animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+  /* Stagger system — set --i via style={{ '--i': index }} */
+  .anim-stagger { animation-delay: calc(var(--i, 0) * 40ms); }
+  .anim-stagger-fast { animation-delay: calc(var(--i, 0) * 25ms); }
+  .anim-stagger-slow { animation-delay: calc(var(--i, 0) * 60ms); }
+
+  /* Max cap — never exceed 400ms total delay regardless of index */
+  .anim-stagger-capped { animation-delay: min(calc(var(--i, 0) * 40ms), 400ms); }
 }
 
 @layer base {

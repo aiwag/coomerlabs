@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Users, Plus, Trash2, Star, Maximize2, ChevronsLeft, ChevronsRight, Save, Bookmark, LayoutTemplate, Search } from "lucide-react";
 import { useGridStore } from "@/state/gridStore";
+import { useShallow } from "zustand/react/shallow";
 import { getUsernameFromUrl, generateThumbUrl } from "@/utils/formatters";
 import { Button } from "@/components/ui/button";
 import { StreamBrowserSidebar } from "@/components/camviewer/browser/StreamBrowserSidebar";
@@ -25,7 +26,19 @@ export function StreamListSidebar({ collapsed, onToggleCollapse, activeTab, onTa
     savePreset,
     loadPreset,
     deletePreset
-  } = useGridStore();
+  } = useGridStore(useShallow((state) => ({
+    addStream: state.addStream,
+    streamUrls: state.streamUrls,
+    favorites: state.favorites,
+    playingStreams: state.playingStreams,
+    removeStream: state.removeStream,
+    toggleFavorite: state.toggleFavorite,
+    setFullViewMode: state.setFullViewMode,
+    presets: state.presets,
+    savePreset: state.savePreset,
+    loadPreset: state.loadPreset,
+    deletePreset: state.deletePreset
+  })));
 
   const [newStreamUrl, setNewStreamUrl] = React.useState("");
   const [showAddInput, setShowAddInput] = React.useState(false);

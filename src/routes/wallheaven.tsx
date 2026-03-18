@@ -3,7 +3,7 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import { useInView } from 'react-intersection-observer';
-import { Toaster, toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import Masonry from 'react-masonry-css';
 import {
   Search,
@@ -26,18 +26,6 @@ import {
   Heart,
   Bookmark,
 } from 'lucide-react';
-
-// ... (Types/API omitted for brevity in replace block, but need to be careful not to overwrite them if not included in start/end lines)
-// Since I am replacing the TOP import specifically, I should just target line 3 for the import fix first to be safe,
-// but the instruction says "Compact layout". I'll try to do it in one go if I can span it, but the file is large.
-// Actually, I will target specific blocks.
-
-// BLOCK 1: Fix imports
-// BLOCK 2: Skeleton
-// BLOCK 3: RouteComponent
-
-// Let's do imports first.
-
 
 
 // --- TYPES ---
@@ -399,11 +387,34 @@ const ImageCard = React.memo(({
   const thumbSrc = wallpaper.thumbs?.small ?? wallpaper.thumbs?.original ?? wallpaper.path;
   const [imageError, setImageError] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Calculate aspect ratio for masonry
   const aspectRatio = wallpaper.dimension_x && wallpaper.dimension_y
     ? wallpaper.dimension_y / wallpaper.dimension_x
     : 1.5;
+
+  const handleMouseEnter = useCallback(() => {
+    onHover(wallpaper);
+    // 300ms dwell delay before loading full-res preview
+    hoverTimerRef.current = setTimeout(() => setShowPreview(true), 300);
+  }, [wallpaper, onHover]);
+
+  const handleMouseLeave = useCallback(() => {
+    onHover(null);
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setShowPreview(false);
+  }, [onHover]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
 
   return (
     <div
@@ -414,22 +425,17 @@ const ImageCard = React.memo(({
         containIntrinsicSize: `100% ${aspectRatio * 300}px`
       }}
       onClick={onClick}
-      onMouseEnter={() => {
-        onHover(wallpaper);
-        setShowPreview(true);
-      }}
-      onMouseLeave={() => {
-        onHover(null);
-        setShowPreview(false);
-      }}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
-      {/* Hover Preview - Fixed Position */}
+      {/* Hover Preview - Fixed Position with dwell delay */}
       {showPreview && (
         <div className="fixed bottom-4 right-4 z-50 w-64 bg-black/90 border border-white/10 p-2 shadow-2xl rounded-lg pointer-events-none">
           <img
             src={wallpaper.path}
             alt={`Preview ${wallpaper.id}`}
             className="w-full rounded"
+            loading="eager"
           />
           <div className="mt-2 px-1">
             <p className="text-xs font-bold text-white">{wallpaper.resolution}</p>
@@ -1130,19 +1136,5 @@ export const Route = createFileRoute('/wallheaven')({
       Oops! {(error as any)?.message ? String((error as any).message) : String(error)}
     </div>
   ),
-  component: () => (
-    <>
-      <RouteComponent />
-      <Toaster
-        position="bottom-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#363636',
-            color: '#fff',
-          },
-        }}
-      />
-    </>
-  ),
+  component: RouteComponent,
 });

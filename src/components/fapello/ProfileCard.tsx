@@ -1,6 +1,5 @@
-// Fapello ProfileCard Component - Optimized
+// Fapello ProfileCard Component - CSS Animations (no Framer Motion)
 import React, { useState, useCallback, memo, useRef, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
   Heart,
   Bookmark,
@@ -12,7 +11,7 @@ import {
   UserPlus,
   UserMinus,
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useInView } from 'react-intersection-observer';
 import { useSettings } from './hooks';
 import type { Profile } from './types';
@@ -23,7 +22,6 @@ interface ProfileCardProps {
   onClick: () => void;
 }
 
-// Loading skeleton component
 const ProfileCardSkeleton = ({ compact = false }: { compact?: boolean }) => (
   <div className={`relative overflow-hidden rounded-2xl bg-gray-800 ${compact ? 'h-32' : 'h-48'}`}>
     <div className="absolute inset-0 bg-gradient-to-r from-gray-800 via-gray-700 to-gray-800 animate-shimmer" />
@@ -56,7 +54,6 @@ export const ProfileCard = memo(({ profile, index, onClick }: ProfileCardProps) 
 
   const { settings, toggleFollowProfile, isProfileFollowed } = useSettings();
 
-  // Sync follow state with settings
   useEffect(() => {
     setIsFollowed(isProfileFollowed(profile.id));
   }, [profile.id, isProfileFollowed]);
@@ -91,32 +88,20 @@ export const ProfileCard = memo(({ profile, index, onClick }: ProfileCardProps) 
     setLoadingHQ(false);
   }, []);
 
-  // Handle click - load HQ if available
-  const handleClick = useCallback(() => {
-    onClick();
-  }, [onClick]);
-
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.3) }}
-      className="group relative overflow-hidden rounded-2xl glass-card transition-all duration-300 cursor-pointer"
-      style={{ height: settings.compactView ? '128px' : '192px' }}
+      className="anim-slide-up anim-stagger-capped group relative overflow-hidden rounded-2xl glass-card transition-transform duration-300 cursor-pointer hover:-translate-y-1 hover:scale-[1.02] active:scale-[0.98]"
+      style={{ height: settings.compactView ? '128px' : '192px', '--i': index } as React.CSSProperties}
       onClick={inView ? onClick : undefined}
-      whileHover={inView ? { y: -4, scale: 1.02 } : undefined}
-      whileTap={inView ? { scale: 0.98 } : undefined}
     >
       <div className="relative w-full h-full">
-        {/* Loading skeleton - show as overlay when loading */}
         {(!imageLoaded && !imageError) && (
           <div className="absolute inset-0 z-10">
             <ProfileCardSkeleton compact={settings.compactView} />
           </div>
         )}
 
-        {/* Error state */}
         {imageError && (
           <div className="absolute inset-0 z-20 flex items-center justify-center bg-gray-800/50 backdrop-blur-sm">
             <div className="text-center p-2">
@@ -126,27 +111,22 @@ export const ProfileCard = memo(({ profile, index, onClick }: ProfileCardProps) 
           </div>
         )}
 
-        {/* Profile image - always render */}
         <img
           ref={imgRef}
           src={inView ? profile.imageUrl : undefined}
           alt={profile.name}
           loading="lazy"
           decoding="async"
-          className={`w-full h-full absolute object-cover transition-all duration-700 ease-out ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'} group-hover:scale-110`}
+          fetchPriority={index < 8 ? "high" : "low"}
+          className={`w-full h-full absolute object-cover transition-[opacity,transform] duration-700 ease-out ${imageLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-105'} group-hover:scale-110`}
           onLoad={handleImageLoad}
           onError={handleImageError}
         />
 
-        {/* Gradient overlay with shimmer effect */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
         {/* Hover actions */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          whileHover={{ opacity: 1, y: 0 }}
-          className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        >
+        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <button
             onClick={handleFollow}
             className={`p-1.5 rounded-full backdrop-blur-sm transition-all hover:scale-110 ${
@@ -176,14 +156,10 @@ export const ProfileCard = memo(({ profile, index, onClick }: ProfileCardProps) 
           >
             <Bookmark className={`h-3 w-3 ${isBookmarked ? 'fill-blue-500 text-blue-500' : 'text-white'}`} />
           </button>
-        </motion.div>
+        </div>
 
         {/* Stats overlay */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileHover={{ opacity: 1 }}
-          className="absolute bottom-8 left-0 right-0 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-        >
+        <div className="absolute bottom-8 left-0 right-0 px-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="flex items-center justify-between text-white text-xs">
             <div className="flex items-center gap-2">
               <span className="flex items-center gap-0.5 bg-black/40 backdrop-blur-sm px-1.5 py-0.5 rounded-full">
@@ -202,7 +178,7 @@ export const ProfileCard = memo(({ profile, index, onClick }: ProfileCardProps) 
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
 
         {/* Bottom info bar */}
         <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 via-black/50 to-transparent backdrop-blur-[2px]">
@@ -240,10 +216,9 @@ export const ProfileCard = memo(({ profile, index, onClick }: ProfileCardProps) 
           </div>
         </div>
 
-        {/* Shimmer effect on hover */}
         <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out bg-gradient-to-r from-transparent via-white/10 to-transparent pointer-events-none" />
       </div>
-    </motion.div>
+    </div>
   );
 });
 

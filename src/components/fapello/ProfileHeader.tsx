@@ -11,7 +11,7 @@ import {
   Calendar,
   Clock,
 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useSettings } from './hooks';
 import type { CreatorProfile } from './types';
 

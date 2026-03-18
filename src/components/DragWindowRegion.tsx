@@ -5,7 +5,7 @@ import {
 } from "@/helpers/window_helpers";
 import { isMacOS } from "@/utils/platform";
 import React, { type ReactNode } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useLocation } from "@tanstack/react-router";
 import {
   Camera,
   Video,
@@ -14,6 +14,8 @@ import {
   Play,
   Star,
   Home,
+  Clock,
+  LayoutDashboard,
 } from "lucide-react";
 import {
   Tooltip,
@@ -28,38 +30,55 @@ interface DragWindowRegionProps {
 
 const apps = [
   { to: "/", title: "Home", icon: <Home size={14} /> },
+  { to: "/dashboard", title: "Dashboard", icon: <LayoutDashboard size={14} /> },
   { to: "/camviewer", title: "CamViewer", icon: <Camera size={14} /> },
+  { to: "/camarchive", title: "Cam Archive", icon: <Clock size={14} /> },
   { to: "/redgifs", title: "RedGifs Explorer", icon: <Video size={14} /> },
   { to: "/fapello", title: "Fapello Collections", icon: <ImageIcon size={14} /> },
   { to: "/wallheaven", title: "Wallheaven Labs", icon: <ImageIcon size={14} /> },
   { to: "/creators", title: "Coomer Creators", icon: <Users size={14} /> },
   { to: "/coomerKemono", title: "Creator Archive", icon: <Users size={14} /> },
   { to: "/javtube", title: "JavTube v2", icon: <Play size={14} /> },
-  { to: "/actresses", title: "Star Database", icon: <Users size={14} /> },
+  { to: "/actresses", title: "Star Database", icon: <Star size={14} /> },
 ];
 
 export default function DragWindowRegion({ title }: DragWindowRegionProps) {
+  const location = useLocation();
+  const currentPath = location.pathname;
+
+  const isActive = (to: string) => {
+    if (to === "/") return currentPath === "/";
+    return currentPath.startsWith(to);
+  };
+
   return (
     <div className="flex w-screen items-stretch justify-between bg-black/40 backdrop-blur-md border-b border-white/5 h-8">
       <div className="draglayer w-full flex items-center px-2">
         {!isMacOS() && (
-          <div className="flex items-center gap-1 no-drag">
+          <div className="flex items-center gap-0.5 no-drag">
             <TooltipProvider delayDuration={0}>
-              {apps.map((app) => (
-                <Tooltip key={app.to}>
-                  <TooltipTrigger asChild>
-                    <Link
-                      to={app.to}
-                      className="p-1.5 text-white/40 hover:text-cyan-400 hover:bg-white/5 rounded transition-colors"
-                    >
-                      {app.icon}
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs bg-black/90 text-white border-white/10">
-                    <p>{app.title}</p>
-                  </TooltipContent>
-                </Tooltip>
-              ))}
+              {apps.map((app) => {
+                const active = isActive(app.to);
+                return (
+                  <Tooltip key={app.to}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to={app.to}
+                        className={`p-1.5 rounded transition-all duration-200 ${
+                          active
+                            ? "text-cyan-400 bg-cyan-400/10"
+                            : "text-white/40 hover:text-cyan-400 hover:bg-white/5"
+                        }`}
+                      >
+                        {app.icon}
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs bg-black/90 text-white border-white/10">
+                      <p>{app.title}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
             </TooltipProvider>
 
             {title && (

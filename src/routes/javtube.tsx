@@ -9,6 +9,7 @@ import {
   Home,
   Search,
   ChevronRight,
+  Flame,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useEffect } from "react";
@@ -100,8 +101,9 @@ export const JavTube = () => {
                 className="flex items-center gap-2 px-2 py-1.5 rounded-2xl bg-black/40 backdrop-blur-3xl border border-white/5 shadow-2xl"
               >
                 <NavItem to="/javtube" icon={Home} label="Home" color="purple" />
+                <NavItem to="/javtube/following" icon={Heart} label="Following" color="pink" />
                 <div className="w-[1px] h-4 bg-white/10 mx-1" />
-                <NavItem to="/javtube/top-favorites" icon={Heart} label="Favorites" color="red" />
+                <NavItem to="/javtube/top-favorites" icon={Flame} label="Favorites" color="red" />
                 <NavItem to="/javtube/uncensored" icon={Sparkles} label="Uncensored" color="blue" />
                 <NavItem to="/javtube/most-viewed" icon={Eye} label="Most Viewed" color="green" />
                 <NavItem to="/javtube/top-rated" icon={Star} label="Top Rated" color="yellow" />

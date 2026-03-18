@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
     Users,
     Search,
@@ -10,8 +10,10 @@ import {
     ExternalLink,
     Play,
     ArrowLeft,
+    Heart,
 } from "lucide-react";
 import { useInView } from "react-intersection-observer";
+import { useFollowStore } from "../state/followStore";
 
 interface Actress {
     id: string;
@@ -23,6 +25,7 @@ interface Actress {
 
 export const Actresses = () => {
     const [searchQuery, setSearchQuery] = useState("");
+    const { isFollowing, toggle } = useFollowStore();
 
     const {
         data,
@@ -124,21 +127,17 @@ export const Actresses = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-                        <AnimatePresence mode="popLayout">
-                            {filteredActresses.map((actress, index) => (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6" style={{ contain: 'layout style paint' }}>
+                        {filteredActresses.map((actress, index) => (
                                 <Link
                                     key={`${actress.id}-${index}`}
                                     to="/actress/$id"
                                     params={{ id: actress.id }}
-                                    className="group relative flex flex-col items-center p-6 rounded-[3rem] bg-white/5 border border-white/5 hover:border-red-500/30 transition-all duration-500 shadow-xl overflow-hidden cursor-pointer"
+                                    className="group relative flex flex-col items-center p-6 rounded-[3rem] bg-white/5 border border-white/5 hover:border-red-500/30 transition-[border-color] duration-500 shadow-xl overflow-hidden cursor-pointer"
                                 >
-                                    <motion.div
-                                        layout
-                                        initial={{ opacity: 0, scale: 0.9 }}
-                                        animate={{ opacity: 1, scale: 1 }}
-                                        exit={{ opacity: 0, scale: 0.9 }}
-                                        transition={{ delay: (index % 18) * 0.02 }}
+                                    <div
+                                        className="anim-scale anim-stagger-capped"
+                                        style={{ '--i': index % 18 } as React.CSSProperties}
                                     >
                                         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/80 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -162,19 +161,42 @@ export const Actresses = () => {
                                             {actress.videoCount} Masterpieces
                                         </div>
 
-                                        <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <div
-                                                className="p-2.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white/60 hover:text-white hover:border-red-500/50 transition-all hover:scale-110 active:scale-95"
+                                        <div className="absolute top-5 right-5 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    toggle({
+                                                        id: actress.id,
+                                                        name: actress.name,
+                                                        thumbnail: actress.thumbnail,
+                                                    });
+                                                }}
+                                                className={`p-2.5 rounded-full backdrop-blur-md border transition-all hover:scale-110 active:scale-95 ${
+                                                    isFollowing(actress.id)
+                                                        ? "bg-pink-500/20 border-pink-500/50 text-pink-400"
+                                                        : "bg-black/60 border-white/10 text-white/60 hover:text-pink-400 hover:border-pink-500/50"
+                                                }`}
+                                                title={isFollowing(actress.id) ? `Unfollow ${actress.name}` : `Follow ${actress.name}`}
                                             >
-                                                <ExternalLink className="w-4 h-4" />
-                                            </div>
+                                                <Heart className={`w-4 h-4 ${isFollowing(actress.id) ? "fill-current" : ""}`} />
+                                            </button>
                                         </div>
 
+                                        {/* Always-visible follow indicator */}
+                                        {isFollowing(actress.id) && (
+                                            <div className="absolute top-5 right-5 group-hover:opacity-0 transition-opacity">
+                                                <div className="p-2 rounded-full bg-pink-500/20 border border-pink-500/30">
+                                                    <Heart className="w-3.5 h-3.5 text-pink-400 fill-current" />
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-red-600 to-orange-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500" />
-                                    </motion.div>
+                                    </div>
                                 </Link>
-                            ))}
-                        </AnimatePresence>
+                            ))
+                        }
                     </div>
                 )}
 

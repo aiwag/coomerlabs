@@ -11,9 +11,11 @@ import {
     Users,
     Film,
     X,
+    Heart,
 } from "lucide-react";
 import { useInView } from "react-intersection-observer";
 import { EnhancedVideoPlayer } from "../components/EnhancedVideoPlayer";
+import { useFollowStore } from "../state/followStore";
 
 interface VideoData {
     id: string;
@@ -40,6 +42,7 @@ const ActressDetail = () => {
     const [selectedVideo, setSelectedVideo] = useState<VideoData | null>(null);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [loadingVideoUrl, setLoadingVideoUrl] = useState<string | null>(null);
+    const { isFollowing, toggle } = useFollowStore();
 
     const {
         data,
@@ -197,6 +200,26 @@ const ActressDetail = () => {
                             </h1>
 
                             <div className="flex items-center gap-10">
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => toggle({
+                                        id,
+                                        name: actressInfo?.name || id.replace(/-/g, ' '),
+                                        thumbnail: actressInfo?.img || '',
+                                    })}
+                                    className={`flex items-center gap-3 px-6 py-3 rounded-2xl border font-black text-sm uppercase tracking-widest transition-all ${
+                                        isFollowing(id)
+                                            ? "bg-pink-500/20 border-pink-500/50 text-pink-400 shadow-lg shadow-pink-500/10"
+                                            : "bg-white/5 border-white/10 text-white/60 hover:text-pink-400 hover:border-pink-500/30 hover:bg-pink-500/5"
+                                    }`}
+                                >
+                                    <Heart size={18} className={isFollowing(id) ? "fill-current" : ""} />
+                                    {isFollowing(id) ? "Following" : "Follow"}
+                                </motion.button>
+
+                                <div className="w-px h-10 bg-white/5" />
+
                                 <div className="flex items-center gap-4 group/stat">
                                     <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 group-hover/stat:border-red-500/30 group-hover/stat:bg-red-500/5 transition-all">
                                         <Film size={20} className="text-red-500" />
@@ -237,16 +260,13 @@ const ActressDetail = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8">
-                        <AnimatePresence mode="popLayout">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-8" style={{ contain: 'layout style paint' }}>
                             {allVideos.map((video, index) => (
-                                <motion.div
+                                <div
                                     key={`${video.id}-${index}`}
-                                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                                    transition={{ delay: (index % 15) * 0.04 }}
+                                    className="anim-fade-scale anim-stagger-capped group relative cursor-pointer overflow-hidden rounded-[2.5rem] bg-white/[0.02] border border-white/[0.05] hover:border-red-500/30 transition-[border-color,transform] duration-500 shadow-2xl hover:-translate-y-1"
+                                    style={{ '--i': index % 15 } as React.CSSProperties}
                                     onClick={() => handleVideoClick(video, index)}
-                                    className="group relative cursor-pointer overflow-hidden rounded-[2.5rem] bg-white/[0.02] border border-white/[0.05] hover:border-red-500/30 transition-all duration-500 shadow-2xl hover:-translate-y-1"
                                 >
                                     <div className="relative aspect-video overflow-hidden">
                                         <img
@@ -273,7 +293,7 @@ const ActressDetail = () => {
                                             </span>
                                         </div>
 
-                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                                             <div className="h-16 w-16 rounded-full bg-red-600/90 border border-red-500 flex items-center justify-center shadow-[0_0_30px_rgba(220,38,38,0.5)]">
                                                 <Play className="h-8 w-8 text-white fill-current ml-1" />
                                             </div>
@@ -284,9 +304,8 @@ const ActressDetail = () => {
                                             {video.title}
                                         </h3>
                                     </div>
-                                </motion.div>
+                                </div>
                             ))}
-                        </AnimatePresence>
                     </div>
                 )}
 

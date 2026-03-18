@@ -1,6 +1,5 @@
-// RedGifs v2 - Glassmorphic GifCard Component
+// RedGifs v2 - Glassmorphic GifCard Component - CSS Animations (no Framer Motion)
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
 import { Play, Heart, Eye, Volume2, VolumeX, Loader2, ExternalLink } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 import { GifItem } from './types';
@@ -47,28 +46,21 @@ export const GifCard = React.memo<GifCardProps>(({ gif, index, onGifClick }) => 
 
   useEffect(() => {
     if (inView && !isLoaded && !error) {
-      // Preload video
-      if (videoRef.current) {
-        videoRef.current.load();
-      }
+      if (videoRef.current) videoRef.current.load();
     }
   }, [inView, isLoaded, error]);
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : 20 }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
-      className="group relative liquid-card-dark rounded-2xl overflow-hidden cursor-pointer"
-      style={{ aspectRatio: '4/5' }}
+      className="anim-slide-up anim-stagger-capped group relative liquid-card-dark rounded-2xl overflow-hidden cursor-pointer"
+      style={{ aspectRatio: '4/5', '--i': index } as React.CSSProperties}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {/* Video Container */}
       <div className="absolute inset-0 bg-black/50">
-        {/* Poster/Thumbnail */}
         {!isLoaded && (
           <img
             src={getPosterUrl(gif)}
@@ -78,7 +70,6 @@ export const GifCard = React.memo<GifCardProps>(({ gif, index, onGifClick }) => 
           />
         )}
 
-        {/* Video Element */}
         <video
           ref={videoRef}
           src={getGifUrl(gif, quality)}
@@ -89,24 +80,15 @@ export const GifCard = React.memo<GifCardProps>(({ gif, index, onGifClick }) => 
           className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
           onLoadedData={() => setIsLoaded(true)}
           onError={() => setError(true)}
-          onMouseEnter={(e) => {
-            const video = e.currentTarget;
-            video.play().catch(() => {});
-          }}
+          onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
         />
 
-        {/* Audio Indicator */}
         {gif.hasAudio && (
           <div className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 backdrop-blur-sm">
-            {isMuted ? (
-              <VolumeX size={12} className="text-white/80" />
-            ) : (
-              <Volume2 size={12} className="text-white/80" />
-            )}
+            {isMuted ? <VolumeX size={12} className="text-white/80" /> : <Volume2 size={12} className="text-white/80" />}
           </div>
         )}
 
-        {/* Verified Badge */}
         {gif.verified && (
           <div className="absolute top-2 left-2">
             <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 backdrop-blur-sm">
@@ -118,16 +100,14 @@ export const GifCard = React.memo<GifCardProps>(({ gif, index, onGifClick }) => 
           </div>
         )}
 
-        {/* Loading State */}
         {!isLoaded && inView && !error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
             <Loader2 className="w-8 h-8 animate-spin text-white/80" />
           </div>
         )}
 
-        {/* Error State */}
         {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
             <div className="text-center">
               <p className="text-white/60 text-sm">Failed to load</p>
             </div>
@@ -135,7 +115,7 @@ export const GifCard = React.memo<GifCardProps>(({ gif, index, onGifClick }) => 
         )}
 
         {/* Play Button Overlay */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
           <div className="transform scale-90 group-hover:scale-100 transition-transform duration-300">
             <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center shadow-2xl">
               <Play className="w-8 h-8 text-white fill-white ml-1" />
@@ -174,17 +154,16 @@ export const GifCard = React.memo<GifCardProps>(({ gif, index, onGifClick }) => 
         </div>
       </div>
 
-      {/* Shine Effect on Hover */}
+      {/* Shine Effect */}
       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
       </div>
-    </motion.div>
+    </div>
   );
 });
 
 GifCard.displayName = 'GifCard';
 
-// Helper functions
 function formatNumber(num: number): string {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';

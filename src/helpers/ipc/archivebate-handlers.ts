@@ -55,11 +55,8 @@ const globalCookies: Map<string, string> = new Map();
  * Extract CSRF token from HTML meta tag
  */
 function extractCsrfToken(html: string): string | null {
-  const dom = new JSDOM(html);
-  const document = dom.window.document;
-
-  const metaTag = document.querySelector('meta[name="csrf-token"]');
-  return metaTag?.getAttribute('content') || null;
+  const match = html.match(/meta\s+name="csrf-token"\s+content="([^"]+)"/);
+  return match ? match[1] : null;
 }
 
 /**
@@ -142,63 +139,33 @@ async function initializeSession(username: string): Promise<{ success: boolean; 
       const html = await response.text();
       let csrfToken = extractCsrfToken(html);
 
-      const dom = new JSDOM(html);
-      const document = dom.window.document;
-
-      // Parse initial videos
+      // Note: Initial HTML only contains skeleton placeholders (no actual video data).
+      // Videos are loaded dynamically via Livewire's wire:init="load_profile_videos".
+      // So we skip initial video parsing and go straight to extracting Livewire component data.
       const initialVideos: ArchiveVideo[] = [];
-      const videoCards = document.querySelectorAll('section.video_item, .video_item, article.video-card, .video-card');
 
-      videoCards.forEach((card, index) => {
-        try {
-          const link = card.querySelector('a[href*="/watch/"]');
-          const video = card.querySelector('video, img[src*="thumb"], img[src*="poster"]');
-          if (!link) return;
-
-          const href = link.getAttribute('href')!;
-          const poster = video?.getAttribute('poster') || video?.getAttribute('src') || video?.getAttribute('data-src') || '';
-
-          const durationEl = card.querySelector('.duration, .time, .video-duration');
-          const infoP = card.querySelector('.info p, .meta, .video-info');
-
-          const durationText = durationEl?.textContent?.trim() || '';
-          const infoText = infoP?.textContent?.trim() || '';
-          const dateMatch = infoText.match(/(\d+ \w+ ago)/);
-          const viewsMatch = infoText.match(/(\d+) views/);
-
-          initialVideos.push({
-            id: `${username}-init-${index}-${Date.now()}`,
-            title: `${username} archive video`,
-            thumbnail: poster,
-            duration: durationText.split('\n').pop()?.trim() || '',
-            views: viewsMatch ? viewsMatch[1] : '',
-            date: dateMatch ? dateMatch[1] : '',
-            pageUrl: href.startsWith('http') ? href : `https://archivebate.com${href}`,
-            embedUrl: '',
-          });
-        } catch (e) { }
-      });
-
-      // Find total videos count
+      // Find total videos count (if present in HTML)
       let totalVideos = 0;
-      const paginationContainer = document.querySelector('.pagination, .pagination-info, .showing-info');
-      const pagText = paginationContainer?.textContent || document.body.textContent || '';
-      const totalMatch = pagText.match(/of\s+(\d+)/i) ||
+      const totalMatch =
         html.match(/of\s+<span[^>]*>(\d+)<\/span>/i) ||
         html.match(/"total":\s*(\d+)/) ||
         html.match(/video_count":\s*(\d+)/);
 
       if (totalMatch) totalVideos = parseInt(totalMatch[1], 10);
 
-      // Extract Livewire component data efficiently
-      const componentEl = document.querySelector('[wire\\:initial-data]');
+      // Extract Livewire component data using regex on raw HTML.
+      // IMPORTANT: JSDOM's querySelector cannot handle attributes with colons (wire:initial-data)
+      // so we use regex extraction directly from the HTML string instead.
       let foundComponent = false;
 
-      if (componentEl) {
+      const wireDataRegex = /wire:initial-data="([^"]*model-videos[^"]*)"/;
+      const wireMatch = html.match(wireDataRegex);
+
+      if (wireMatch) {
         try {
-          const rawData = componentEl.getAttribute('wire:initial-data')
-            ?.replace(/&quot;/g, '"')
-            ?.replace(/&amp;/g, '&') || '';
+          const rawData = wireMatch[1]
+            .replace(/&quot;/g, '"')
+            .replace(/&amp;/g, '&');
           const data = JSON.parse(rawData);
           const name = data.fingerprint?.name || '';
 
@@ -211,10 +178,13 @@ async function initializeSession(username: string): Promise<{ success: boolean; 
               serverMemo: data.serverMemo
             });
             foundComponent = true;
+            console.log(`[ArchiveBate] Found Livewire component: ${name}, ID: ${data.fingerprint?.id}`);
           }
         } catch (e) {
-          console.error('[ArchiveBate] JSON parse error for initial-data:', e);
+          console.error('[ArchiveBate] JSON parse error for wire:initial-data:', e);
         }
+      } else {
+        console.warn('[ArchiveBate] No model-videos wire:initial-data found in HTML');
       }
 
       console.log(`[ArchiveBate] ${username} Init: Videos=${initialVideos.length}, Total=${totalVideos}, Livewire=${foundComponent}`);
@@ -275,36 +245,37 @@ async function fetchArchiveProfile(
     const componentName = session.componentName;
     const xsrfToken = session.cookies.get('XSRF-TOKEN');
 
-    // IMPORTANT: Livewire uses a checksum to verify that the serverMemo matches.
-    // If we modify serverMemo.data, we MUST update the checksum (which we can't).
-    // However, some fields might be editable if the server doesn't check them.
-    // For Page 1, we should stick to the EXACT captured serverMemo to ensure it works.
+    // Build Livewire payload using the latest session state (serverMemo is updated
+    // after each response to keep checksum in sync).
+    const updates: any[] = [];
 
-    const payload: any = {
-      fingerprint: { ...session.fingerprint },
-      serverMemo: { ...session.serverMemo },
-      updates: [{
+    if (page === 1) {
+      // For page 1, call the initial load method
+      updates.push({
         type: "callMethod",
         payload: {
           id: Math.random().toString(36).substring(2, 6),
           method: "load_profile_videos",
           params: []
         }
-      }]
-    };
-
-    // If we are on Page 1, don't modify the serverMemo at all - try to use exactly what came from the server.
-    if (page > 1) {
-      const pageStr = String(page);
-      if (!payload.serverMemo.data) payload.serverMemo.data = {};
-      payload.serverMemo.data.page = pageStr;
-      payload.serverMemo.data.currentPage = pageStr;
-      if (!payload.serverMemo.data.paginators) payload.serverMemo.data.paginators = {};
-      payload.serverMemo.data.paginators.page = pageStr;
-
-      // Note: Changing page might still trigger a checksum error if the server validates it.
-      // If it fails with 419/500, we might need to simulate a click 'updates' instead.
+      });
+    } else {
+      // For subsequent pages, use Livewire's built-in pagination
+      updates.push({
+        type: "callMethod",
+        payload: {
+          id: Math.random().toString(36).substring(2, 6),
+          method: "gotoPage",
+          params: [page, "page"]
+        }
+      });
     }
+
+    const payload: any = {
+      fingerprint: { ...session.fingerprint },
+      serverMemo: { ...session.serverMemo },
+      updates
+    };
 
     console.log(`[ArchiveBate] Fetching ${username} Page ${page} (Retry: ${retryCount})...`);
 
@@ -358,6 +329,14 @@ async function fetchArchiveProfile(
     const html = jsonResponse?.effects?.html || '';
     if (!html) throw new Error("No HTML in Livewire response");
 
+    // Update session state from response for subsequent pagination requests
+    if (jsonResponse.serverMemo) {
+      session.serverMemo = { ...session.serverMemo, ...jsonResponse.serverMemo };
+      if (jsonResponse.serverMemo.checksum) {
+        session.serverMemo.checksum = jsonResponse.serverMemo.checksum;
+      }
+    }
+
     const dom = new JSDOM(html);
     const document = dom.window.document;
 
@@ -390,14 +369,28 @@ async function fetchArchiveProfile(
       } catch (err) { }
     });
 
-    // Pagination
+    // Pagination: check for navigation links or use heuristic
     let totalVideos = 0;
     const paginationText = document.body.textContent || '';
     const totalMatch = paginationText.match(/of\s+(\d+)/i) || html.match(/of\s+<span[^>]*>(\d+)<\/span>/i);
     if (totalMatch) totalVideos = parseInt(totalMatch[1], 10);
 
-    const totalPages = Math.ceil(totalVideos / 20) || page;
-    const hasMore = page < totalPages;
+    // If we can't find total from HTML, use heuristic:
+    // A full page of results (20) suggests there are more
+    const ITEMS_PER_PAGE = 20;
+    let hasMore: boolean;
+    let totalPages: number;
+
+    if (totalVideos > 0) {
+      totalPages = Math.ceil(totalVideos / ITEMS_PER_PAGE);
+      hasMore = page < totalPages;
+    } else {
+      // Heuristic: if we got a full page of results, assume more exist
+      hasMore = videos.length >= ITEMS_PER_PAGE;
+      totalPages = hasMore ? page + 1 : page;
+    }
+
+    console.log(`[ArchiveBate] ${username} page ${page}: ${videos.length} videos, hasMore=${hasMore}`);
 
     return {
       username,

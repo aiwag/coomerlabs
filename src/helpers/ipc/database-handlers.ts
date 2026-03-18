@@ -66,4 +66,20 @@ export function registerDatabaseHandlers() {
         dbService.vacuum();
         return { success: true };
     });
+
+    // Batch operations — reduce N IPC round-trips to 1
+    ipcMain.handle('db:batchToggleFavorites', async (_, creatorIds: string[]) => {
+        const results: Record<string, boolean> = {};
+        for (const id of creatorIds) {
+            results[id] = dbService.toggleFavorite(id);
+        }
+        return results;
+    });
+
+    ipcMain.handle('db:batchSetCache', async (_, entries: Array<{ key: string; value: any; ttl?: number }>) => {
+        for (const { key, value, ttl } of entries) {
+            dbService.setCache(key, value, ttl);
+        }
+        return { success: true, count: entries.length };
+    });
 }

@@ -1,41 +1,42 @@
 // Camarchive API Service
 import type { CamProfile, Video } from './types';
 
-// Add profile to viewed history
-export const addViewedProfile = (username: string) => {
-  const viewed = getViewedProfiles();
-  if (!viewed.includes(username)) {
-    viewed.push(username);
-    localStorage.setItem('camarchive-viewed-profiles', JSON.stringify(viewed));
+const STORAGE_KEY = 'camarchive-viewed-profiles';
+
+// Add profile to saved list
+export const addSavedProfile = (username: string) => {
+  const profiles = getSavedProfiles();
+  if (!profiles.includes(username)) {
+    profiles.unshift(username); // Add to beginning (most recent first)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
   }
 };
 
-// Get viewed profiles from local storage
-export const getViewedProfiles = (): string[] => {
+// Remove profile from saved list
+export const removeSavedProfile = (username: string) => {
+  const profiles = getSavedProfiles();
+  const filtered = profiles.filter(p => p !== username);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+};
+
+// Check if profile is saved
+export const isProfileSaved = (username: string): boolean => {
+  return getSavedProfiles().includes(username);
+};
+
+// Get saved profiles from local storage
+export const getSavedProfiles = (): string[] => {
   try {
-    const stored = localStorage.getItem('camarchive-viewed-profiles');
-    const profiles: string[] = stored ? JSON.parse(stored) : [];
-
-    // Add defaults if they don't exist
-    const defaults = ['laura_mutti', 'vasillisa'];
-    let hasChanged = false;
-
-    defaults.forEach(user => {
-      if (!profiles.includes(user)) {
-        profiles.push(user);
-        hasChanged = true;
-      }
-    });
-
-    if (hasChanged) {
-      localStorage.setItem('camarchive-viewed-profiles', JSON.stringify(profiles));
-    }
-
-    return profiles;
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
   } catch {
-    return ['laura_mutti', 'vasillisa'];
+    return [];
   }
 };
+
+// Legacy alias
+export const getViewedProfiles = getSavedProfiles;
+export const addViewedProfile = addSavedProfile;
 
 // Fetch profile videos from archivebate using Electron IPC (to bypass CORS/headers restrictions)
 export const fetchProfileVideos = async (username: string, page: number = 1): Promise<{ videos: Video[] }> => {
@@ -46,8 +47,6 @@ export const fetchProfileVideos = async (username: string, page: number = 1): Pr
 export const fetchArchiveProfile = async (username: string, page: number = 1): Promise<{ videos: Video[], hasMore: boolean, currentPage: number }> => {
   try {
     console.log('[CamArchive API] Using IPC to fetch videos for:', username, 'page:', page);
-    // Note: window.electronAPI.archivebate is the standardized way other parts of the app use IPC
-    // but camarchive.tsx seems to use window.archivebate. Check which one is correct.
     const api = (window as any).electronAPI?.archivebate || (window as any).archivebate;
     const result = await api.getProfile(username, page);
 
@@ -81,9 +80,9 @@ export const fetchArchiveProfile = async (username: string, page: number = 1): P
   }
 };
 
-// Get profile list from history
+// Get profile list from saved profiles
 export const getViewedProfilesList = async (): Promise<CamProfile[]> => {
-  const usernames = getViewedProfiles();
+  const usernames = getSavedProfiles();
 
   const profiles: CamProfile[] = usernames.map(username => ({
     id: username,

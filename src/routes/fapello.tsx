@@ -2,7 +2,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import React, { useState, useCallback, useEffect, useMemo, memo } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { toast } from 'react-hot-toast';
+import { toast } from 'sonner';
 
 // Components
 import { Header } from '../components/fapello/Header';

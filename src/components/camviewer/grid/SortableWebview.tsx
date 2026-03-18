@@ -131,6 +131,7 @@ const SortableWebviewComponent = ({
     setLoadingProgress(0);
     setError(null);
     setDomReady(false);
+    const scriptInjected = { current: false };
 
     const progressInterval = setInterval(() => {
       // ... (keep same)
@@ -143,12 +144,19 @@ const SortableWebviewComponent = ({
     const webview = webviewRef.current;
     if (!webview) return;
 
+    const injectOnce = () => {
+      if (!scriptInjected.current) {
+        scriptInjected.current = true;
+        executeWebviewScript(webview, webviewInjectionScript);
+      }
+    };
+
     const handleDomReady = () => {
       console.log("[Webview] DOM Ready for:", url);
       clearInterval(progressInterval);
       setLoadingProgress(100);
       setDomReady(true);
-      executeWebviewScript(webview, webviewInjectionScript);
+      injectOnce();
       setTimeout(() => {
         setLoadingStage("ready");
       }, 500);
@@ -163,6 +171,7 @@ const SortableWebviewComponent = ({
 
     const handleDidStartLoading = () => {
       console.log("[Webview] Started loading:", url);
+      scriptInjected.current = false; // Reset on new load
     };
 
     const handleDidStopLoading = () => {
@@ -171,7 +180,7 @@ const SortableWebviewComponent = ({
       setLoadingProgress(100);
       if (!domReady) {
         setDomReady(true);
-        executeWebviewScript(webview, webviewInjectionScript);
+        injectOnce();
         setTimeout(() => {
           setLoadingStage("ready");
         }, 500);
@@ -194,7 +203,7 @@ const SortableWebviewComponent = ({
     const timeoutId = setTimeout(() => {
       if (!domReady) {
         setDomReady(true);
-        executeWebviewScript(webview, webviewInjectionScript);
+        injectOnce();
         setLoadingStage("ready");
       }
     }, 10000);

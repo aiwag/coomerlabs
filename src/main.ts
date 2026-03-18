@@ -15,6 +15,16 @@ import { dbService } from "./services/sqliteService";
 
 const inDevelopment = process.env.NODE_ENV === "development";
 
+// ⚡ GPU & Performance Flags — run on compositor thread, not main thread
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-accelerated-video-decode');
+app.commandLine.appendSwitch('enable-features', 'VaapiVideoDecoder,VaapiVideoEncoder,CanvasOopRasterization');
+app.commandLine.appendSwitch('renderer-process-limit', '8');
+app.commandLine.appendSwitch('process-per-site');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096');
+
 // 🪟 Create main window with optimized settings
 async function createWindow() {
   const preload = path.join(__dirname, "preload.js");
