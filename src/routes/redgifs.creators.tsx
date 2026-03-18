@@ -1,8 +1,8 @@
-// RedGifs - Creators Tab
+// RedGifs - Creators Tab — Gapless Picture Cards
 import { createFileRoute, Link } from "@tanstack/react-router";
 import React, { useEffect, useRef } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { Loader2, RefreshCw, Users, Eye, Heart, Film, CheckCircle } from 'lucide-react';
+import { Loader2, RefreshCw, Users, Eye, Film, CheckCircle } from 'lucide-react';
 import * as api from '../components/redgifs/api';
 import { Creator } from '../components/redgifs/types';
 
@@ -19,55 +19,47 @@ const CreatorCard = React.memo(({ creator }: { creator: Creator }) => {
     <Link
       to="/redgifs/users/$username"
       params={{ username: creator.username }}
-      className="block group relative overflow-hidden rounded-xl border border-white/5 hover:border-pink-500/30 bg-white/[0.03] hover:bg-white/[0.06] transition-all duration-300 cursor-pointer p-4 no-underline text-inherit"
+      className="group relative overflow-hidden cursor-pointer block no-underline text-inherit h-full"
+      style={{ backgroundColor: '#1a1a2e' }}
     >
-      {/* Profile */}
-      <div className="flex items-center gap-3 mb-3">
-        {creator.profileImageUrl ? (
-          <img
-            src={creator.profileImageUrl}
-            alt={creator.username}
-            className="w-12 h-12 rounded-full object-cover border-2 border-white/10 group-hover:border-pink-500/40 transition-colors"
-          />
-        ) : (
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-500/30 to-rose-500/30 flex items-center justify-center text-lg font-bold text-white/80 border-2 border-white/10 group-hover:border-pink-500/40 transition-colors">
-            {initial}
+      {/* Profile image / avatar fills the card */}
+      {creator.profileImageUrl ? (
+        <img
+          src={creator.profileImageUrl}
+          alt={creator.username}
+          loading="lazy"
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-pink-500/20 to-rose-500/10">
+          <span className="text-4xl font-black text-white/20">{initial}</span>
+        </div>
+      )}
+
+      {/* Verified badge */}
+      {creator.verified && (
+        <div className="absolute top-1.5 left-1.5">
+          <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-[7px] font-bold text-white uppercase">
+            <CheckCircle size={8} /> Verified
           </div>
+        </div>
+      )}
+
+      {/* Bottom overlay — name + stats */}
+      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
+        <p className="text-xs font-bold text-white truncate leading-tight">@{creator.username}</p>
+        {creator.name && creator.name !== creator.username && (
+          <p className="text-[8px] text-white/40 truncate">{creator.name}</p>
         )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <p className="text-sm font-bold text-white truncate">{creator.username}</p>
-            {creator.verified && (
-              <CheckCircle size={12} className="text-cyan-400 shrink-0" />
-            )}
-          </div>
-          {creator.name && creator.name !== creator.username && (
-            <p className="text-[10px] text-white/40 truncate">{creator.name}</p>
-          )}
+        <div className="flex items-center gap-2 mt-0.5 text-[9px] text-white/50">
+          <span className="flex items-center gap-0.5"><Users size={8} />{formatNumber(creator.followers)}</span>
+          <span className="flex items-center gap-0.5"><Eye size={8} />{formatNumber(creator.views)}</span>
+          <span className="flex items-center gap-0.5 ml-auto"><Film size={8} />{formatNumber(creator.gifs)}</span>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="py-1.5 rounded-lg bg-white/5">
-          <div className="flex items-center justify-center gap-1 text-white/40 mb-0.5">
-            <Users size={9} />
-          </div>
-          <p className="text-[10px] font-bold text-white/70">{formatNumber(creator.followers)}</p>
-        </div>
-        <div className="py-1.5 rounded-lg bg-white/5">
-          <div className="flex items-center justify-center gap-1 text-white/40 mb-0.5">
-            <Eye size={9} />
-          </div>
-          <p className="text-[10px] font-bold text-white/70">{formatNumber(creator.views)}</p>
-        </div>
-        <div className="py-1.5 rounded-lg bg-white/5">
-          <div className="flex items-center justify-center gap-1 text-white/40 mb-0.5">
-            <Film size={9} />
-          </div>
-          <p className="text-[10px] font-bold text-white/70">{formatNumber(creator.gifs)}</p>
-        </div>
-      </div>
+      {/* Hover ring */}
+      <div className="absolute inset-0 ring-1 ring-inset ring-white/0 group-hover:ring-pink-500/50 transition-all duration-200 pointer-events-none" />
     </Link>
   );
 });
@@ -96,7 +88,6 @@ const RedgifsCreators = () => {
 
   const creators = data?.pages.flatMap((page) => page.creators) || [];
 
-  // Infinite scroll via IntersectionObserver
   useEffect(() => {
     if (!sentinelRef.current) return;
     const observer = new IntersectionObserver(
@@ -112,7 +103,7 @@ const RedgifsCreators = () => {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   return (
-    <div ref={scrollRef} className="h-full overflow-y-auto custom-scrollbar">
+    <div ref={scrollRef} className="h-full overflow-y-auto">
       {isLoading && creators.length === 0 && (
         <div className="flex flex-col items-center justify-center py-40">
           <Loader2 className="w-12 h-12 animate-spin text-pink-500 mb-4" />
@@ -134,14 +125,22 @@ const RedgifsCreators = () => {
       )}
 
       {!error && creators.length > 0 && (
-        <div className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-            {creators.map((creator) => (
-              <CreatorCard key={creator.username} creator={creator} />
+        <>
+          {/* Gapless grid — 1px gaps like GifCard grid */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
+              gap: '1px',
+            }}
+          >
+            {creators.map((creator: Creator) => (
+              <div key={creator.username} style={{ aspectRatio: '3/4' }}>
+                <CreatorCard creator={creator} />
+              </div>
             ))}
           </div>
 
-          {/* Sentinel for infinite scroll */}
           <div ref={sentinelRef} className="py-8 flex justify-center">
             {isFetchingNextPage && (
               <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
@@ -150,7 +149,7 @@ const RedgifsCreators = () => {
               <p className="text-white/40 text-sm">You've reached the end</p>
             )}
           </div>
-        </div>
+        </>
       )}
 
       {!isLoading && !error && creators.length === 0 && (
