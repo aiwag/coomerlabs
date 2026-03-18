@@ -1,162 +1,83 @@
-// RedGifs v2 - Glassmorphic GifCard Component - CSS Animations (no Framer Motion)
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Play, Heart, Eye, Volume2, VolumeX, Loader2, ExternalLink } from 'lucide-react';
-import { useInView } from 'react-intersection-observer';
+// RedGifs v3 - Lightweight Poster-Only Card (no video per card)
+import React, { useCallback } from 'react';
+import { Play, Heart, Eye, Volume2 } from 'lucide-react';
 import { GifItem } from './types';
-import { useRedgifsSettings, useRedgifsPlayer } from './hooks';
-import { getGifUrl, getPosterUrl } from './api';
+import { getPosterUrl } from './api';
 
 interface GifCardProps {
   gif: GifItem;
   index: number;
   onGifClick: (gif: GifItem, index: number) => void;
+  onHover?: (gif: GifItem, rect: DOMRect) => void;
+  onLeave?: () => void;
 }
 
-export const GifCard = React.memo<GifCardProps>(({ gif, index, onGifClick }) => {
-  const { ref, inView } = useInView({
-    triggerOnce: true,
-    threshold: 0.1,
-    rootMargin: '400px',
-  });
+export const GifCard = React.memo<GifCardProps>(({ gif, index, onGifClick, onHover, onLeave }) => {
+  const handleClick = useCallback(() => onGifClick(gif, index), [gif, index, onGifClick]);
 
-  const { quality } = useRedgifsSettings();
-  const { isMuted } = useRedgifsPlayer();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [error, setError] = useState(false);
-
-  const handleMouseEnter = useCallback(() => {
-    if (videoRef.current && inView && isLoaded) {
-      videoRef.current.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
-    }
-  }, [inView, isLoaded]);
-
-  const handleMouseLeave = useCallback(() => {
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-      setIsPlaying(false);
-    }
-  }, []);
-
-  const handleClick = useCallback(() => {
-    onGifClick(gif, index);
-  }, [gif, index, onGifClick]);
-
-  useEffect(() => {
-    if (inView && !isLoaded && !error) {
-      if (videoRef.current) videoRef.current.load();
-    }
-  }, [inView, isLoaded, error]);
+  const handleMouseEnter = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (onHover) onHover(gif, e.currentTarget.getBoundingClientRect());
+  }, [gif, onHover]);
 
   return (
     <div
-      ref={ref}
-      className="anim-slide-up anim-stagger-capped group relative liquid-card-dark rounded-2xl overflow-hidden cursor-pointer"
-      style={{ aspectRatio: '4/5', '--i': index } as React.CSSProperties}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={onLeave}
+      className="group relative overflow-hidden cursor-pointer h-full hover:z-10 hover:ring-1 hover:ring-pink-500/50 transition-all duration-200"
+      style={{ backgroundColor: gif.avgColor || '#111' }}
     >
-      {/* Video Container */}
-      <div className="absolute inset-0 bg-black/50">
-        {!isLoaded && (
-          <img
-            src={getPosterUrl(gif)}
-            alt={gif.description || gif.id}
-            className="w-full h-full object-cover transition-opacity duration-300"
-            style={{ opacity: isLoaded ? 0 : 1 }}
-          />
-        )}
+      {/* Poster image only — no <video> in grid */}
+      <img
+        src={getPosterUrl(gif)}
+        alt=""
+        loading="lazy"
+        className="w-full h-full object-cover transition-transform duration-[2s] ease-out group-hover:scale-110"
+      />
 
-        <video
-          ref={videoRef}
-          src={getGifUrl(gif, quality)}
-          poster={getPosterUrl(gif)}
-          muted={isMuted}
-          loop
-          playsInline
-          className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
-          onLoadedData={() => setIsLoaded(true)}
-          onError={() => setError(true)}
-          onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
-        />
+      {/* Audio badge */}
+      {gif.hasAudio && (
+        <div className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60">
+          <Volume2 size={10} className="text-white/80" />
+        </div>
+      )}
 
-        {gif.hasAudio && (
-          <div className="absolute top-2 right-2 p-1.5 rounded-full bg-black/50 backdrop-blur-sm">
-            {isMuted ? <VolumeX size={12} className="text-white/80" /> : <Volume2 size={12} className="text-white/80" />}
-          </div>
-        )}
-
-        {gif.verified && (
-          <div className="absolute top-2 left-2">
-            <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 backdrop-blur-sm">
-              <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-              <span className="text-[8px] font-bold text-white uppercase">Verified</span>
-            </div>
-          </div>
-        )}
-
-        {!isLoaded && inView && !error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-            <Loader2 className="w-8 h-8 animate-spin text-white/80" />
-          </div>
-        )}
-
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
-            <div className="text-center">
-              <p className="text-white/60 text-sm">Failed to load</p>
-            </div>
-          </div>
-        )}
-
-        {/* Play Button Overlay */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <div className="transform scale-90 group-hover:scale-100 transition-transform duration-300">
-            <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center shadow-2xl">
-              <Play className="w-8 h-8 text-white fill-white ml-1" />
-            </div>
+      {/* Verified badge */}
+      {gif.verified && (
+        <div className="absolute top-1.5 left-1.5">
+          <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 text-[7px] font-bold text-white uppercase">
+            ✓ Verified
           </div>
         </div>
+      )}
 
-        {/* Info Overlay - Bottom */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
-          <div className="flex items-center justify-between text-white">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                <Eye size={12} className="text-white/60" />
-                <span className="text-xs font-medium">{formatNumber(gif.views)}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Heart size={12} className="text-white/60" />
-                <span className="text-xs font-medium">{formatNumber(gif.likes)}</span>
-              </div>
-              {gif.duration && (
-                <div className="px-1.5 py-0.5 rounded bg-black/40 text-[10px] font-medium">
-                  {formatDuration(gif.duration)}
-                </div>
-              )}
-            </div>
-            <a
-              href={`https://redgifs.com/watch/${gif.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <ExternalLink size={12} className="text-white/80" />
-            </a>
-          </div>
+      {/* Play overlay on hover */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center">
+          <Play className="w-6 h-6 text-white fill-white ml-0.5" />
         </div>
       </div>
 
-      {/* Shine Effect */}
-      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent transform -skew-x-12 translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+      {/* Bottom info */}
+      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+        <div className="flex items-center gap-2 text-white">
+          <div className="flex items-center gap-1">
+            <Eye size={9} className="text-white/50" />
+            <span className="text-[9px] font-medium">{formatNumber(gif.views)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Heart size={9} className="text-white/50" />
+            <span className="text-[9px] font-medium">{formatNumber(gif.likes)}</span>
+          </div>
+          {gif.duration && (
+            <span className="text-[8px] px-1 py-px rounded bg-black/50 font-medium ml-auto">
+              {formatDuration(gif.duration)}
+            </span>
+          )}
+        </div>
+        {gif.userName && (
+          <div className="text-[8px] text-white/40 font-bold mt-0.5 truncate">@{gif.userName}</div>
+        )}
       </div>
     </div>
   );

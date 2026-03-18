@@ -50,6 +50,11 @@ export const VideoPlayerModal = React.memo<VideoPlayerModalProps>((props) => {
   } = useRedgifsPlayer();
 
   const [localIndex, setLocalIndex] = useState(currentIndex);
+
+  // Sync localIndex when parent changes it (e.g. clicking a different card)
+  useEffect(() => {
+    setLocalIndex(currentIndex);
+  }, [currentIndex, isOpen]);
   const [showControls, setShowControls] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -189,7 +194,8 @@ export const VideoPlayerModal = React.memo<VideoPlayerModalProps>((props) => {
               />
             </Dialog.Overlay>
 
-            <Dialog.Content className="fixed inset-0 z-50 flex items-center justify-center focus:outline-none">
+            <Dialog.Content aria-describedby={undefined} className="fixed inset-0 z-50 flex items-center justify-center focus:outline-none">
+              <Dialog.Title className="sr-only">Video Player</Dialog.Title>
               <div
                 className="relative w-full h-full flex items-center justify-center"
                 onMouseMove={handleMouseMove}

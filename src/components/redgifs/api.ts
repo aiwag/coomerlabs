@@ -56,6 +56,39 @@ export const fetchTrendingGifs = async ({
   }
 };
 
+// Fetch latest GIFs
+export const fetchLatestGifs = async ({
+  pageParam = 1,
+  gender
+}: {
+  pageParam?: number;
+  gender?: string;
+}) => {
+  const token = await getAuthToken();
+
+  try {
+    let url = `${API_BASE}/gifs/search?order=latest&count=50&type=g&verified=y&page=${pageParam}`;
+
+    if (gender && gender !== 'all') {
+      url += `&tags=${encodeURIComponent(gender)}`;
+    }
+
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    return {
+      gifs: response.data.gifs || [],
+      nextPage: response.data.gifs?.length > 0 ? pageParam + 1 : null,
+    };
+  } catch (error) {
+    console.error('Error fetching latest GIFs:', error);
+    return { gifs: [], nextPage: null };
+  }
+};
+
 // Search GIFs with gender filter
 export const searchGifs = async ({
   query,
