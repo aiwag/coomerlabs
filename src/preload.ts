@@ -74,6 +74,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     updateLists: () => ipcRenderer.invoke('adblock:updateLists'),
   },
 
+  // DNS API
+  dns: {
+    getProviders: () => ipcRenderer.invoke('dns:getProviders'),
+    set: (providerId: string) => ipcRenderer.invoke('dns:set', providerId),
+  },
+
 
   // Proxy Pool Engine API
   proxyPool: {

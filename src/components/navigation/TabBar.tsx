@@ -251,7 +251,6 @@ function getTabTitle(path: string): string {
     '/redgifs': 'RedGifs',
     '/fapello': 'Fapello',
     '/wallheaven': 'Wallheaven',
-    '/coomerKemono': 'Creator Archive',
     '/javtube': 'JavTube',
     '/actresses': 'Star Database',
     '/nsfwalbum': 'NSFWAlbum',

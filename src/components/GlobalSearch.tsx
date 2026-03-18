@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import {
   Search, X, Camera, Clock, Film, Video, Star,
-  Image, Users, Sparkles, Loader2, Radio, Monitor, History, TrendingUp, Trash2, Layers,
+  Image, Users, Sparkles, Loader2, Radio, Monitor, History, TrendingUp, Trash2,
 } from 'lucide-react';
 import { getSavedProfiles } from './camarchive/api';
 import { searchRooms, getMostViewedRooms } from '@/services/chaturbateApiService';
@@ -53,7 +53,6 @@ const CATS: Cat[] = [
   { key: 'fapello',      label: 'Galleries',        icon: <Image size={11} />,    color: 'text-pink-400',   bgColor: 'bg-pink-500/10',   borderColor: 'border-pink-500/20' },
   { key: 'wallhaven',    label: 'Wallpapers',       icon: <Monitor size={11} />,  color: 'text-emerald-400',bgColor: 'bg-emerald-500/10',borderColor: 'border-emerald-500/20' },
   { key: 'creators',     label: 'Coomer Creators',  icon: <Users size={11} />,    color: 'text-purple-400', bgColor: 'bg-purple-500/10', borderColor: 'border-purple-500/20' },
-  { key: 'coomerKemono', label: 'Creator Archive',   icon: <Layers size={11} />,   color: 'text-amber-400',  bgColor: 'bg-amber-500/10',  borderColor: 'border-amber-500/20' },
   { key: 'javtube',      label: 'JavTube',          icon: <Sparkles size={11} />, color: 'text-yellow-400', bgColor: 'bg-yellow-500/10', borderColor: 'border-yellow-500/20' },
   { key: 'actresses',    label: 'Star Database',    icon: <Star size={11} />,     color: 'text-rose-400',   bgColor: 'bg-rose-500/10',   borderColor: 'border-rose-500/20' },
   { key: 'nsfwalbum',    label: 'NSFWAlbum',        icon: <Image size={11} />,    color: 'text-fuchsia-400', bgColor: 'bg-fuchsia-500/10', borderColor: 'border-fuchsia-500/20' },
@@ -393,27 +392,7 @@ export function GlobalSearch() {
       } catch { return []; }
     })());
 
-    // 10 — Creator Archive (coomer.su/kemono.su remote API)
-    T.push((async () => {
-      try {
-        const [coomerRes, kemonoRes] = await Promise.all([
-          axios.get(`https://coomer.su/api/v1/creators.txt?q=${encodeURIComponent(term)}`, { signal, timeout: 4000 }).catch(() => null),
-          axios.get(`https://kemono.su/api/v1/creators.txt?q=${encodeURIComponent(term)}`, { signal, timeout: 4000 }).catch(() => null),
-        ]);
-        if (signal.aborted) return [];
-        const parse = (res: any) => {
-          if (!res?.data) return [];
-          return Array.isArray(res.data) ? res.data : res.data?.data || [];
-        };
-        const all = [...parse(coomerRes), ...parse(kemonoRes)];
-        return all.slice(0, 6).map((c: any) => ({
-          id: `ck-${c.id}-${c.service}`, title: c.name || c.id,
-          subtitle: c.service, category: 'coomerKemono', icon: <Layers size={12} />,
-          route: '/coomerKemono',
-          meta: c.favorited ? `♥ ${c.favorited}` : undefined,
-        }));
-      } catch { return []; }
-    })());
+
 
     // 11 — NSFWAlbum search
     T.push((async () => {

@@ -75,15 +75,6 @@ const labs = [
     glow: "group-hover:shadow-emerald-500/20",
   },
   {
-    id: "coomer-kemono",
-    to: "/coomerKemono",
-    title: "Creator Labs",
-    desc: "Global content aggregation",
-    icon: Users,
-    gradient: "from-orange-600 to-yellow-500",
-    glow: "group-hover:shadow-orange-500/20",
-  },
-  {
     id: "javtube",
     to: "/javtube",
     title: "JavTube",

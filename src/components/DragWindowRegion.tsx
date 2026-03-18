@@ -48,7 +48,6 @@ const apps = [
   { to: "/fapello", title: "Fapello Collections", icon: <ImageIcon size={14} /> },
   { to: "/wallheaven", title: "Wallheaven Labs", icon: <ImageIcon size={14} /> },
   { to: "/creators", title: "Coomer Creators", icon: <Users size={14} /> },
-  { to: "/coomerKemono", title: "Creator Archive", icon: <Users size={14} /> },
   { to: "/javtube", title: "JavTube v2", icon: <Play size={14} /> },
   { to: "/actresses", title: "Star Database", icon: <Star size={14} /> },
   { to: "/nsfwalbum", title: "NSFWAlbum", icon: <ImageIcon size={14} /> },
@@ -774,6 +773,7 @@ function ProxyMenu() {
 function AdBlockButton() {
   const [status, setStatus] = React.useState<any>({ enabled: true, totalBlocked: 0, topDomains: [], recentBlocked: [], filterLists: [], sessions: [], blockedPerMinute: '0' });
   const [updating, setUpdating] = React.useState(false);
+  const [dnsData, setDnsData] = React.useState<{ current: string; providers: { id: string; name: string }[] }>({ current: 'adguard', providers: [] });
 
   const refresh = () => {
     // @ts-ignore
@@ -782,6 +782,8 @@ function AdBlockButton() {
 
   React.useEffect(() => {
     refresh();
+    // @ts-ignore
+    window.electronAPI?.dns?.getProviders().then((d: any) => d && setDnsData(d)).catch(() => {});
     const timer = setInterval(refresh, 3000);
     return () => clearInterval(timer);
   }, []);
@@ -928,6 +930,30 @@ function AdBlockButton() {
             </div>
           </div>
         )}
+
+        {/* DNS Provider Picker */}
+        <div className="p-3 border-t border-white/5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-2">🌐 Encrypted DNS</p>
+          <div className="grid grid-cols-4 gap-1">
+            {dnsData.providers.map((p) => (
+              <button key={p.id}
+                onClick={() => {
+                  // @ts-ignore
+                  window.electronAPI?.dns?.set(p.id).then((newId: string) => {
+                    setDnsData(prev => ({ ...prev, current: newId }));
+                  }).catch(() => {});
+                }}
+                className={`py-1.5 px-1 rounded-md text-[9px] font-bold transition-all ${
+                  dnsData.current === p.id
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : 'bg-white/[0.03] text-white/40 hover:text-white/60 hover:bg-white/[0.06] border border-transparent'
+                }`}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
       </PopoverContent>
     </Popover>
   );

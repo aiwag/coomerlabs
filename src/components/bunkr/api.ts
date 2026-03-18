@@ -41,56 +41,47 @@ export function parseIndexHtml(html: string): BunkrAlbum[] {
   const albums: BunkrAlbum[] = [];
   const seen = new Set<string>();
 
-  // The <a href="/a/SLUG"> on bunkr-albums.io is a small chevron icon INSIDE
-  // the card container — the actual title/thumb/meta are in the parent element.
-  doc.querySelectorAll('a[href*="/a/"]').forEach((linkEl) => {
+  // Cards are flat divs with an <a> linking to https://bunkr.cr/a/SLUG
+  // Structure:
+  //   div.rounded-xl.group/item
+  //     span.ic-albums (icon)
+  //     div.flex-1
+  //       p > span.truncate (title)
+  //       p.text-xs > span (file count, e.g. "8 files")
+  //     a[href="https://bunkr.cr/a/SLUG"] (chevron link)
+  doc.querySelectorAll('a[href*="bunkr.cr/a/"], a[href*="/a/"]').forEach((linkEl) => {
     const href = linkEl.getAttribute('href') || '';
     const slugMatch = href.match(/\/a\/([A-Za-z0-9_-]+)/);
     if (!slugMatch) return;
     const slug = slugMatch[1];
-    if (seen.has(slug)) return; // deduplicate
+    if (seen.has(slug)) return;
     seen.add(slug);
 
-    // Navigate up to the full card container — the <a> is deeply nested inside the card.
-    // Walk up until we find a container that has <img> children (the thumbnails).
+    // Walk up to the card container — the div with rounded-xl or group/item
     let card: Element | null = linkEl.parentElement;
     for (let i = 0; i < 5 && card; i++) {
-      if (card.querySelector('img')) break;
+      if (card.classList?.contains('rounded-xl') || card.getAttribute('class')?.includes('group/item')) break;
       card = card.parentElement;
     }
-    if (!card) return;
+    if (!card) card = linkEl.parentElement; // fallback to parent
 
-    // Collect all images for multi-thumb preview from the card container
-    const thumbs: string[] = [];
-    card.querySelectorAll('img').forEach((img) => {
-      const src = img.getAttribute('src') || img.getAttribute('data-src') || '';
-      if (src && !src.includes('logo') && !src.includes('favicon') && !src.includes('icon') && !src.endsWith('.svg') && !src.includes('bunkr')) {
-        if (src.startsWith('http')) {
-          thumbs.push(src);
-        } else {
-          thumbs.push(`https://bunkr-albums.io${src.startsWith('/') ? '' : '/'}${src}`);
-        }
-      }
-    });
-    const thumb = thumbs[0] || '';
-
-    // Extract title from the card — try multiple selectors
-    const allText = card.textContent?.trim() || '';
-    const title = card.querySelector('h2, h3, p.font-semibold, p.font-bold, p.truncate')?.textContent?.trim()
-      || card.querySelector('p, span')?.textContent?.trim()
-      || allText.split('\n').filter(l => l.trim())[0]?.trim()
+    // Extract title — look for .truncate span first, then any p or span
+    const title = card?.querySelector('.truncate')?.textContent?.trim()
+      || card?.querySelector('p.font-semibold, p.text-subs')?.textContent?.trim()
+      || card?.querySelector('p span')?.textContent?.trim()
       || slug;
 
-    // Extract metadata (file count, size, type counts)
-    const metaEl = card.querySelector('small, .text-xs, .text-sm');
-    const metaText = metaEl?.textContent?.trim() || allText;
-    const countMatch = metaText.match(/(\d+)\s*files?/i);
-    const sizeMatch = metaText.match(/([\d.]+\s*(?:GB|MB|KB|TB))/i);
-    const imgCountMatch = metaText.match(/(\d+)\s*image/i);
-    const vidCountMatch = metaText.match(/(\d+)\s*video/i);
-
+    // Extract file count from text like "8 files" or "160 files"
+    const cardText = card?.textContent || '';
+    const countMatch = cardText.match(/(\d+)\s*files?/i);
     const fileCount = countMatch ? parseInt(countMatch[1], 10) : 0;
 
+    // Extract size if present
+    const sizeMatch = cardText.match(/([\d.]+\s*(?:GB|MB|KB|TB))/i);
+    const imgCountMatch = cardText.match(/(\d+)\s*image/i);
+    const vidCountMatch = cardText.match(/(\d+)\s*video/i);
+
+    // No thumbnails on the index page — bunkr-albums.io uses CSS font icons
     albums.push({
       id: slug,
       slug,
@@ -99,8 +90,8 @@ export function parseIndexHtml(html: string): BunkrAlbum[] {
       imageCount: imgCountMatch ? parseInt(imgCountMatch[1], 10) : 0,
       videoCount: vidCountMatch ? parseInt(vidCountMatch[1], 10) : 0,
       size: sizeMatch ? sizeMatch[1] : '',
-      thumb,
-      thumbs: thumbs.slice(0, 4),
+      thumb: '',
+      thumbs: [],
       url: `https://bunkr.cr/a/${slug}`,
     });
   });

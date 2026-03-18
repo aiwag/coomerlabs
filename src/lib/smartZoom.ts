@@ -1,13 +1,14 @@
 /**
- * Smart Zoom Engine — ONNX-based face/body detection for cinema mode
+ * Smart Zoom Engine v3 — AI Cinema Director
  *
- * Uses NudeNet 320n.onnx (YOLOv8-nano) to detect faces and body regions,
- * then converts those detections into Ken Burns zoom targets.
+ * Uses MediaPipe FaceDetector for fast, accurate face detection with keypoints.
+ * No heavy ONNX models — runs entirely on GPU-accelerated WASM, no UI freezing.
  *
- * All inference runs client-side via ONNX Runtime Web (WASM).
+ * CinemaDirector takes face detections per frame and produces ShotPlans
+ * with zoom type, center, scale, duration, and easing per frame.
  */
 
-import * as ort from 'onnxruntime-web';
+import { FilesetResolver, FaceDetector } from '@mediapipe/tasks-vision';
 
 // ──────────────────────────── Types ────────────────────────────
 
@@ -18,311 +19,311 @@ export interface Detection {
   y: number;  // center Y (0-1 normalized)
   w: number;  // width (0-1 normalized)
   h: number;  // height (0-1 normalized)
+  keypoints?: { x: number; y: number; name: string }[];
 }
 
-export interface ZoomTarget {
-  x: number;  // center X as percentage (0-100)
-  y: number;  // center Y as percentage (0-100)
-  scale: number;  // zoom scale (1.05-1.15)
+export type ShotType = 'closeup_face' | 'body_detail' | 'body_wide' | 'establishing';
+
+export interface ShotPlan {
+  type: ShotType;
+  originX: number;  // zoom center X (0-100%)
+  originY: number;  // zoom center Y (0-100%)
+  scale: number;    // zoom scale (1.0-1.6)
+  duration: number; // how long to show this frame (ms)
+  easing: string;   // CSS easing curve
+  detections: Detection[];
 }
-
-// NudeNet 320n classes
-const CLASSES = [
-  'EXPOSED_ANUS', 'EXPOSED_ARMPITS', 'COVERED_BELLY', 'EXPOSED_BELLY',
-  'COVERED_BUTTOCKS', 'EXPOSED_BUTTOCKS', 'FACE_F', 'FACE_M',
-  'COVERED_FEET', 'EXPOSED_FEET', 'COVERED_BREAST_F', 'EXPOSED_BREAST_F',
-  'COVERED_GENITALIA_F', 'EXPOSED_GENITALIA_F', 'EXPOSED_BREAST_M',
-  'EXPOSED_GENITALIA_M',
-];
-
-// Priority order for zoom targeting (higher = more interesting to zoom into)
-const PRIORITY: Record<string, number> = {
-  'FACE_F': 10, 'FACE_M': 10,
-  'EXPOSED_BREAST_F': 8, 'EXPOSED_BUTTOCKS': 7,
-  'EXPOSED_GENITALIA_F': 7, 'EXPOSED_GENITALIA_M': 6,
-  'EXPOSED_BELLY': 5, 'EXPOSED_BREAST_M': 4,
-  'COVERED_BREAST_F': 3, 'COVERED_BUTTOCKS': 3,
-  'COVERED_BELLY': 2, 'COVERED_GENITALIA_F': 2,
-  'EXPOSED_ARMPITS': 1, 'EXPOSED_ANUS': 1,
-  'COVERED_FEET': 0, 'EXPOSED_FEET': 0,
-};
 
 // Color coding for detection overlay
 export const DETECTION_COLORS: Record<string, string> = {
-  'FACE_F': '#f472b6', 'FACE_M': '#60a5fa',
-  'EXPOSED_BREAST_F': '#fb923c', 'EXPOSED_BUTTOCKS': '#f87171',
-  'EXPOSED_GENITALIA_F': '#e879f9', 'EXPOSED_GENITALIA_M': '#c084fc',
-  'EXPOSED_BELLY': '#fbbf24', 'EXPOSED_BREAST_M': '#fdba74',
-  'COVERED_BREAST_F': '#86efac', 'COVERED_BUTTOCKS': '#6ee7b7',
-  'COVERED_BELLY': '#a3e635', 'COVERED_GENITALIA_F': '#67e8f9',
-  'EXPOSED_ARMPITS': '#fcd34d', 'EXPOSED_ANUS': '#f9a8d4',
-  'COVERED_FEET': '#94a3b8', 'EXPOSED_FEET': '#cbd5e1',
+  'FACE': '#60a5fa',
+  'EYE_LEFT': '#38bdf8', 'EYE_RIGHT': '#38bdf8',
+  'NOSE': '#a78bfa', 'MOUTH': '#fb7185',
+  'LEFT_EAR': '#fbbf24', 'RIGHT_EAR': '#fbbf24',
 };
 
-// ──────────────────────────── Singleton Session ────────────────────────────
+// ──────────────────────────── MediaPipe Face Detector ────────────────────────────
 
-let session: ort.InferenceSession | null = null;
-let sessionLoading: Promise<ort.InferenceSession> | null = null;
+let faceDetector: FaceDetector | null = null;
+let faceDetectorLoading: Promise<FaceDetector> | null = null;
 
-/**
- * Lazily init the ONNX inference session (singleton).
- * Model is loaded from public/models/320n.onnx
- */
-export async function initDetector(): Promise<ort.InferenceSession> {
-  if (session) return session;
-  if (sessionLoading) return sessionLoading;
+async function initFaceDetector(): Promise<FaceDetector> {
+  if (faceDetector) return faceDetector;
+  if (faceDetectorLoading) return faceDetectorLoading;
 
-  sessionLoading = (async () => {
-    // Configure WASM paths — point to our public/models/ copies
-    ort.env.wasm.numThreads = 1; // single thread to avoid SharedArrayBuffer issues in Electron
-    ort.env.wasm.simd = true;
-    ort.env.wasm.wasmPaths = new URL('/models/', window.location.origin).href;
-
-    const modelUrl = new URL('/models/320n.onnx', window.location.origin).href;
-
-    console.log('[SmartZoom] Loading NudeNet 320n.onnx model...');
-    const s = await ort.InferenceSession.create(modelUrl, {
-      executionProviders: ['wasm'],
-      graphOptimizationLevel: 'all',
+  faceDetectorLoading = (async () => {
+    console.log('[SmartZoom] Loading MediaPipe FaceDetector...');
+    const vision = await FilesetResolver.forVisionTasks(
+      new URL('/models/mediapipe/', window.location.origin).href,
+    );
+    const detector = await FaceDetector.createFromOptions(vision, {
+      baseOptions: {
+        modelAssetPath: new URL('/models/blaze_face_short_range.tflite', window.location.origin).href,
+        delegate: 'CPU',
+      },
+      runningMode: 'IMAGE',
+      minDetectionConfidence: 0.5,
     });
-    console.log('[SmartZoom] Model loaded. Inputs:', s.inputNames, 'Outputs:', s.outputNames);
-    session = s;
-    return s;
+    console.log('[SmartZoom] MediaPipe FaceDetector ready!');
+    faceDetector = detector;
+    return detector;
   })();
 
-  return sessionLoading;
+  return faceDetectorLoading;
 }
 
-// ──────────────────────────── Image Preprocessing ────────────────────────────
+async function detectFaces(imageElement: HTMLImageElement): Promise<Detection[]> {
+  const detector = await initFaceDetector();
+  const result = detector.detect(imageElement);
+  const detections: Detection[] = [];
 
-/**
- * Load an image URL and preprocess for NudeNet 320×320 input.
- * Returns Float32Array in NCHW format [1, 3, 320, 320] normalized to 0-1.
- */
-async function preprocessImage(imageUrl: string): Promise<Float32Array> {
+  for (const face of result.detections) {
+    const bb = face.boundingBox;
+    if (!bb) continue;
+    const imgW = imageElement.naturalWidth;
+    const imgH = imageElement.naturalHeight;
+
+    const det: Detection = {
+      class: 'FACE',
+      confidence: face.categories?.[0]?.score ?? 0.9,
+      x: (bb.originX + bb.width / 2) / imgW,
+      y: (bb.originY + bb.height / 2) / imgH,
+      w: bb.width / imgW,
+      h: bb.height / imgH,
+      keypoints: [],
+    };
+
+    // Extract keypoints (eyes, nose, mouth, ears)
+    if (face.keypoints) {
+      for (const kp of face.keypoints) {
+        det.keypoints!.push({
+          x: kp.x,
+          y: kp.y,
+          name: kp.label || 'unknown',
+        });
+      }
+    }
+
+    detections.push(det);
+  }
+
+  return detections;
+}
+
+// ──────────────────────────── Image Analysis ────────────────────────────
+
+async function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.referrerPolicy = 'no-referrer';
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 320;
-      canvas.height = 320;
-      const ctx = canvas.getContext('2d')!;
-
-      // Letterbox: scale to fit 320×320 preserving aspect ratio
-      const scale = Math.min(320 / img.naturalWidth, 320 / img.naturalHeight);
-      const w = img.naturalWidth * scale;
-      const h = img.naturalHeight * scale;
-      const dx = (320 - w) / 2;
-      const dy = (320 - h) / 2;
-
-      ctx.fillStyle = '#808080'; // neutral gray padding
-      ctx.fillRect(0, 0, 320, 320);
-      ctx.drawImage(img, dx, dy, w, h);
-
-      const imageData = ctx.getImageData(0, 0, 320, 320);
-      const { data } = imageData;
-
-      // Convert to NCHW Float32Array normalized to [0, 1]
-      const float32 = new Float32Array(3 * 320 * 320);
-      for (let i = 0; i < 320 * 320; i++) {
-        float32[i] = data[i * 4] / 255;                 // R
-        float32[320 * 320 + i] = data[i * 4 + 1] / 255; // G
-        float32[2 * 320 * 320 + i] = data[i * 4 + 2] / 255; // B
-      }
-
-      resolve(float32);
-    };
-    img.onerror = () => reject(new Error(`Failed to load image: ${imageUrl}`));
-    img.src = imageUrl;
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error(`Failed to load: ${url}`));
+    img.src = url;
   });
 }
 
-// ──────────────────────────── Post-processing ────────────────────────────
+/** Analyze a single frame — fast face detection only */
+export async function analyzeFrame(imageUrl: string): Promise<Detection[]> {
+  const img = await loadImage(imageUrl);
+  return detectFaces(img).catch(() => [] as Detection[]);
+}
 
-const CONF_THRESHOLD = 0.25;
-const IOU_THRESHOLD = 0.45;
+// ──────────────────────────── Cinema Director ────────────────────────────
 
-/**
- * YOLOv8 output post-processing.
- * Output tensor shape: [1, numClasses+4, numBoxes] → transpose to [numBoxes, numClasses+4]
- * Each box: [cx, cy, w, h, class_scores...]
- */
-function postProcess(output: ort.Tensor): Detection[] {
-  const data = output.data as Float32Array;
-  const [, features, numBoxes] = output.dims; // [1, 20, 2100] for 320n
+const SHOT_CONFIG: Record<ShotType, { scaleRange: [number, number]; durationRange: [number, number]; easing: string }> = {
+  closeup_face:  { scaleRange: [1.25, 1.45], durationRange: [4000, 6000], easing: 'cubic-bezier(0.25, 0.1, 0.25, 1)' },
+  body_detail:   { scaleRange: [1.15, 1.35], durationRange: [3500, 5000], easing: 'cubic-bezier(0.22, 0.61, 0.36, 1)' },
+  body_wide:     { scaleRange: [1.06, 1.14], durationRange: [5000, 7000], easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)' },
+  establishing:  { scaleRange: [1.02, 1.06], durationRange: [5000, 8000], easing: 'cubic-bezier(0.39, 0.575, 0.565, 1)' },
+};
 
-  // Transpose from [1, features, numBoxes] to iterate per box
-  const detections: Detection[] = [];
+function lerp(a: number, b: number, t: number): number { return a + (b - a) * t; }
 
-  for (let b = 0; b < numBoxes; b++) {
-    const cx = data[0 * numBoxes + b];
-    const cy = data[1 * numBoxes + b];
-    const w = data[2 * numBoxes + b];
-    const h = data[3 * numBoxes + b];
+function pickShotType(dets: Detection[], prevType: ShotType | null): ShotType {
+  const faces = dets.filter(d => d.class === 'FACE');
 
-    // Find best class
-    let bestClass = 0;
-    let bestScore = 0;
-    for (let c = 0; c < features - 4; c++) {
-      const score = data[(c + 4) * numBoxes + b];
-      if (score > bestScore) {
-        bestScore = score;
-        bestClass = c;
+  // Build candidate list
+  const candidates: ShotType[] = [];
+
+  if (faces.length === 1) candidates.push('closeup_face');
+  if (faces.length >= 2) candidates.push('body_wide');
+  if (faces.length === 1) candidates.push('body_detail');
+  candidates.push('establishing'); // always available as fallback
+
+  // Prefer variety — avoid repeating the same shot type
+  if (prevType && candidates.length > 1) {
+    const varied = candidates.filter(c => c !== prevType);
+    if (varied.length > 0) return varied[0];
+  }
+
+  return candidates[0];
+}
+
+function pickZoomCenter(dets: Detection[], shotType: ShotType): { x: number; y: number } {
+  if (shotType === 'closeup_face') {
+    const face = dets.find(d => d.class === 'FACE');
+    if (face?.keypoints && face.keypoints.length >= 2) {
+      // Zoom to between the eyes for a cinematic close-up
+      const eyes = face.keypoints.filter(k =>
+        k.name === 'leftEye' || k.name === 'rightEye' ||
+        k.name === 'left_eye' || k.name === 'right_eye'
+      );
+      if (eyes.length >= 2) {
+        return { x: ((eyes[0].x + eyes[1].x) / 2) * 100, y: ((eyes[0].y + eyes[1].y) / 2) * 100 };
       }
     }
-
-    if (bestScore < CONF_THRESHOLD) continue;
-
-    detections.push({
-      class: CLASSES[bestClass] || `class_${bestClass}`,
-      confidence: bestScore,
-      x: cx / 320,
-      y: cy / 320,
-      w: w / 320,
-      h: h / 320,
-    });
+    if (face) return { x: face.x * 100, y: face.y * 100 };
   }
 
-  // NMS
-  return nms(detections, IOU_THRESHOLD);
-}
+  if (shotType === 'body_detail') {
+    const face = dets.find(d => d.class === 'FACE');
+    // Zoom slightly below face (chest area) for body detail
+    if (face) return { x: face.x * 100, y: Math.min(90, face.y * 100 + 15) };
+  }
 
-function nms(detections: Detection[], iouThreshold: number): Detection[] {
-  // Sort by confidence descending
-  const sorted = [...detections].sort((a, b) => b.confidence - a.confidence);
-  const kept: Detection[] = [];
-
-  for (const det of sorted) {
-    let dominated = false;
-    for (const k of kept) {
-      if (iou(det, k) > iouThreshold) {
-        dominated = true;
-        break;
-      }
+  if (shotType === 'body_wide') {
+    // Center on the centroid of all faces
+    if (dets.length > 0) {
+      const cx = dets.reduce((s, d) => s + d.x, 0) / dets.length;
+      const cy = dets.reduce((s, d) => s + d.y, 0) / dets.length;
+      return { x: cx * 100, y: cy * 100 };
     }
-    if (!dominated) kept.push(det);
   }
 
-  return kept;
+  // Establishing: gentle offset from center for Ken Burns feel
+  return { x: 45 + Math.random() * 10, y: 40 + Math.random() * 20 };
 }
 
-function iou(a: Detection, b: Detection): number {
-  const ax1 = a.x - a.w / 2, ay1 = a.y - a.h / 2;
-  const ax2 = a.x + a.w / 2, ay2 = a.y + a.h / 2;
-  const bx1 = b.x - b.w / 2, by1 = b.y - b.h / 2;
-  const bx2 = b.x + b.w / 2, by2 = b.y + b.h / 2;
-
-  const ix1 = Math.max(ax1, bx1), iy1 = Math.max(ay1, by1);
-  const ix2 = Math.min(ax2, bx2), iy2 = Math.min(ay2, by2);
-  const inter = Math.max(0, ix2 - ix1) * Math.max(0, iy2 - iy1);
-
-  const areaA = (ax2 - ax1) * (ay2 - ay1);
-  const areaB = (bx2 - bx1) * (by2 - by1);
-  return inter / (areaA + areaB - inter + 1e-6);
-}
-
-// ──────────────────────────── Detection API ────────────────────────────
-
-/**
- * Detect regions in a single image.
- */
-export async function detectRegions(imageUrl: string): Promise<Detection[]> {
-  const s = await initDetector();
-  const inputData = await preprocessImage(imageUrl);
-  const tensor = new ort.Tensor('float32', inputData, [1, 3, 320, 320]);
-
-  const inputName = s.inputNames[0];
-  const results = await s.run({ [inputName]: tensor });
-  const outputName = s.outputNames[0];
-
-  return postProcess(results[outputName]);
-}
-
-/**
- * Pick the best zoom target from detections.
- * Returns a Ken Burns target point.
- */
-export function pickZoomTarget(detections: Detection[]): ZoomTarget {
-  if (detections.length === 0) {
-    // Random fallback
-    return {
-      x: 40 + Math.random() * 20,
-      y: 40 + Math.random() * 20,
-      scale: 1.0 + Math.random() * 0.08,
-    };
-  }
-
-  // Sort by priority, then confidence
-  const sorted = [...detections].sort((a, b) => {
-    const pa = PRIORITY[a.class] ?? 0;
-    const pb = PRIORITY[b.class] ?? 0;
-    if (pa !== pb) return pb - pa;
-    return b.confidence - a.confidence;
-  });
-
-  const best = sorted[0];
-
-  // Zoom scale based on detection size (smaller regions = more zoom)
-  const regionSize = Math.max(best.w, best.h);
-  const scale = regionSize < 0.15 ? 1.12 : regionSize < 0.3 ? 1.08 : 1.05;
+export function planShot(dets: Detection[], prevType: ShotType | null): ShotPlan {
+  const type = pickShotType(dets, prevType);
+  const center = pickZoomCenter(dets, type);
+  const config = SHOT_CONFIG[type];
+  const t = Math.random();
 
   return {
-    x: Math.min(90, Math.max(10, best.x * 100)),
-    y: Math.min(90, Math.max(10, best.y * 100)),
-    scale,
+    type,
+    originX: Math.min(92, Math.max(8, center.x)),
+    originY: Math.min(92, Math.max(8, center.y)),
+    scale: lerp(config.scaleRange[0], config.scaleRange[1], t),
+    duration: Math.round(lerp(config.durationRange[0], config.durationRange[1], t)),
+    easing: config.easing,
+    detections: dets,
   };
 }
 
-// ──────────────────────────── Batch Analysis ────────────────────────────
+// ──────────────────────────── Lazy Per-Frame Analysis ────────────────────────────
+// Instead of analyzing ALL frames upfront (which freezes UI),
+// analyze one frame at a time on-demand and cache results.
+
+const shotCache = new Map<string, ShotPlan>();
+let lastShotType: ShotType | null = null;
+let modelReady = false;
+let modelInitPromise: Promise<void> | null = null;
+
+/** Initialize models (called once). */
+export async function initModels(): Promise<void> {
+  if (modelReady) return;
+  if (modelInitPromise) return modelInitPromise;
+  modelInitPromise = initFaceDetector()
+    .then(() => { modelReady = true; })
+    .catch(e => console.warn('[SmartZoom] FaceDetector init failed:', e));
+  return modelInitPromise;
+}
+
+/**
+ * Analyze a single frame lazily. Returns cached result if available.
+ * Non-blocking: uses requestIdleCallback so detection runs when browser is idle.
+ */
+export async function analyzeSingleFrame(imageUrl: string): Promise<ShotPlan> {
+  // Return cached result immediately
+  if (shotCache.has(imageUrl)) return shotCache.get(imageUrl)!;
+
+  // Ensure model is ready
+  await initModels();
+  if (!modelReady) return makeFallbackShot();
+
+  // Use requestIdleCallback to avoid blocking UI
+  const dets = await new Promise<Detection[]>((resolve) => {
+    const run = async () => {
+      try {
+        const result = await analyzeFrame(imageUrl);
+        resolve(result);
+      } catch {
+        resolve([]);
+      }
+    };
+
+    if (typeof requestIdleCallback !== 'undefined') {
+      requestIdleCallback(() => { run(); }, { timeout: 500 });
+    } else {
+      setTimeout(() => { run(); }, 16);
+    }
+  });
+
+  const shot = planShot(dets, lastShotType);
+  shotCache.set(imageUrl, shot);
+  lastShotType = shot.type;
+  return shot;
+}
+
+function makeFallbackShot(): ShotPlan {
+  return {
+    type: 'establishing',
+    originX: 45 + Math.random() * 10,
+    originY: 40 + Math.random() * 20,
+    scale: 1.03 + Math.random() * 0.03,
+    duration: 5000 + Math.random() * 3000,
+    easing: 'cubic-bezier(0.39, 0.575, 0.565, 1)',
+    detections: [],
+  };
+}
+
+/** Clear the shot cache (call on album change). */
+export function clearShotCache(): void {
+  shotCache.clear();
+  lastShotType = null;
+}
+
+// ──────────────────────────── Legacy batch API (kept for compatibility) ────────────────────────────
 
 export interface AnalysisProgress {
   done: number;
   total: number;
-  targets: Map<string, ZoomTarget>;
-  detections: Map<string, Detection[]>;
+  shots: Map<string, ShotPlan>;
+  ready: boolean;
 }
 
 /**
- * Analyze all frames in background, calling onProgress for each completed frame.
- * Returns a Map of imageUrl → ZoomTarget + detections.
+ * Analyze frames lazily — only pre-analyzes first 5 frames, rest are on-demand.
  */
 export async function analyzeFrames(
   imageUrls: string[],
   onProgress?: (progress: AnalysisProgress) => void,
   abortSignal?: { aborted: boolean },
-): Promise<{ targets: Map<string, ZoomTarget>; detections: Map<string, Detection[]> }> {
-  const targets = new Map<string, ZoomTarget>();
-  const detections = new Map<string, Detection[]>();
+): Promise<Map<string, ShotPlan>> {
+  await initModels();
 
-  // Init model first
-  await initDetector();
+  // Only pre-analyze first 5 frames to get playback started quickly
+  const preloadCount = Math.min(5, imageUrls.length);
 
-  for (let i = 0; i < imageUrls.length; i++) {
+  for (let i = 0; i < preloadCount; i++) {
     if (abortSignal?.aborted) break;
 
-    const url = imageUrls[i];
-    try {
-      const dets = await detectRegions(url);
-      const target = pickZoomTarget(dets);
-      targets.set(url, target);
-      detections.set(url, dets);
-    } catch (e) {
-      console.warn(`[SmartZoom] Failed to analyze frame ${i}:`, e);
-      targets.set(url, {
-        x: 40 + Math.random() * 20,
-        y: 40 + Math.random() * 20,
-        scale: 1.0 + Math.random() * 0.08,
-      });
-      detections.set(url, []);
-    }
+    await analyzeSingleFrame(imageUrls[i]);
 
-    onProgress?.({ done: i + 1, total: imageUrls.length, targets, detections });
-
-    // Yield to UI thread every frame
-    await new Promise(r => setTimeout(r, 0));
+    // Yield generously between each frame
+    await new Promise(r => setTimeout(r, 100));
   }
 
-  return { targets, detections };
+  // Signal ready immediately
+  onProgress?.({
+    done: preloadCount,
+    total: imageUrls.length,
+    shots: new Map(shotCache),
+    ready: true,
+  });
+
+  return new Map(shotCache);
 }
+

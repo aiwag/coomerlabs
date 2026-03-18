@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { fetchHomepage, searchContent, fetchAlbum, fetchModels, resolveHQ, type NsfwAlbumPost, type NsfwAlbumDetail, type NsfwModelCategory } from '@/components/nsfwalbum/api';
 import { Search, Loader2, Image as ImageIcon, Camera, ArrowLeft, ChevronLeft, ChevronRight, Grid, Maximize2, ChevronDown, ChevronRight as ChevronR, Tag, Users, Film, Play, Pause, ZoomIn, Eye, EyeOff } from 'lucide-react';
-import { analyzeFrames, type ZoomTarget, type Detection, DETECTION_COLORS } from '../lib/smartZoom';
+import { analyzeSingleFrame, initModels, type ShotPlan, type Detection, DETECTION_COLORS } from '../lib/smartZoom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Swiper, SwiperSlide } from 'swiper/react';
@@ -313,7 +313,6 @@ function VirtualAlbumGrid({
       >
         {virtualizer.getVirtualItems().map((virtualRow) => {
           if (virtualRow.index >= rows.length) {
-            // Sentinel / loading row
             return (
               <div
                 key="sentinel"
@@ -328,24 +327,24 @@ function VirtualAlbumGrid({
           return (
             <div
               key={virtualRow.index}
-              className="absolute top-0 left-0 w-full px-4 py-1.5"
+              className="absolute top-0 left-0 w-full"
               style={{
                 transform: `translateY(${virtualRow.start}px)`,
                 height: virtualRow.size,
                 display: 'grid',
                 gridTemplateColumns: `repeat(${cols}, 1fr)`,
-                gap: '0.75rem',
+                gap: '1px',
               }}
             >
               {row.map((post, ci) => (
                 <button
                   key={`${virtualRow.index}-${ci}`}
                   onClick={() => onOpenAlbum(post.id)}
-                  className="group relative rounded-xl overflow-hidden bg-white/[0.03] border border-white/[0.06] hover:border-fuchsia-500/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-fuchsia-500/10 text-left cursor-pointer h-full"
+                  className="group relative overflow-hidden bg-black text-left cursor-pointer h-full hover:z-10 hover:ring-1 hover:ring-fuchsia-500/50 transition-all duration-200"
                 >
                   <div className="absolute inset-0 overflow-hidden">
                     {post.thumbs.length >= 3 ? (
-                      <div className="grid grid-cols-3 h-full gap-px bg-black/30">
+                      <div className="grid grid-cols-3 h-full gap-0 bg-black">
                         {post.thumbs.slice(0, 3).map((t, i) => (
                           <img key={i} src={t} alt="" loading="lazy" referrerPolicy="no-referrer"
                             className="w-full h-full object-cover transition-transform duration-[3s] ease-out group-hover:scale-110"
@@ -362,15 +361,13 @@ function VirtualAlbumGrid({
                       </div>
                     )}
                   </div>
-                  {/* Always-visible subtle gradient */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-                  {/* Hover-only info overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 p-2.5 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out bg-gradient-to-t from-black/90 via-black/70 to-transparent">
-                    <h3 className="text-[11px] font-semibold text-white leading-tight line-clamp-2 drop-shadow-md">
+                  {/* Bottom gradient + info — always visible */}
+                  <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
+                    <h3 className="text-[10px] font-bold text-white/90 leading-tight line-clamp-1 drop-shadow-md">
                       {post.title}
                     </h3>
                     {post.thumbs.length > 0 && (
-                      <span className="text-[9px] text-white/40 font-bold mt-0.5 inline-block">
+                      <span className="text-[8px] text-white/40 font-bold">
                         {post.thumbs.length}+ photos
                       </span>
                     )}
@@ -795,19 +792,31 @@ function NsfwCinemaViewer({ images, getUrl, onClose }: {
 
   const total = images.length;
 
+  // AI Cinema Director: state declarations (needed before playback timer)
+  const [shotPlans, setShotPlans] = useState<Map<string, ShotPlan>>(new Map());
+  const [aiProgress, setAiProgress] = useState<{ done: number; total: number } | null>(null);
+  const [aiReady, setAiReady] = useState(false);
+  const [showDetections, setShowDetections] = useState(false);
+  const aiAbortRef = useRef({ aborted: false });
+
+  // Use per-frame duration from ShotPlan, fallback to fps-based
   useEffect(() => {
     if (playing && !isDragging && !zoomed) {
-      intervalRef.current = window.setInterval(() => {
+      const currentUrl = getUrl(images[frameIdx]);
+      const shot = shotPlans.get(currentUrl);
+      const frameDuration = shot?.duration ?? (1000 / fps);
+
+      intervalRef.current = window.setTimeout(() => {
         setFrameIdx(prev => {
           if (prev >= total - 1) { setPlaying(false); return prev; }
           return prev + 1;
         });
-      }, 1000 / fps);
+      }, frameDuration);
     } else {
-      if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+      if (intervalRef.current !== null) window.clearTimeout(intervalRef.current);
     }
-    return () => { if (intervalRef.current !== null) window.clearInterval(intervalRef.current); };
-  }, [playing, fps, total, isDragging, zoomed]);
+    return () => { if (intervalRef.current !== null) window.clearTimeout(intervalRef.current); };
+  }, [playing, fps, total, isDragging, zoomed, frameIdx, shotPlans, images, getUrl]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -870,53 +879,104 @@ function NsfwCinemaViewer({ images, getUrl, onClose }: {
     }));
   }, [images]);
 
-  // AI Smart Zoom: analyze frames in background
-  const [aiTargets, setAiTargets] = useState<Map<string, ZoomTarget>>(new Map());
-  const [aiDetections, setAiDetections] = useState<Map<string, Detection[]>>(new Map());
-  const [aiProgress, setAiProgress] = useState<{ done: number; total: number } | null>(null);
-  const [showDetections, setShowDetections] = useState(false);
-  const aiAbortRef = useRef({ aborted: false });
-
+  // AI Cinema Director: init models once, analyze frames lazily
   useEffect(() => {
-    const abort = { aborted: false };
-    aiAbortRef.current = abort;
+    initModels().then(() => setAiReady(true)).catch(() => {});
+  }, []);
 
-    const urls = images.map(im => getUrl(im));
-    analyzeFrames(urls, (progress) => {
-      if (!abort.aborted) {
-        setAiTargets(new Map(progress.targets));
-        setAiDetections(new Map(progress.detections));
-        setAiProgress({ done: progress.done, total: progress.total });
+  // Analyze current frame on-demand (lazy, cached)
+  useEffect(() => {
+    if (!aiReady || !currentImg) return;
+    let cancelled = false;
+    const url = getUrl(currentImg);
+
+    analyzeSingleFrame(url).then((shot) => {
+      if (!cancelled) {
+        setShotPlans(prev => {
+          const next = new Map(prev);
+          next.set(url, shot);
+          return next;
+        });
       }
-    }, abort).catch(() => { /* model load fail — random fallback */ });
+    });
 
-    return () => { abort.aborted = true; };
-  }, [images, getUrl]);
+    // Pre-analyze next 2 frames ahead
+    const nextIdx = (frameIdx + 1) % images.length;
+    const nextIdx2 = (frameIdx + 2) % images.length;
+    analyzeSingleFrame(getUrl(images[nextIdx])).catch(() => {});
+    analyzeSingleFrame(getUrl(images[nextIdx2])).catch(() => {});
 
-  // Crossfade: alternate between two image layers
+    return () => { cancelled = true; };
+  }, [aiReady, frameIdx, currentImg, getUrl, images]);
+
+  // Crossfade: track previous source for smooth transitions
+  const currentSrc = getUrl(currentImg);
+  const [layerASrc, setLayerASrc] = useState(currentSrc);
+  const [layerBSrc, setLayerBSrc] = useState(currentSrc);
   const [showA, setShowA] = useState(true);
   const prevFrameRef = useRef(0);
+  const animKeyRef = useRef(0); // force CSS animation restart
+
   useEffect(() => {
     if (frameIdx !== prevFrameRef.current) {
-      setShowA(prev => !prev);
+      animKeyRef.current++;
+      // Put new image on the hidden layer, then crossfade
+      if (showA) {
+        setLayerBSrc(currentSrc);
+        setShowA(false);
+      } else {
+        setLayerASrc(currentSrc);
+        setShowA(true);
+      }
       prevFrameRef.current = frameIdx;
     }
-  }, [frameIdx]);
+  }, [frameIdx, currentSrc]);
 
-  const currentSrc = getUrl(currentImg);
-
-  // Compute Ken Burns for current frame: AI target or random fallback
+  // Compute Ken Burns for current frame: AI ShotPlan or random fallback
+  const currentShot = shotPlans.get(currentSrc);
   const kb = useMemo(() => {
     if (zoomed) return null;
-    const aiTarget = aiTargets.get(currentSrc);
-    if (aiTarget) {
-      // AI-detected: zoom toward the region of interest
-      return { originX: aiTarget.x, originY: aiTarget.y, scale: aiTarget.scale, ai: true };
+    if (currentShot) {
+      return {
+        originX: currentShot.originX,
+        originY: currentShot.originY,
+        scale: currentShot.scale,
+        easing: currentShot.easing,
+        duration: currentShot.duration,
+        ai: true,
+        type: currentShot.type,
+      };
     }
-    // Random fallback
+    // Random fallback — gentle pan across the image
     const rk = randomKenBurns[frameIdx];
-    return rk ? { originX: 50 + rk.tx * 10, originY: 50 + rk.ty * 10, scale: rk.scale, ai: false } : null;
-  }, [zoomed, aiTargets, currentSrc, randomKenBurns, frameIdx]);
+    return rk ? {
+      originX: 50 + rk.tx * 10,
+      originY: 50 + rk.ty * 10,
+      scale: rk.scale,
+      easing: 'cubic-bezier(0.25,0.1,0.25,1)',
+      duration: 5000,
+      ai: false,
+      type: 'establishing' as const,
+    } : null;
+  }, [zoomed, currentShot, randomKenBurns, frameIdx]);
+
+  // CSS animation style for Ken Burns pan effect
+  const kbAnimStyle = useMemo(() => {
+    if (!kb) return {};
+    return {
+      animation: `kenburns-${animKeyRef.current} ${kb.duration}ms ${kb.easing} forwards`,
+      transformOrigin: `${kb.originX}% ${kb.originY}%`,
+    } as React.CSSProperties;
+  }, [kb]);
+
+  // Dynamic keyframes for current Ken Burns
+  const kbKeyframes = useMemo(() => {
+    if (!kb) return '';
+    return `@keyframes kenburns-${animKeyRef.current} {
+      0% { transform: scale(1.0); }
+      100% { transform: scale(${kb.scale}); }
+    }`;
+  }, [kb]);
 
   if (total === 0) return <div className="text-center text-white/30 py-12">No images to play</div>;
 
@@ -967,39 +1027,32 @@ function NsfwCinemaViewer({ images, getUrl, onClose }: {
           <link key={im.id} rel="preload" as="image" href={getUrl(im)} />
         ))}
 
-        {/* Dual crossfade layers */}
+        {/* Dual crossfade layers with Ken Burns */}
+        <style>{kbKeyframes}</style>
         <img
-          src={showA ? currentSrc : getUrl(images[prevFrameRef.current] || currentImg)}
+          src={layerASrc}
           alt="" referrerPolicy="no-referrer" draggable={false}
           className="absolute inset-0 w-full h-full object-contain"
           style={{
             opacity: showA ? 1 : 0,
-            transition: 'opacity 0.6s ease-in-out',
+            transition: 'opacity 0.8s ease-in-out',
             ...(zoomed ? {
               transform: `scale(2.5)`,
               transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-            } : kb ? {
-              transform: `scale(${kb.scale})`,
-              transformOrigin: `${kb.originX}% ${kb.originY}%`,
-              transition: `opacity 0.6s ease-in-out, transform ${1000 / fps}ms ease-out, transform-origin ${1000 / fps}ms ease-out`,
-            } : {}),
+            } : showA ? kbAnimStyle : {}),
           }}
         />
         <img
-          src={!showA ? currentSrc : getUrl(images[prevFrameRef.current] || currentImg)}
+          src={layerBSrc}
           alt="" referrerPolicy="no-referrer" draggable={false}
           className="absolute inset-0 w-full h-full object-contain"
           style={{
             opacity: !showA ? 1 : 0,
-            transition: 'opacity 0.6s ease-in-out',
+            transition: 'opacity 0.8s ease-in-out',
             ...(zoomed ? {
               transform: `scale(2.5)`,
               transformOrigin: `${zoomPos.x}% ${zoomPos.y}%`,
-            } : kb ? {
-              transform: `scale(${kb.scale})`,
-              transformOrigin: `${kb.originX}% ${kb.originY}%`,
-              transition: `opacity 0.6s ease-in-out, transform 3s cubic-bezier(0.25,0.1,0.25,1), transform-origin 3s cubic-bezier(0.25,0.1,0.25,1)`,
-            } : {}),
+            } : !showA ? kbAnimStyle : {}),
           }}
         />
 
@@ -1036,10 +1089,10 @@ function NsfwCinemaViewer({ images, getUrl, onClose }: {
 
         {/* Detection overlay */}
         {showDetections && !zoomed && (() => {
-          const dets = aiDetections.get(currentSrc) || [];
+          const shot = shotPlans.get(currentSrc);
+          const dets = shot?.detections || [];
           return dets.map((det, i) => {
             const color = DETECTION_COLORS[det.class] || '#fff';
-            // Convert normalized coords to percentage positions
             const left = (det.x - det.w / 2) * 100;
             const top = (det.y - det.h / 2) * 100;
             const width = det.w * 100;
@@ -1065,8 +1118,9 @@ function NsfwCinemaViewer({ images, getUrl, onClose }: {
         <div className="absolute top-5 left-5 flex items-center gap-2 pointer-events-none">
           {playing && (
             <span className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md rounded-full px-3 py-1 text-[10px] text-fuchsia-400 font-bold">
-              <span className="w-2 h-2 rounded-full bg-fuchsia-400 animate-pulse" /> Cinema · {fps}fps
-              {kb?.ai && <span className="text-emerald-400 ml-1">🧠</span>}
+              <span className="w-2 h-2 rounded-full bg-fuchsia-400 animate-pulse" /> Cinema
+              {kb?.ai && <span className="text-emerald-400 ml-1">🧠 {kb.type?.replace(/_/g, ' ')}</span>}
+              {kb?.ai && <span className="text-white/40 ml-1">{(kb.duration / 1000).toFixed(1)}s</span>}
             </span>
           )}
           {zoomed && (
@@ -1076,7 +1130,7 @@ function NsfwCinemaViewer({ images, getUrl, onClose }: {
           )}
           {aiProgress && aiProgress.done < aiProgress.total && (
             <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-full px-3 py-1 text-[10px] text-amber-400 font-bold">
-              🧠 AI {aiProgress.done}/{aiProgress.total}
+              🎬 Directing {aiProgress.done}/{aiProgress.total}
             </span>
           )}
         </div>

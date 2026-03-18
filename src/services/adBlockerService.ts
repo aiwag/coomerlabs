@@ -59,8 +59,15 @@ function enableOnSession(partition: string): void {
       : session.fromPartition(partition);
     blocker.enableBlockingInSession(sess);
     trackedSessions.add(partition);
-  } catch (error) {
-    console.error(`[AdBlocker] Failed to enable on session ${partition}:`, error);
+  } catch (error: any) {
+    // The cosmetic filter IPC handler is global — registering on a second session
+    // throws "Attempted to register a second handler". Network blocking still works.
+    if (error?.message?.includes('second handler')) {
+      trackedSessions.add(partition);
+      console.log(`[AdBlocker] Enabled on ${partition} (network-level, cosmetic filters shared)`);
+    } else {
+      console.error(`[AdBlocker] Failed to enable on session ${partition}:`, error);
+    }
   }
 }
 

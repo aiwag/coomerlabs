@@ -4,11 +4,12 @@ import {
   fetchTrending,
   searchAlbums,
   fetchAlbumDetail,
+  parseAlbumHtml,
   type BunkrAlbum,
   type BunkrAlbumDetail,
   type BunkrFile,
 } from '@/components/bunkr/api';
-import { analyzeFrames, type ZoomTarget, type Detection, DETECTION_COLORS } from '../lib/smartZoom';
+import { analyzeSingleFrame, initModels, type ShotPlan, type Detection, DETECTION_COLORS } from '../lib/smartZoom';
 import {
   Search,
   Loader2,
@@ -212,12 +213,64 @@ function VirtualAlbumGrid({
 
 /* ═══════════════════ Animated Album Card (hover preview) ═══════════════════ */
 
+// Throttled thumbnail resolver — max 2 concurrent, 1 thumb per card
+const thumbCache = new Map<string, string>();
+const thumbQueue: { slug: string; resolve: (url: string) => void }[] = [];
+let thumbActive = 0;
+const THUMB_CONCURRENCY = 2;
+
+function processThumbQueue() {
+  while (thumbActive < THUMB_CONCURRENCY && thumbQueue.length > 0) {
+    const item = thumbQueue.shift()!;
+    if (thumbCache.has(item.slug)) { item.resolve(thumbCache.get(item.slug)!); continue; }
+    thumbActive++;
+    // @ts-ignore
+    window.electronAPI?.bunkr?.fetch(`https://bunkr.cr/a/${item.slug}`)
+      .then((result: any) => {
+        if (result?.success && result?.data) {
+          const detail = parseAlbumHtml(result.data);
+          const first = detail.files.find((f: BunkrFile) => f.thumb && f.thumb.startsWith('http'));
+          if (first) {
+            thumbCache.set(item.slug, first.thumb);
+            item.resolve(first.thumb);
+          }
+        }
+      })
+      .catch(() => {})
+      .finally(() => { thumbActive--; setTimeout(processThumbQueue, 500); });
+  }
+}
+
+function requestThumb(slug: string): Promise<string> {
+  if (thumbCache.has(slug)) return Promise.resolve(thumbCache.get(slug)!);
+  return new Promise(resolve => { thumbQueue.push({ slug, resolve }); processThumbQueue(); });
+}
+
 function AnimatedAlbumCard({ album, onOpen }: { album: BunkrAlbum; onOpen: (a: { slug: string; title: string }) => void }) {
   const [hovering, setHovering] = useState(false);
   const [thumbIdx, setThumbIdx] = useState(0);
+  const [thumb, setThumb] = useState<string>(thumbCache.get(album.slug) || album.thumb || '');
   const intervalRef = useRef<number | null>(null);
+  const cardRef = useRef<HTMLButtonElement>(null);
 
-  const thumbs = album.thumbs.length > 0 ? album.thumbs : album.thumb ? [album.thumb] : [];
+  // Only resolve thumb when card is visible (IntersectionObserver)
+  useEffect(() => {
+    if (thumb || album.thumb) return;
+    const el = cardRef.current;
+    if (!el) return;
+
+    let cancelled = false;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !cancelled) {
+        obs.disconnect();
+        requestThumb(album.slug).then(url => { if (!cancelled) setThumb(url); });
+      }
+    }, { threshold: 0.1 });
+    obs.observe(el);
+    return () => { cancelled = true; obs.disconnect(); };
+  }, [album.slug, album.thumb, thumb]);
+
+  const thumbs = thumb ? [thumb] : [];
 
   useEffect(() => {
     if (hovering && thumbs.length > 1) {
@@ -236,6 +289,7 @@ function AnimatedAlbumCard({ album, onOpen }: { album: BunkrAlbum; onOpen: (a: {
 
   return (
     <button
+      ref={cardRef}
       onClick={() => onOpen({ slug: album.slug, title: album.title })}
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
@@ -399,20 +453,31 @@ function CinemaViewer({ files, onClose }: { files: BunkrFile[]; onClose: () => v
 
   const total = files.length;
 
-  // Auto-play
+  // AI Cinema Director: state declarations (needed before playback timer)
+  const [shotPlans, setShotPlans] = useState<Map<string, ShotPlan>>(new Map());
+  const [aiProgress, setAiProgress] = useState<{ done: number; total: number } | null>(null);
+  const [aiReady, setAiReady] = useState(false);
+  const [showDetections, setShowDetections] = useState(false);
+  const aiAbortRef = useRef({ aborted: false });
+
+  // Auto-play with per-frame duration from ShotPlan
   useEffect(() => {
     if (playing && !isDragging && !zoomed) {
-      intervalRef.current = window.setInterval(() => {
+      const currentUrl = files[frameIdx]?.thumb || '';
+      const shot = shotPlans.get(currentUrl);
+      const frameDuration = shot?.duration ?? (1000 / fps);
+
+      intervalRef.current = window.setTimeout(() => {
         setFrameIdx(prev => {
           if (prev >= total - 1) { setPlaying(false); return prev; }
           return prev + 1;
         });
-      }, 1000 / fps);
+      }, frameDuration);
     } else {
-      if (intervalRef.current !== null) window.clearInterval(intervalRef.current);
+      if (intervalRef.current !== null) window.clearTimeout(intervalRef.current);
     }
-    return () => { if (intervalRef.current !== null) window.clearInterval(intervalRef.current); };
-  }, [playing, fps, total, isDragging, zoomed]);
+    return () => { if (intervalRef.current !== null) window.clearTimeout(intervalRef.current); };
+  }, [playing, fps, total, isDragging, zoomed, frameIdx, shotPlans, files]);
 
   // Keyboard controls
   useEffect(() => {
@@ -487,26 +552,37 @@ function CinemaViewer({ files, onClose }: { files: BunkrFile[]; onClose: () => v
     }));
   }, [files]);
 
-  // AI Smart Zoom: analyze frames in background
-  const [aiTargets, setAiTargets] = useState<Map<string, ZoomTarget>>(new Map());
-  const [aiDetections, setAiDetections] = useState<Map<string, Detection[]>>(new Map());
-  const [aiProgress, setAiProgress] = useState<{ done: number; total: number } | null>(null);
-  const [showDetections, setShowDetections] = useState(false);
-  const aiAbortRef = useRef({ aborted: false });
-
+  // AI Cinema Director: init models once, analyze frames lazily
   useEffect(() => {
-    const abort = { aborted: false };
-    aiAbortRef.current = abort;
-    const urls = files.map(f => f.thumb).filter(Boolean);
-    analyzeFrames(urls, (progress) => {
-      if (!abort.aborted) {
-        setAiTargets(new Map(progress.targets));
-        setAiDetections(new Map(progress.detections));
-        setAiProgress({ done: progress.done, total: progress.total });
+    initModels().then(() => setAiReady(true)).catch(() => {});
+  }, []);
+
+  // Analyze current frame on-demand (lazy, cached)
+  useEffect(() => {
+    if (!aiReady || !currentFile?.thumb) return;
+    let cancelled = false;
+    const url = currentFile.thumb;
+
+    analyzeSingleFrame(url).then((shot) => {
+      if (!cancelled) {
+        setShotPlans(prev => {
+          const next = new Map(prev);
+          next.set(url, shot);
+          return next;
+        });
       }
-    }, abort).catch(() => {});
-    return () => { abort.aborted = true; };
-  }, [files]);
+    });
+
+    // Pre-analyze next 2 frames ahead
+    if (files.length > 1) {
+      const nextIdx = (frameIdx + 1) % files.length;
+      const nextIdx2 = (frameIdx + 2) % files.length;
+      if (files[nextIdx]?.thumb) analyzeSingleFrame(files[nextIdx].thumb).catch(() => {});
+      if (files[nextIdx2]?.thumb) analyzeSingleFrame(files[nextIdx2].thumb).catch(() => {});
+    }
+
+    return () => { cancelled = true; };
+  }, [aiReady, frameIdx, currentFile, files]);
 
   // Crossfade: alternate between two image layers
   const [showA, setShowA] = useState(true);
@@ -521,16 +597,24 @@ function CinemaViewer({ files, onClose }: { files: BunkrFile[]; onClose: () => v
   const currentSrc = currentFile?.thumb || '';
   const prevSrc = files[prevFrameRef.current]?.thumb || currentSrc;
 
-  // Compute Ken Burns: AI target or random fallback
+  // Compute Ken Burns: AI ShotPlan or random fallback
+  const currentShot = shotPlans.get(currentSrc);
   const kb = useMemo(() => {
     if (zoomed) return null;
-    const aiTarget = aiTargets.get(currentSrc);
-    if (aiTarget) {
-      return { originX: aiTarget.x, originY: aiTarget.y, scale: aiTarget.scale, ai: true };
+    if (currentShot) {
+      return {
+        originX: currentShot.originX,
+        originY: currentShot.originY,
+        scale: currentShot.scale,
+        easing: currentShot.easing,
+        duration: currentShot.duration,
+        ai: true,
+        type: currentShot.type,
+      };
     }
     const rk = randomKenBurns[frameIdx];
-    return rk ? { originX: 50 + rk.tx * 10, originY: 50 + rk.ty * 10, scale: rk.scale, ai: false } : null;
-  }, [zoomed, aiTargets, currentSrc, randomKenBurns, frameIdx]);
+    return rk ? { originX: 50 + rk.tx * 10, originY: 50 + rk.ty * 10, scale: rk.scale, easing: 'cubic-bezier(0.25,0.1,0.25,1)', duration: 5000, ai: false, type: 'establishing' as const } : null;
+  }, [zoomed, currentShot, randomKenBurns, frameIdx]);
 
   if (total === 0) {
     return <div className="text-center text-white/30 py-12">No images to play</div>;
@@ -599,7 +683,7 @@ function CinemaViewer({ files, onClose }: { files: BunkrFile[]; onClose: () => v
             } : kb ? {
               transform: `scale(${kb.scale})`,
               transformOrigin: `${kb.originX}% ${kb.originY}%`,
-              transition: `opacity 0.6s ease-in-out, transform 3s cubic-bezier(0.25,0.1,0.25,1), transform-origin 3s cubic-bezier(0.25,0.1,0.25,1)`,
+              transition: `opacity 0.6s ease-in-out, transform ${kb.duration}ms ${kb.easing}, transform-origin ${kb.duration}ms ${kb.easing}`,
             } : {}),
           }}
         />
@@ -616,7 +700,7 @@ function CinemaViewer({ files, onClose }: { files: BunkrFile[]; onClose: () => v
             } : kb ? {
               transform: `scale(${kb.scale})`,
               transformOrigin: `${kb.originX}% ${kb.originY}%`,
-              transition: `opacity 0.6s ease-in-out, transform 3s cubic-bezier(0.25,0.1,0.25,1), transform-origin 3s cubic-bezier(0.25,0.1,0.25,1)`,
+              transition: `opacity 0.6s ease-in-out, transform ${kb.duration}ms ${kb.easing}, transform-origin ${kb.duration}ms ${kb.easing}`,
             } : {}),
           }}
         />
@@ -652,9 +736,9 @@ function CinemaViewer({ files, onClose }: { files: BunkrFile[]; onClose: () => v
           </div>
         )}
 
-        {/* Detection overlay */}
         {showDetections && !zoomed && (() => {
-          const dets = aiDetections.get(currentSrc) || [];
+          const shot = shotPlans.get(currentSrc);
+          const dets = shot?.detections || [];
           return dets.map((det, i) => {
             const color = DETECTION_COLORS[det.class] || '#fff';
             const left = (det.x - det.w / 2) * 100;
@@ -680,8 +764,9 @@ function CinemaViewer({ files, onClose }: { files: BunkrFile[]; onClose: () => v
         <div className="absolute top-5 left-5 flex items-center gap-2 pointer-events-none">
           {playing && (
             <span className="flex items-center gap-1.5 bg-black/60 backdrop-blur-md rounded-full px-3 py-1 text-[10px] text-violet-400 font-bold">
-              <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" /> Cinema · {fps}fps
-              {kb?.ai && <span className="text-emerald-400 ml-1">🧠</span>}
+              <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" /> Cinema
+              {kb?.ai && <span className="text-emerald-400 ml-1">🧠 {kb.type?.replace(/_/g, ' ')}</span>}
+              {kb?.ai && <span className="text-white/40 ml-1">{(kb.duration / 1000).toFixed(1)}s</span>}
             </span>
           )}
           {zoomed && (
@@ -691,7 +776,7 @@ function CinemaViewer({ files, onClose }: { files: BunkrFile[]; onClose: () => v
           )}
           {aiProgress && aiProgress.done < aiProgress.total && (
             <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md rounded-full px-3 py-1 text-[10px] text-amber-400 font-bold">
-              🧠 AI {aiProgress.done}/{aiProgress.total}
+              🎬 Directing {aiProgress.done}/{aiProgress.total}
             </span>
           )}
         </div>
@@ -865,75 +950,115 @@ function SlideshowViewer({
   );
 }
 
-/* ═══════════════════════════════════ Video Slide (Native) ═══════════════════════════════════ */
-
-// Cache resolved video URLs so we don't re-fetch for slides we've already visited
-const videoUrlCache = new Map<string, string>();
+/* ═══════════════════════════════════ Video Slide (Webview + Popup Blocking) ═══════════════════════════════════ */
 
 function VideoSlide({ file, active }: { file: BunkrFile; active: boolean }) {
-  const [resolvedUrl, setResolvedUrl] = useState<string | null>(videoUrlCache.get(file.url) || null);
-  const [resolving, setResolving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const webviewRef = useRef<any>(null);
+  const [loaded, setLoaded] = useState(false);
+  const injectedRef = useRef(false);
+
+  const filePageUrl = file.url || '';
 
   useEffect(() => {
-    if (!active || !file.url || resolvedUrl || resolving) return;
+    const wv = webviewRef.current;
+    if (!wv || !active) return;
+    injectedRef.current = false;
 
-    // Only resolve /f/ page URLs
-    if (!file.url.includes('/f/')) {
-      setResolvedUrl(file.url);
-      return;
-    }
+    const inject = () => {
+      if (injectedRef.current) return;
+      injectedRef.current = true;
+      setLoaded(true);
 
-    setResolving(true);
-    setError(null);
+      // Inject JS to block popups BEFORE any ad scripts run
+      wv.executeJavaScript(`
+        // Kill all popup mechanisms
+        window.open = () => null;
+        window.alert = () => {};
+        window.confirm = () => false;
+        window.prompt = () => null;
 
-    // @ts-ignore
-    window.electronAPI?.bunkr?.resolveVideo(file.url)
-      .then((result: any) => {
-        if (result?.success && result.url) {
-          videoUrlCache.set(file.url, result.url);
-          setResolvedUrl(result.url);
-        } else {
-          setError(result?.error || 'Could not resolve video URL');
-        }
-        setResolving(false);
-      })
-      .catch((err: any) => {
-        setError(err?.message || 'Failed to resolve video');
-        setResolving(false);
-      });
-  }, [active, file.url, resolvedUrl, resolving]);
+        // Block onclick handlers that open new windows  
+        document.addEventListener('click', function(e) {
+          const a = e.target.closest('a[target="_blank"], a[href*="coosync"], a[href*="wpadmngr"], a[href*="tinyns"]');
+          if (a) { e.preventDefault(); e.stopPropagation(); }
+        }, true);
 
-  if (resolving) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-3" style={{ minHeight: '50vh' }}>
-        <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
-        <span className="text-xs text-white/40">Resolving video...</span>
-        <span className="text-[10px] text-white/20 font-mono">{file.name}</span>
-      </div>
-    );
-  }
+        // Remove ad scripts and iframes
+        document.querySelectorAll('script[src*="coosync"], script[src*="wpadmngr"], script[src*="tinyns"], script[src*="admpid"], iframe').forEach(el => el.remove());
 
-  if (error || (!resolvedUrl && !file.url)) {
+        // Remove ad containers  
+        document.querySelectorAll('[data-cl-spot], [data-admpid], [id*="spot_"], .live-indicator-container').forEach(el => el.remove());
+      `).catch(() => {});
+
+      // Inject CSS to hide everything except the video player
+      wv.insertCSS(`
+        header, footer, nav, .cont:not(:has(#player)),
+        [data-cl-spot], [data-admpid], center > div,
+        .ld-more, #load-more-btn, #related-files-grid,
+        .files-album, div[style*="background: red"],
+        .live-indicator-container, .breadcrumbs,
+        #related-files, .file-details-container,
+        div[class*="ad"], div[id*="spot"] { display: none !important; }
+        body { background: #000 !important; overflow: hidden !important; margin: 0 !important; padding: 0 !important; }
+        main { padding: 0 !important; max-width: 100% !important; }
+        .aspect-video { max-height: 100vh !important; min-height: 100vh !important; }
+        .rounded-lg { border-radius: 0 !important; }
+        #player, #video-container { width: 100vw !important; height: 100vh !important; }
+        .mx-auto { max-width: 100% !important; padding: 0 !important; }
+        .plyr { height: 100vh !important; }
+        .plyr__video-wrapper { height: 100% !important; }
+      `).catch(() => {});
+    };
+
+    // Block navigation to ad domains
+    const handleNav = (_e: any) => {
+      const url = wv.getURL?.() || '';
+      // Only allow bunkr domains
+      if (url && !url.includes('bunkr') && !url.includes('scdn.st')) {
+        wv.stop?.();
+      }
+    };
+
+    wv.addEventListener('did-finish-load', inject);
+    wv.addEventListener('did-navigate', handleNav);
+
+    // Also inject on dom-ready (earlier than did-finish-load)
+    wv.addEventListener('dom-ready', () => {
+      wv.executeJavaScript('window.open = () => null;').catch(() => {});
+    });
+
+    return () => {
+      wv.removeEventListener('did-finish-load', inject);
+      wv.removeEventListener('did-navigate', handleNav);
+    };
+  }, [active]);
+
+  if (!filePageUrl || !filePageUrl.includes('/f/')) {
     return (
       <div className="flex flex-col items-center justify-center gap-2 text-white/30" style={{ minHeight: '50vh' }}>
         <FileVideo size={32} />
         <span className="text-xs">Video unavailable</span>
-        {error && <span className="text-[10px] text-red-400/50">{error}</span>}
       </div>
     );
   }
 
   return (
-    <video
-      key={resolvedUrl || file.url}
-      src={resolvedUrl || file.url}
-      controls
-      autoPlay={active}
-      playsInline
-      poster={file.thumb}
-      className="max-h-[75vh] max-w-full rounded-lg"
-      crossOrigin="anonymous"
-    />
+    <div className="relative w-full" style={{ height: '75vh' }}>
+      {!loaded && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black z-10">
+          <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
+          <span className="text-xs text-white/40">Loading player...</span>
+          <span className="text-[10px] text-white/20 font-mono">{file.name}</span>
+        </div>
+      )}
+      {active && (
+        <webview
+          ref={webviewRef}
+          src={filePageUrl}
+          partition="persist:bunkr"
+          style={{ width: '100%', height: '100%', border: 'none', background: '#000' }}
+        />
+      )}
+    </div>
   );
 }
