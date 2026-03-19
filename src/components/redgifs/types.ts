@@ -70,7 +70,9 @@ export interface ViewMode {
 export const sortOptions: SortOption[] = [
   { id: 'trending', label: 'Trending', value: 'trending' },
   { id: 'latest', label: 'Latest', value: 'latest' },
-  { id: 'top', label: 'Top', value: 'top' },
+  { id: 'top28', label: 'Top 28 Days', value: 'top28' },
+  { id: 'top7', label: 'Top 7 Days', value: 'top7' },
+  { id: 'top', label: 'Top All Time', value: 'top' },
   { id: 'random', label: 'Random', value: 'random' },
 ];
 

@@ -1,5 +1,6 @@
 // RedGifs v3 - Lightweight Poster-Only Card (no video per card)
 import React, { useCallback } from 'react';
+import { Link } from '@tanstack/react-router';
 import { Play, Heart, Eye, Volume2 } from 'lucide-react';
 import { GifItem } from './types';
 import { getPosterUrl } from './api';
@@ -76,7 +77,12 @@ export const GifCard = React.memo<GifCardProps>(({ gif, index, onGifClick, onHov
           )}
         </div>
         {gif.userName && (
-          <div className="text-[8px] text-white/40 font-bold mt-0.5 truncate">@{gif.userName}</div>
+          <Link
+            to="/redgifs/users/$username"
+            params={{ username: gif.userName }}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            className="block text-[8px] text-white/40 hover:text-pink-400 font-bold mt-0.5 truncate transition-colors no-underline"
+          >@{gif.userName}</Link>
         )}
       </div>
     </div>

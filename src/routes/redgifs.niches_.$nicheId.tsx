@@ -1,20 +1,20 @@
-// RedGifs - Latest Tab - Virtual Grid + Shared Hover Video + Gapless Layout
-import { createFileRoute } from "@tanstack/react-router";
+// RedGifs - Niche Detail Page (niches/$nicheId)
+import { createFileRoute, Link } from "@tanstack/react-router";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, ArrowLeft, Hash } from 'lucide-react';
 
 import { GifCard } from '../components/redgifs/GifCard';
 import { VideoPlayerModal } from '../components/redgifs/VideoPlayerModal';
 
-import { useRedgifsSettings, useRedgifsSearch } from '../components/redgifs/hooks';
+import { useRedgifsSettings } from '../components/redgifs/hooks';
 import * as api from '../components/redgifs/api';
 import { GifItem } from '../components/redgifs/types';
 
-const RedgifsLatest = () => {
-  const { viewMode, sortBy } = useRedgifsSettings();
-  const { query, gender } = useRedgifsSearch();
+const RedgifsNicheDetail = () => {
+  const { nicheId } = Route.useParams();
+  const { viewMode } = useRedgifsSettings();
   const [selectedGifIndex, setSelectedGifIndex] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -54,11 +54,8 @@ const RedgifsLatest = () => {
     error,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['redgifs-gifs', sortBy, query, gender],
-    queryFn: ({ pageParam = 1 }) => {
-      if (query) return api.searchGifs({ query, pageParam, gender });
-      return api.fetchGifs({ pageParam, gender, order: sortBy });
-    },
+    queryKey: ['redgifs-niche-gifs', nicheId],
+    queryFn: ({ pageParam = 1 }) => api.fetchNicheGifs({ nicheId, pageParam }),
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
     staleTime: 5 * 60 * 1000,
@@ -66,6 +63,9 @@ const RedgifsLatest = () => {
 
   const gifs = gifsData?.pages.flatMap((page) => page.gifs) || [];
   const columns = viewMode.columns;
+
+  // Nice display name from slug
+  const displayName = nicheId.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
   const rows = useMemo(() => {
     const result: GifItem[][] = [];
@@ -99,11 +99,34 @@ const RedgifsLatest = () => {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
+      {/* Niche header */}
+      <div className="shrink-0 border-b border-white/10 px-4 py-3 flex items-center gap-3">
+        <Link
+          to="/redgifs/niches"
+          className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+        >
+          <ArrowLeft size={16} className="text-white/60" />
+        </Link>
+
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500/30 to-violet-500/30 flex items-center justify-center shrink-0">
+            <Hash size={14} className="text-white/70" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold text-white truncate">{displayName}</h2>
+            <p className="text-[10px] text-white/40">
+              {gifs.length > 0 ? `${gifs.length}+ GIFs loaded` : 'Loading...'}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Gif grid */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         {isLoading && gifs.length === 0 && (
           <div className="flex flex-col items-center justify-center py-40">
             <Loader2 className="w-12 h-12 animate-spin text-pink-500 mb-4" />
-            <p className="text-white/60 text-sm font-medium">Loading latest GIFs...</p>
+            <p className="text-white/60 text-sm font-medium">Loading {displayName} GIFs...</p>
           </div>
         )}
 
@@ -191,6 +214,12 @@ const RedgifsLatest = () => {
             <p className="text-white/40 text-sm">You've reached the end</p>
           </div>
         )}
+
+        {!isLoading && !error && gifs.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-40">
+            <p className="text-white/40 text-sm">No GIFs found for {displayName}</p>
+          </div>
+        )}
       </div>
 
       {/* Shared hover video */}
@@ -220,6 +249,6 @@ const RedgifsLatest = () => {
   );
 };
 
-export const Route = createFileRoute('/redgifs/latest')({
-  component: RedgifsLatest,
+export const Route = createFileRoute('/redgifs/niches_/$nicheId')({
+  component: RedgifsNicheDetail,
 });

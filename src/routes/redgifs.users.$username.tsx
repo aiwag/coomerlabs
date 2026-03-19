@@ -3,14 +3,33 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Loader2, RefreshCw, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Loader2, RefreshCw, ArrowLeft, ExternalLink, Heart, AlertTriangle } from 'lucide-react';
 
 import { GifCard } from '../components/redgifs/GifCard';
 import { VideoPlayerModal } from '../components/redgifs/VideoPlayerModal';
 
-import { useRedgifsSettings } from '../components/redgifs/hooks';
+import { useRedgifsSettings, useRedgifsFavorites } from '../components/redgifs/hooks';
 import * as api from '../components/redgifs/api';
 import { GifItem } from '../components/redgifs/types';
+
+const FollowButton = ({ username }: { username: string }) => {
+  const { isFollowed, toggleFollow } = useRedgifsFavorites();
+  const followed = isFollowed(username);
+
+  return (
+    <button
+      onClick={() => toggleFollow(username)}
+      className={`p-1.5 rounded-lg transition-all ${
+        followed
+          ? 'bg-pink-500/20 text-pink-400 hover:bg-pink-500/30'
+          : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-pink-400'
+      }`}
+      title={followed ? 'Unfollow' : 'Follow'}
+    >
+      <Heart size={14} className={followed ? 'fill-current' : ''} />
+    </button>
+  );
+};
 
 const RedgifsUserProfile = () => {
   const { username } = Route.useParams();
@@ -59,6 +78,12 @@ const RedgifsUserProfile = () => {
     getNextPageParam: (lastPage) => lastPage.nextPage,
     initialPageParam: 1,
     staleTime: 5 * 60 * 1000,
+    retry: (failureCount, error: any) => {
+      // Retry on 429 rate limits up to 3 times
+      if (error?.response?.status === 429 && failureCount < 3) return true;
+      return false;
+    },
+    retryDelay: (attempt) => Math.min(2000 * 2 ** attempt, 15000),
   });
 
   const gifs = gifsData?.pages.flatMap((page) => page.gifs) || [];
@@ -117,6 +142,8 @@ const RedgifsUserProfile = () => {
           </div>
         </div>
 
+        <FollowButton username={username} />
+
         <a
           href={`https://www.redgifs.com/users/${username}`}
           target="_blank"
@@ -139,7 +166,17 @@ const RedgifsUserProfile = () => {
 
         {error && (
           <div className="flex flex-col items-center justify-center py-40">
-            <p className="text-red-400 mb-4">Failed to load GIFs</p>
+            <AlertTriangle size={32} className="text-amber-400/60 mb-3" />
+            <p className="text-red-400 mb-1 text-sm font-bold">
+              {(error as any)?.response?.status === 429
+                ? 'Rate limited by RedGifs'
+                : 'Failed to load GIFs'}
+            </p>
+            <p className="text-white/30 text-xs mb-4">
+              {(error as any)?.response?.status === 429
+                ? 'Too many requests — wait a moment and retry'
+                : 'Check your connection and try again'}
+            </p>
             <button
               onClick={() => refetch()}
               className="liquid-button px-6 py-3 flex items-center gap-2 hover:scale-105 active:scale-95 transition-transform"

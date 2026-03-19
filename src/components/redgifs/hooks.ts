@@ -22,7 +22,7 @@ export const useRedgifsSettings = create<SettingsState>()(
     (set) => ({
       quality: 'hd',
       viewMode: { id: 'comfortable', label: 'Comfortable', columns: 2 },
-      sortBy: 'trending',
+      sortBy: 'top28',
       autoPlay: true,
       muteAll: true,
       showThumbnails: true,
@@ -98,3 +98,42 @@ export const useRedgifsSearch = create<SearchState>((set) => ({
   setSearchType: (searchType) => set({ searchType }),
   setGender: (gender) => set({ gender }),
 }));
+
+// Favorites — followed RedGifs creators (persisted)
+interface FavoritesState {
+  followed: string[]; // usernames
+  addFollow: (username: string) => void;
+  removeFollow: (username: string) => void;
+  toggleFollow: (username: string) => void;
+  isFollowed: (username: string) => boolean;
+}
+
+export const useRedgifsFavorites = create<FavoritesState>()(
+  persist(
+    (set, get) => ({
+      followed: [],
+      addFollow: (username) =>
+        set((state) => ({
+          followed: state.followed.includes(username)
+            ? state.followed
+            : [...state.followed, username],
+        })),
+      removeFollow: (username) =>
+        set((state) => ({
+          followed: state.followed.filter((u) => u !== username),
+        })),
+      toggleFollow: (username) => {
+        const { followed } = get();
+        if (followed.includes(username)) {
+          set({ followed: followed.filter((u) => u !== username) });
+        } else {
+          set({ followed: [...followed, username] });
+        }
+      },
+      isFollowed: (username) => get().followed.includes(username),
+    }),
+    {
+      name: 'redgifs-favorites',
+    }
+  )
+);

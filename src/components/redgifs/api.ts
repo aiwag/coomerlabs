@@ -22,52 +22,20 @@ export const getAuthToken = async (): Promise<string> => {
   }
 };
 
-// Fetch trending GIFs
-export const fetchTrendingGifs = async ({
+// Fetch GIFs with configurable order (trending, latest, top28, top7, top, random, etc.)
+export const fetchGifs = async ({
   pageParam = 1,
-  gender
+  gender,
+  order = 'trending',
 }: {
   pageParam?: number;
   gender?: string;
+  order?: string;
 }) => {
   const token = await getAuthToken();
 
   try {
-    let url = `${API_BASE}/gifs/search?order=trending&count=50&type=g&verified=y&page=${pageParam}`;
-
-    // Add gender filter if specified
-    if (gender && gender !== 'all') {
-      url += `&tags=${encodeURIComponent(gender)}`;
-    }
-
-    const response = await axios.get(url, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
-
-    return {
-      gifs: response.data.gifs || [],
-      nextPage: response.data.gifs?.length > 0 ? pageParam + 1 : null,
-    };
-  } catch (error) {
-    console.error('Error fetching trending GIFs:', error);
-    return { gifs: [], nextPage: null };
-  }
-};
-
-// Fetch latest GIFs
-export const fetchLatestGifs = async ({
-  pageParam = 1,
-  gender
-}: {
-  pageParam?: number;
-  gender?: string;
-}) => {
-  const token = await getAuthToken();
-
-  try {
-    let url = `${API_BASE}/gifs/search?order=latest&count=50&type=g&verified=y&page=${pageParam}`;
+    let url = `${API_BASE}/gifs/search?order=${encodeURIComponent(order)}&count=50&type=g&verified=y&page=${pageParam}`;
 
     if (gender && gender !== 'all') {
       url += `&tags=${encodeURIComponent(gender)}`;
@@ -84,10 +52,17 @@ export const fetchLatestGifs = async ({
       nextPage: response.data.gifs?.length > 0 ? pageParam + 1 : null,
     };
   } catch (error) {
-    console.error('Error fetching latest GIFs:', error);
+    console.error('Error fetching GIFs:', error);
     return { gifs: [], nextPage: null };
   }
 };
+
+// Backward-compat wrappers
+export const fetchTrendingGifs = (args: { pageParam?: number; gender?: string }) =>
+  fetchGifs({ ...args, order: 'trending' });
+
+export const fetchLatestGifs = (args: { pageParam?: number; gender?: string }) =>
+  fetchGifs({ ...args, order: 'latest' });
 
 // Search GIFs with gender filter
 export const searchGifs = async ({
@@ -126,22 +101,37 @@ export const searchGifs = async ({
 };
 
 // Fetch creators
-export const fetchCreators = async ({ pageParam = 1 }: { pageParam?: number }) => {
+export const fetchCreators = async ({
+  pageParam = 1,
+  order = 'trending',
+  query,
+}: {
+  pageParam?: number;
+  order?: string;
+  query?: string;
+}) => {
   const token = await getAuthToken();
 
   try {
-    const response = await axios.get(
-      `${API_BASE}/creators/search/previews?order=trending&page=${pageParam}&count=30&verified=y`,
-      {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      }
-    );
+    let url: string;
 
+    if (query) {
+      // Search uses a different endpoint with `query` param
+      url = `${API_BASE}/creators/search?order=best_match&page=${pageParam}&query=${encodeURIComponent(query)}`;
+    } else {
+      url = `${API_BASE}/creators/search/previews?order=${order}&page=${pageParam}&count=30&verified=y`;
+    }
+
+    const response = await axios.get(url, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const items = response.data.users || response.data.items || [];
     return {
-      creators: response.data.users || response.data.items || [],
-      nextPage: response.data.users?.length > 0 ? pageParam + 1 : null,
+      creators: items,
+      nextPage: items.length > 0 ? pageParam + 1 : null,
     };
   } catch (error) {
     console.error('Error fetching creators:', error);
@@ -150,12 +140,18 @@ export const fetchCreators = async ({ pageParam = 1 }: { pageParam?: number }) =
 };
 
 // Fetch niches
-export const fetchNiches = async () => {
+export const fetchNiches = async ({
+  order = 'posts',
+  pageParam = 1,
+}: {
+  order?: string;
+  pageParam?: number;
+} = {}) => {
   const token = await getAuthToken();
 
   try {
     const response = await axios.get(
-      `${API_BASE}/niches/search/previews?order=subscribers&page=1&count=50`,
+      `${API_BASE}/niches/search/previews?order=${order}&page=${pageParam}&count=50`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -163,12 +159,14 @@ export const fetchNiches = async () => {
       }
     );
 
+    const niches = response.data.niches || [];
     return {
-      niches: response.data.niches || [],
+      niches,
+      nextPage: niches.length > 0 ? pageParam + 1 : null,
     };
   } catch (error) {
     console.error('Error fetching niches:', error);
-    return { niches: [] };
+    return { niches: [], nextPage: null };
   }
 };
 
@@ -190,19 +188,21 @@ export const fetchUserGifs = async ({ username, pageParam = 1 }: { username: str
       gifs: response.data.gifs || [],
       nextPage: response.data.gifs?.length > 0 ? pageParam + 1 : null,
     };
-  } catch (error) {
+  } catch (error: any) {
+    // Re-throw 429 so React Query can retry with backoff
+    if (error?.response?.status === 429) throw error;
     console.error('Error fetching user GIFs:', error);
     return { gifs: [], nextPage: null };
   }
 };
 
-// Fetch niche GIFs
+// Fetch niche GIFs — uses tags param to filter by niche
 export const fetchNicheGifs = async ({ nicheId, pageParam = 1 }: { nicheId: string; pageParam?: number }) => {
   const token = await getAuthToken();
 
   try {
     const response = await axios.get(
-      `${API_BASE}/niche/${nicheId}/search?count=50&order=trending&page=${pageParam}`,
+      `${API_BASE}/gifs/search?tags=${encodeURIComponent(nicheId)}&count=50&order=trending&type=g&page=${pageParam}`,
       {
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -4,7 +4,7 @@ import { Link, useLocation } from '@tanstack/react-router';
 import {
   Search, Grid, X, ChevronDown,
   TrendingUp, Clock, Star, Hash,
-  Users, Venus, Mars, Sparkles,
+  Users, Venus, Mars, Sparkles, Heart,
 } from 'lucide-react';
 import { useRedgifsSettings, useRedgifsSearch } from './hooks';
 import { sortOptions, viewModes } from './types';
@@ -13,6 +13,7 @@ const tabs = [
   { path: '/redgifs/latest', label: 'Latest', icon: Clock },
   { path: '/redgifs/niches', label: 'Niches', icon: Hash },
   { path: '/redgifs/creators', label: 'Creators', icon: Users },
+  { path: '/redgifs/favorites', label: 'Favs', icon: Heart },
 ] as const;
 
 export const Header = React.memo(() => {
@@ -48,6 +49,8 @@ export const Header = React.memo(() => {
     switch (sortId) {
       case 'trending': return TrendingUp;
       case 'latest': return Clock;
+      case 'top28': return Star;
+      case 'top7': return Star;
       case 'top': return Star;
       case 'random': return Hash;
       default: return TrendingUp;
