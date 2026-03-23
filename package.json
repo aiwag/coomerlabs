@@ -52,7 +52,7 @@
     "@vitejs/plugin-react": "^5.2.0",
     "babel-plugin-react-compiler": "^19.1.0-rc.1-rc-af1b7da-20250421",
     "bun": "^1.3.10",
-    "electron": "^38.8.6",
+    "electron": "^41.0.3",
     "electron-devtools-installer": "^4.0.0",
     "electron-playwright-helpers": "^1.8.2",
     "eslint": "^9.39.4",
